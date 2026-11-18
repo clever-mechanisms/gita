@@ -1,0 +1,9 @@
+PRODUCT_NAME = Gitā
+PRODUCT_BUNDLE_IDENTIFIER = dev.clevermechanisms.Gita
+MARKETING_VERSION = 0.1.0
+MACOSX_DEPLOYMENT_TARGET = 14.0
+URL_SCHEME = gita
+ZIP_BASENAME = Gita
+
+// The product site: the bare domain. scripts/build.sh copies it into Info.plist.
+GITA_WEBSITE_HOST = getgita.app

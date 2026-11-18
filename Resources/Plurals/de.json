@@ -1,0 +1,561 @@
+{
+  "%@ · %lld tracked changes": {
+    "format": "%1$@ · %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld Änderung an verfolgten Dateien",
+          "other": "%2$lld Änderungen an verfolgten Dateien"
+        }
+      }
+    }
+  },
+  "%lld agents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Agent",
+          "other": "%lld Agenten"
+        }
+      }
+    }
+  },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld geänderte Datei",
+          "other": "%1$lld geänderte Dateien"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Commit wird verworfen.",
+          "other": "%1$lld Commits werden verworfen."
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Subagent",
+          "other": "%lld Subagenten"
+        }
+      }
+    }
+  },
+  "All %lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Commit wird verworfen.",
+          "other": "Alle %1$lld Commits werden verworfen."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Binärdatei · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Byte",
+          "other": "%1$lld Bytes"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld nicht verfolgte Datei",
+          "other": "%2$lld nicht verfolgte Dateien"
+        }
+      }
+    }
+  },
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld Repository",
+          "other": "%3$lld Repositorys"
+        }
+      }
+    }
+  },
+  "%lld agents working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Agent arbeitet",
+          "other": "%lld Agenten arbeiten"
+        }
+      }
+    }
+  },
+  "%lld changed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld geändert",
+          "other": "%lld geändert"
+        }
+      }
+    }
+  },
+  "%lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Commit",
+          "other": "%lld Commits"
+        }
+      }
+    }
+  },
+  "%lld commits not pushed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Commit nicht gepusht",
+          "other": "%lld Commits nicht gepusht"
+        }
+      }
+    }
+  },
+  "%lld done": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld fertig",
+          "other": "%lld fertig"
+        }
+      }
+    }
+  },
+  "%lld failed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld fehlgeschlagen",
+          "other": "%lld fehlgeschlagen"
+        }
+      }
+    }
+  },
+  "%lld idle": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld inaktiv",
+          "other": "%lld inaktiv"
+        }
+      }
+    }
+  },
+  "%lld merged commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld zusammengeführter Commit",
+          "other": "%lld zusammengeführte Commits"
+        }
+      }
+    }
+  },
+  "%lld modified": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld modifiziert",
+          "other": "%lld modifiziert"
+        }
+      }
+    }
+  },
+  "%lld needs input": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld braucht Eingabe",
+          "other": "%lld brauchen Eingabe"
+        }
+      }
+    }
+  },
+  "%lld passed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld bestanden",
+          "other": "%lld bestanden"
+        }
+      }
+    }
+  },
+  "%lld running": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld läuft",
+          "other": "%lld laufen"
+        }
+      }
+    }
+  },
+  "%lld total": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld gesamt",
+          "other": "%lld gesamt"
+        }
+      }
+    }
+  },
+  "%lld working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld arbeitet",
+          "other": "%lld arbeiten"
+        }
+      }
+    }
+  },
+  "Agents, %lld working, %lld need input": {
+    "format": "Agenten, %1$#@working@, %2$#@input@",
+    "variables": {
+      "working": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld arbeitet",
+          "other": "%1$lld arbeiten"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld braucht Eingabe",
+          "other": "%2$lld brauchen Eingabe"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Commit pushen",
+          "other": "%lld Commits pushen"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld zurück",
+          "other": "%1$lld zurück"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld hinter",
+          "other": "%1$lld hinter"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Kommentar",
+          "other": "%1$lld Kommentare"
+        }
+      }
+    }
+  },
+  "%lld unresolved comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ungelöster Kommentar",
+          "other": "%1$lld ungelöste Kommentare"
+        }
+      }
+    }
+  },
+  "%lld unresolved preview comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ungelöster Vorschaukommentar",
+          "other": "%1$lld ungelöste Vorschaukommentare"
+        }
+      }
+    }
+  },
+  "Open %lld Comments ↗": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Kommentar öffnen ↗",
+          "other": "%1$lld Kommentare öffnen ↗"
+        }
+      }
+    }
+  },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld offener PR",
+          "other": "%lld offene PRs"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld zu prüfen",
+          "other": "%lld zu prüfen"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld Branch",
+          "other": "%lld Branches"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Gruppe %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld Tab",
+          "other": "%2$lld Tabs"
+        }
+      }
+    }
+  },
+  "%lld untracked files are deleted permanently.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld nicht verfolgte Datei wird endgültig gelöscht.",
+          "other": "%1$lld nicht verfolgte Dateien werden endgültig gelöscht."
+        }
+      }
+    }
+  },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Serverfehler",
+          "other": "%1$lld Serverfehler"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld protokollierter Fehler",
+          "other": "%1$lld protokollierte Fehler"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld zusammengefasster Commit",
+          "other": "%1$lld zusammengefasste Commits"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Agent-Lauf in 24 Stunden",
+          "other": "%1$lld Agent-Läufe in 24 Stunden"
+        }
+      }
+    }
+  },
+  "%lld unresolved": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ungelöst",
+          "other": "%1$lld ungelöst"
+        }
+      }
+    }
+  },
+  "Live · %lld errors": {
+    "format": "Live · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Fehler",
+          "other": "%1$lld Fehler"
+        }
+      }
+    }
+  },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Datei",
+          "other": "%1$lld Dateien"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld Zeilenkommentar in diesem Review",
+          "other": "%1$lld Zeilenkommentare in diesem Review"
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Der %lld Commit aus diesem Branch wird in den Basis-Branch übernommen.",
+          "other": "Die %lld Commits aus diesem Branch werden in den Basis-Branch übernommen."
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be rebased and added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Der %lld Commit aus diesem Branch wird per Rebase in den Basis-Branch übernommen.",
+          "other": "Die %lld Commits aus diesem Branch werden per Rebase in den Basis-Branch übernommen."
+        }
+      }
+    }
+  }
+}

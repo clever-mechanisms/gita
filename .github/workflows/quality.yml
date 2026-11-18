@@ -1,0 +1,35 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Tools
+        run: |
+          brew install swiftlint
+          scripts/install-periphery.sh
+      - name: Quality gate
+        run: scripts/quality.sh
+      - name: Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quality-reports
+          path: build/quality
+          if-no-files-found: ignore

@@ -1,0 +1,561 @@
+{
+  "%@ · %lld tracked changes": {
+    "format": "%1$@ · %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld spårad ändring",
+          "other": "%2$lld spårade ändringar"
+        }
+      }
+    }
+  },
+  "%lld agents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld agent",
+          "other": "%lld agenter"
+        }
+      }
+    }
+  },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ändrad fil",
+          "other": "%1$lld ändrade filer"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit kommer att utelämnas.",
+          "other": "%1$lld commits kommer att utelämnas."
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld underagent",
+          "other": "%lld underagenter"
+        }
+      }
+    }
+  },
+  "All %lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit kommer att utelämnas.",
+          "other": "Alla %1$lld commits kommer att utelämnas."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Binärfil · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld byte",
+          "other": "%1$lld byte"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld ospårad fil",
+          "other": "%2$lld ospårade filer"
+        }
+      }
+    }
+  },
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld kodförråd",
+          "other": "%3$lld kodförråd"
+        }
+      }
+    }
+  },
+  "%lld agents working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld agent arbetar",
+          "other": "%lld agenter arbetar"
+        }
+      }
+    }
+  },
+  "%lld changed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ändrad",
+          "other": "%lld ändrade"
+        }
+      }
+    }
+  },
+  "%lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit",
+          "other": "%lld commits"
+        }
+      }
+    }
+  },
+  "%lld commits not pushed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit ej pushad",
+          "other": "%lld commits ej pushade"
+        }
+      }
+    }
+  },
+  "%lld done": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld klar",
+          "other": "%lld klara"
+        }
+      }
+    }
+  },
+  "%lld failed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld misslyckades",
+          "other": "%lld misslyckades"
+        }
+      }
+    }
+  },
+  "%lld idle": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld inaktiv",
+          "other": "%lld inaktiva"
+        }
+      }
+    }
+  },
+  "%lld merged commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld sammanslagen commit",
+          "other": "%lld sammanslagna commits"
+        }
+      }
+    }
+  },
+  "%lld modified": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld modifierad",
+          "other": "%lld modifierade"
+        }
+      }
+    }
+  },
+  "%lld needs input": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld behöver svar",
+          "other": "%lld behöver svar"
+        }
+      }
+    }
+  },
+  "%lld passed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld godkänd",
+          "other": "%lld godkända"
+        }
+      }
+    }
+  },
+  "%lld running": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld körs",
+          "other": "%lld körs"
+        }
+      }
+    }
+  },
+  "%lld total": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld totalt",
+          "other": "%lld totalt"
+        }
+      }
+    }
+  },
+  "%lld working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld arbetar",
+          "other": "%lld arbetar"
+        }
+      }
+    }
+  },
+  "Agents, %lld working, %lld need input": {
+    "format": "Agenter, %1$#@working@, %2$#@input@",
+    "variables": {
+      "working": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld arbetar",
+          "other": "%1$lld arbetar"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld behöver svar",
+          "other": "%2$lld behöver svar"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Push %lld commit",
+          "other": "Push %lld commits"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld efter",
+          "other": "%1$lld efter"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld efter",
+          "other": "%1$lld efter"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld kommentar",
+          "other": "%1$lld kommentarer"
+        }
+      }
+    }
+  },
+  "%lld unresolved comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld olöst kommentar",
+          "other": "%1$lld olösta kommentarer"
+        }
+      }
+    }
+  },
+  "%lld unresolved preview comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld olöst förhandsvisningskommentar",
+          "other": "%1$lld olösta förhandsvisningskommentarer"
+        }
+      }
+    }
+  },
+  "Open %lld Comments ↗": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Öppna %1$lld kommentar ↗",
+          "other": "Öppna %1$lld kommentarer ↗"
+        }
+      }
+    }
+  },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld öppen PR",
+          "other": "%lld öppna PR"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld att granska",
+          "other": "%lld att granska"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld gren",
+          "other": "%lld grenar"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Grupp %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld flik",
+          "other": "%2$lld flikar"
+        }
+      }
+    }
+  },
+  "%lld untracked files are deleted permanently.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ospårad fil tas bort permanent.",
+          "other": "%1$lld ospårade filer tas bort permanent."
+        }
+      }
+    }
+  },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld serverfel",
+          "other": "%1$lld serverfel"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld loggat fel",
+          "other": "%1$lld loggade fel"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld sammanslagen commit",
+          "other": "%1$lld sammanslagna commits"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld agentkörning på 24 timmar",
+          "other": "%1$lld agentkörningar på 24 timmar"
+        }
+      }
+    }
+  },
+  "%lld unresolved": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld olöst",
+          "other": "%1$lld olösta"
+        }
+      }
+    }
+  },
+  "Live · %lld errors": {
+    "format": "Live · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld fel",
+          "other": "%1$lld fel"
+        }
+      }
+    }
+  },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld fil",
+          "other": "%1$lld filer"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld radkommentar i den här granskningen",
+          "other": "%1$lld radkommentarer i den här granskningen"
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Den %lld commiten från den här grenen läggs till i basgrenen.",
+          "other": "De %lld commitsen från den här grenen läggs till i basgrenen."
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be rebased and added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Den %lld commiten från den här grenen rebasas och läggs till i basgrenen.",
+          "other": "De %lld commitsen från den här grenen rebasas och läggs till i basgrenen."
+        }
+      }
+    }
+  }
+}

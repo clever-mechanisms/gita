@@ -1,0 +1,146 @@
+# SwiftLint for Gita. Run by scripts/quality.sh with --strict: every warning fails the gate.
+# Layout and spacing belong to swift-format (.swift-format); this file covers correctness, size and redundancy.
+# Complexity, Halstead, CRAP and coverage are checked by Tools/QualityMetrics with the same limits as SonarQube.
+
+included:
+  - Sources
+  - Tests
+  - Tools/QualityMetrics/Sources
+  - Tools/QualityMetrics/Tests
+excluded:
+  - .build
+  - Tools/QualityMetrics/.build
+
+disabled_rules:
+  - opening_brace          # swift-format
+  - trailing_comma         # swift-format adds trailing commas to multi-line collections
+  - vertical_parameter_alignment
+  - todo                   # tracked by the dedicated `no_todo_comments` rule below
+  - statement_position     # swift-format
+  - switch_case_alignment  # swift-format
+  - switch_case_on_newline
+  - closure_parameter_position    # swift-format decides where capture lists and parameters wrap
+  - optional_data_string_conversion # CLI output is decoded lossily on purpose; String(data:encoding:) would fail on bad bytes
+
+opt_in_rules:
+  # Correctness and safety
+  - discouraged_optional_boolean
+  - discouraged_optional_collection
+  - fatal_error_message
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - legacy_objc_type
+  - lower_acl_than_parent
+  - overridden_super_call
+  - private_action
+  - private_outlet
+  - prohibited_super_call
+  - strong_iboutlet
+  - unowned_variable_capture
+  - weak_delegate
+  - yoda_condition
+  # Redundant code
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - unneeded_parentheses_in_closure_argument
+  - unused_parameter
+  - prefer_self_in_static_references
+  - prefer_self_type_over_type_of_self
+  - prefer_zero_over_explicit_init
+  - explicit_init
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - joined_default_parameter
+  - toggle_bool
+  - static_operator
+  - unavailable_function
+  # Idiomatic collection use
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - first_where
+  - last_where
+  - flatmap_over_map_reduce
+  - reduce_into
+  - sorted_first_last
+  # Readability
+  - closure_end_indentation
+  - convenience_type
+  - identical_operands
+  - literal_expression_end_indentation
+  - nimble_operator
+  - no_extension_access_modifier
+  - operator_usage_whitespace
+  - private_swiftui_state
+  - return_value_from_void_function
+  - shorthand_optional_binding
+  - superfluous_else
+  - unhandled_throwing_task
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
+# Limits shared with SonarQube and Tools/QualityMetrics.
+cyclomatic_complexity:
+  warning: 14
+  error: 14
+  ignores_case_statements: false
+file_length:
+  warning: 499
+  error: 499
+  ignore_comment_only_lines: true
+
+# Additional size limits for macOS app code.
+function_body_length:
+  warning: 60
+  error: 60
+type_body_length:
+  warning: 350
+  error: 350
+function_parameter_count:
+  warning: 6
+  error: 6
+  ignores_default_parameters: false
+large_tuple:
+  warning: 3
+  error: 3
+nesting:
+  type_level: 2
+  function_level: 3
+line_length:
+  warning: 120
+  error: 120
+  ignores_urls: true
+  ignores_interpolated_strings: true
+identifier_name:
+  min_length: 1
+  max_length: 60
+type_name:
+  min_length: 2
+  max_length: 60
+  allowed_symbols: ["_"]
+
+custom_rules:
+  no_print:
+    name: "No print"
+    regex: '(^|[^\w.])(print|debugPrint|NSLog)\('
+    included: ['^Sources/']
+    excluded: ['Sources/GitaAgentHelper/']
+    message: "Use os.Logger (Logger(subsystem:category:)) instead of print/NSLog in app code."
+    severity: error
+  no_todo_comments:
+    name: "No TODO/FIXME"
+    regex: '//\s*(TODO|FIXME|XXX|HACK)\b'
+    message: "Open an issue instead of leaving TODO/FIXME comments."
+    severity: error
+  no_keychain:
+    name: "No Keychain"
+    regex: '\bSecItem(Add|Update|Delete|CopyMatching)\b|^import Security\b'
+    message: "Gita stores no credentials: the Keychain and Security framework are not allowed."
+    severity: error
+  no_main_queue_sync:
+    name: "No DispatchQueue.main.sync"
+    regex: 'DispatchQueue\.main\.sync\b'
+    message: "Never block on the main queue; use async or MainActor."
+    severity: error

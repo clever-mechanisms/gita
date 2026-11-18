@@ -1,0 +1,12 @@
+{
+  "path": ["Sources", "Tools/QualityMetrics/Sources"],
+  "format": ["swift"],
+  "minTokens": 70,
+  "minLines": 6,
+  "threshold": 0,
+  "reporters": ["console", "json"],
+  "output": "build/quality/jscpd",
+  "gitignore": true,
+  "absolute": false,
+  "ignore": ["**/.build/**"]
+}

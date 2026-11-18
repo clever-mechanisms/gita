@@ -1,0 +1,655 @@
+{
+  "%@ · %lld tracked changes": {
+    "format": "%1$@ · %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld sledovaná změna",
+          "few": "%2$lld sledované změny",
+          "many": "%2$lld sledované změny",
+          "other": "%2$lld sledovaných změn"
+        }
+      }
+    }
+  },
+  "%lld agents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld agent",
+          "few": "%lld agenti",
+          "many": "%lld agenta",
+          "other": "%lld agentů"
+        }
+      }
+    }
+  },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld změněný soubor",
+          "few": "%1$lld změněné soubory",
+          "many": "%1$lld změněného souboru",
+          "other": "%1$lld změněných souborů"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Bude vynechána %1$lld revize.",
+          "few": "Budou vynechány %1$lld revize.",
+          "many": "Bude vynecháno %1$lld revize.",
+          "other": "Bude vynecháno %1$lld revizí."
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld dílčí agent",
+          "few": "%lld dílčí agenti",
+          "many": "%lld dílčího agenta",
+          "other": "%lld dílčích agentů"
+        }
+      }
+    }
+  },
+  "All %lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Bude vynechána jediná revize (%1$lld).",
+          "few": "Budou vynechány všechny %1$lld revize.",
+          "many": "Bude vynecháno všech %1$lld revize.",
+          "other": "Bude vynecháno všech %1$lld revizí."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Binární soubor · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld bajt",
+          "few": "%1$lld bajty",
+          "many": "%1$lld bajtu",
+          "other": "%1$lld bajtů"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld nesledovaný soubor",
+          "few": "%2$lld nesledované soubory",
+          "many": "%2$lld nesledovaného souboru",
+          "other": "%2$lld nesledovaných souborů"
+        }
+      }
+    }
+  },
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld repozitář",
+          "few": "%3$lld repozitáře",
+          "many": "%3$lld repozitáře",
+          "other": "%3$lld repozitářů"
+        }
+      }
+    }
+  },
+  "%lld agents working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld agent pracuje",
+          "few": "%lld agenti pracují",
+          "many": "%lld agenta pracuje",
+          "other": "%lld agentů pracuje"
+        }
+      }
+    }
+  },
+  "%lld changed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld změněno",
+          "few": "%lld změněno",
+          "many": "%lld změněno",
+          "other": "%lld změněno"
+        }
+      }
+    }
+  },
+  "%lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld revize",
+          "few": "%lld revize",
+          "many": "%lld revize",
+          "other": "%lld revizí"
+        }
+      }
+    }
+  },
+  "%lld commits not pushed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld revize neodeslána",
+          "few": "%lld revize neodeslány",
+          "many": "%lld revize neodeslány",
+          "other": "%lld revizí neodesláno"
+        }
+      }
+    }
+  },
+  "%lld done": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld hotovo",
+          "few": "%lld hotovo",
+          "many": "%lld hotovo",
+          "other": "%lld hotovo"
+        }
+      }
+    }
+  },
+  "%lld failed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld selhalo",
+          "few": "%lld selhalo",
+          "many": "%lld selhalo",
+          "other": "%lld selhalo"
+        }
+      }
+    }
+  },
+  "%lld idle": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld nečinný",
+          "few": "%lld nečinní",
+          "many": "%lld nečinných",
+          "other": "%lld nečinných"
+        }
+      }
+    }
+  },
+  "%lld merged commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld sloučená revize",
+          "few": "%lld sloučené revize",
+          "many": "%lld sloučené revize",
+          "other": "%lld sloučených revizí"
+        }
+      }
+    }
+  },
+  "%lld modified": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld upraveno",
+          "few": "%lld upraveno",
+          "many": "%lld upraveno",
+          "other": "%lld upraveno"
+        }
+      }
+    }
+  },
+  "%lld needs input": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld čeká na vstup",
+          "few": "%lld čekají na vstup",
+          "many": "%lld čeká na vstup",
+          "other": "%lld čeká na vstup"
+        }
+      }
+    }
+  },
+  "%lld passed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld prošlo",
+          "few": "%lld prošlo",
+          "many": "%lld prošlo",
+          "other": "%lld prošlo"
+        }
+      }
+    }
+  },
+  "%lld running": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld běží",
+          "few": "%lld běží",
+          "many": "%lld běží",
+          "other": "%lld běží"
+        }
+      }
+    }
+  },
+  "%lld total": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "celkem %lld",
+          "few": "celkem %lld",
+          "many": "celkem %lld",
+          "other": "celkem %lld"
+        }
+      }
+    }
+  },
+  "%lld working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld pracuje",
+          "few": "%lld pracují",
+          "many": "%lld pracuje",
+          "other": "%lld pracuje"
+        }
+      }
+    }
+  },
+  "Agents, %lld working, %lld need input": {
+    "format": "Agenti, %1$#@working@, %2$#@input@",
+    "variables": {
+      "working": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld pracuje",
+          "few": "%1$lld pracují",
+          "many": "%1$lld pracuje",
+          "other": "%1$lld pracuje"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld čeká na vstup",
+          "few": "%2$lld čekají na vstup",
+          "many": "%2$lld čeká na vstup",
+          "other": "%2$lld čeká na vstup"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Odeslat %lld revizi",
+          "few": "Odeslat %lld revize",
+          "many": "Odeslat %lld revize",
+          "other": "Odeslat %lld revizí"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld pozadu",
+          "few": "%1$lld pozadu",
+          "many": "%1$lld pozadu",
+          "other": "%1$lld pozadu"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ za %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "o %1$lld revizi pozadu",
+          "few": "o %1$lld revize pozadu",
+          "many": "o %1$lld revize pozadu",
+          "other": "o %1$lld revizí pozadu"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld komentář",
+          "few": "%1$lld komentáře",
+          "many": "%1$lld komentáře",
+          "other": "%1$lld komentářů"
+        }
+      }
+    }
+  },
+  "%lld unresolved comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld nevyřešený komentář",
+          "few": "%1$lld nevyřešené komentáře",
+          "many": "%1$lld nevyřešeného komentáře",
+          "other": "%1$lld nevyřešených komentářů"
+        }
+      }
+    }
+  },
+  "%lld unresolved preview comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld nevyřešený komentář k náhledu",
+          "few": "%1$lld nevyřešené komentáře k náhledu",
+          "many": "%1$lld nevyřešeného komentáře k náhledu",
+          "other": "%1$lld nevyřešených komentářů k náhledu"
+        }
+      }
+    }
+  },
+  "Open %lld Comments ↗": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Otevřít %1$lld komentář ↗",
+          "few": "Otevřít %1$lld komentáře ↗",
+          "many": "Otevřít %1$lld komentáře ↗",
+          "other": "Otevřít %1$lld komentářů ↗"
+        }
+      }
+    }
+  },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld otevřený PR",
+          "few": "%lld otevřené PR",
+          "many": "%lld otevřeného PR",
+          "other": "%lld otevřených PR"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ke kontrole",
+          "few": "%lld ke kontrole",
+          "many": "%lld ke kontrole",
+          "other": "%lld ke kontrole"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld větev",
+          "few": "%lld větve",
+          "many": "%lld větve",
+          "other": "%lld větví"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Skupina %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld karta",
+          "few": "%2$lld karty",
+          "many": "%2$lld karty",
+          "other": "%2$lld karet"
+        }
+      }
+    }
+  },
+  "%lld untracked files are deleted permanently.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld nesledovaný soubor bude trvale smazán.",
+          "few": "%1$lld nesledované soubory budou trvale smazány.",
+          "many": "%1$lld nesledovaného souboru bude trvale smazáno.",
+          "other": "%1$lld nesledovaných souborů bude trvale smazáno."
+        }
+      }
+    }
+  },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld chyba serveru",
+          "few": "%1$lld chyby serveru",
+          "many": "%1$lld chyby serveru",
+          "other": "%1$lld chyb serveru"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld zaznamenaná chyba",
+          "few": "%1$lld zaznamenané chyby",
+          "many": "%1$lld zaznamenané chyby",
+          "other": "%1$lld zaznamenaných chyb"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld squashnutá revize",
+          "few": "%1$lld squashnuté revize",
+          "many": "%1$lld squashnuté revize",
+          "other": "%1$lld squashnutých revizí"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld běh agenta za 24 hodin",
+          "few": "%1$lld běhy agentů za 24 hodin",
+          "many": "%1$lld běhu agentů za 24 hodin",
+          "other": "%1$lld běhů agentů za 24 hodin"
+        }
+      }
+    }
+  },
+  "%lld unresolved": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld nevyřešený",
+          "few": "%1$lld nevyřešené",
+          "many": "%1$lld nevyřešeného",
+          "other": "%1$lld nevyřešených"
+        }
+      }
+    }
+  },
+  "Live · %lld errors": {
+    "format": "Živě · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld chyba",
+          "few": "%1$lld chyby",
+          "many": "%1$lld chyby",
+          "other": "%1$lld chyb"
+        }
+      }
+    }
+  },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld soubor",
+          "few": "%1$lld soubory",
+          "many": "%1$lld souboru",
+          "other": "%1$lld souborů"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld komentář k řádku v tomto posouzení",
+          "few": "%1$lld komentáře k řádkům v tomto posouzení",
+          "many": "%1$lld komentáře k řádkům v tomto posouzení",
+          "other": "%1$lld komentářů k řádkům v tomto posouzení"
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit z této větve bude přidán do základní větve.",
+          "few": "%lld commity z této větve budou přidány do základní větve.",
+          "many": "%lld commitu z této větve bude přidáno do základní větve.",
+          "other": "%lld commitů z této větve bude přidáno do základní větve."
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be rebased and added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit z této větve bude přenesen (rebase) a přidán do základní větve.",
+          "few": "%lld commity z této větve budou přeneseny (rebase) a přidány do základní větve.",
+          "many": "%lld commitu z této větve bude přeneseno (rebase) a přidáno do základní větve.",
+          "other": "%lld commitů z této větve bude přeneseno (rebase) a přidáno do základní větve."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+.DS_Store
+.build/
+build/
+.swiftpm/
+*.xcodeproj/
+.worktrees/
+.claude/worktrees/
+.scannerwork/
+*.profraw
+
+# Local SonarQube credentials (SONAR_URL, SONAR_PROJECT_ID, SONAR_API_TOKEN). Never commit.
+.sonar.txt
+
+# Local-only: agent instructions and tool state, personal credentials and caches.
+AGENTS.md
+CLAUDE.md
+.claude/
+.elevenlabs.txt

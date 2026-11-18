@@ -1,0 +1,3 @@
+#!/bin/sh
+# Runs the full local quality gate before a push. Install with scripts/install-hooks.sh.
+exec "$(git rev-parse --show-toplevel)/scripts/quality.sh"

@@ -1,0 +1,655 @@
+{
+  "%@ · %lld tracked changes": {
+    "format": "%1$@ · %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld отслеживаемое изменение",
+          "few": "%2$lld отслеживаемых изменения",
+          "many": "%2$lld отслеживаемых изменений",
+          "other": "%2$lld отслеживаемого изменения"
+        }
+      }
+    }
+  },
+  "%lld agents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld агент",
+          "few": "%lld агента",
+          "many": "%lld агентов",
+          "other": "%lld агента"
+        }
+      }
+    }
+  },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld изменённый файл",
+          "few": "%1$lld изменённых файла",
+          "many": "%1$lld изменённых файлов",
+          "other": "%1$lld изменённого файла"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Будет удалён %1$lld коммит.",
+          "few": "Будут удалены %1$lld коммита.",
+          "many": "Будет удалено %1$lld коммитов.",
+          "other": "Будет удалено %1$lld коммита."
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld субагент",
+          "few": "%lld субагента",
+          "many": "%lld субагентов",
+          "other": "%lld субагента"
+        }
+      }
+    }
+  },
+  "All %lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Все коммиты будут удалены (%1$lld коммит).",
+          "few": "Будут удалены все %1$lld коммита.",
+          "many": "Будут удалены все %1$lld коммитов.",
+          "other": "Все коммиты будут удалены (%1$lld коммита)."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Двоичный файл · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld байт",
+          "few": "%1$lld байта",
+          "many": "%1$lld байт",
+          "other": "%1$lld байта"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld неотслеживаемый файл",
+          "few": "%2$lld неотслеживаемых файла",
+          "many": "%2$lld неотслеживаемых файлов",
+          "other": "%2$lld неотслеживаемого файла"
+        }
+      }
+    }
+  },
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld репозиторий",
+          "few": "%3$lld репозитория",
+          "many": "%3$lld репозиториев",
+          "other": "%3$lld репозитория"
+        }
+      }
+    }
+  },
+  "%lld agents working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld агент работает",
+          "few": "%lld агента работают",
+          "many": "%lld агентов работают",
+          "other": "%lld агента работают"
+        }
+      }
+    }
+  },
+  "%lld changed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld с изменениями",
+          "few": "%lld с изменениями",
+          "many": "%lld с изменениями",
+          "other": "%lld с изменениями"
+        }
+      }
+    }
+  },
+  "%lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld коммит",
+          "few": "%lld коммита",
+          "many": "%lld коммитов",
+          "other": "%lld коммита"
+        }
+      }
+    }
+  },
+  "%lld commits not pushed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld коммит не отправлен",
+          "few": "%lld коммита не отправлено",
+          "many": "%lld коммитов не отправлено",
+          "other": "%lld коммита не отправлено"
+        }
+      }
+    }
+  },
+  "%lld done": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld готово",
+          "few": "%lld готово",
+          "many": "%lld готово",
+          "other": "%lld готово"
+        }
+      }
+    }
+  },
+  "%lld failed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld с ошибкой",
+          "few": "%lld с ошибкой",
+          "many": "%lld с ошибкой",
+          "other": "%lld с ошибкой"
+        }
+      }
+    }
+  },
+  "%lld idle": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld без активности",
+          "few": "%lld без активности",
+          "many": "%lld без активности",
+          "other": "%lld без активности"
+        }
+      }
+    }
+  },
+  "%lld merged commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld слитый коммит",
+          "few": "%lld слитых коммита",
+          "many": "%lld слитых коммитов",
+          "other": "%lld слитого коммита"
+        }
+      }
+    }
+  },
+  "%lld modified": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld изменён",
+          "few": "%lld изменено",
+          "many": "%lld изменено",
+          "other": "%lld изменено"
+        }
+      }
+    }
+  },
+  "%lld needs input": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ждёт ввода",
+          "few": "%lld ждут ввода",
+          "many": "%lld ждут ввода",
+          "other": "%lld ждут ввода"
+        }
+      }
+    }
+  },
+  "%lld passed": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld пройдено",
+          "few": "%lld пройдено",
+          "many": "%lld пройдено",
+          "other": "%lld пройдено"
+        }
+      }
+    }
+  },
+  "%lld running": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld выполняется",
+          "few": "%lld выполняются",
+          "many": "%lld выполняются",
+          "other": "%lld выполняются"
+        }
+      }
+    }
+  },
+  "%lld total": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "всего %lld",
+          "few": "всего %lld",
+          "many": "всего %lld",
+          "other": "всего %lld"
+        }
+      }
+    }
+  },
+  "%lld working": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld работает",
+          "few": "%lld работают",
+          "many": "%lld работают",
+          "other": "%lld работают"
+        }
+      }
+    }
+  },
+  "Agents, %lld working, %lld need input": {
+    "format": "Агенты, %1$#@working@, %2$#@input@",
+    "variables": {
+      "working": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld работает",
+          "few": "%1$lld работают",
+          "many": "%1$lld работают",
+          "other": "%1$lld работают"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld ждёт ввода",
+          "few": "%2$lld ждут ввода",
+          "many": "%2$lld ждут ввода",
+          "other": "%2$lld ждут ввода"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Отправить %lld коммит",
+          "few": "Отправить %lld коммита",
+          "many": "Отправить %lld коммитов",
+          "other": "Отправить %lld коммита"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld позади",
+          "few": "%1$lld позади",
+          "many": "%1$lld позади",
+          "other": "%1$lld позади"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "отстаёт на %1$#@count@ от %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld коммит",
+          "few": "%1$lld коммита",
+          "many": "%1$lld коммитов",
+          "other": "%1$lld коммита"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld комментарий",
+          "few": "%1$lld комментария",
+          "many": "%1$lld комментариев",
+          "other": "%1$lld комментария"
+        }
+      }
+    }
+  },
+  "%lld unresolved comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld неразрешённый комментарий",
+          "few": "%1$lld неразрешённых комментария",
+          "many": "%1$lld неразрешённых комментариев",
+          "other": "%1$lld неразрешённого комментария"
+        }
+      }
+    }
+  },
+  "%lld unresolved preview comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld неразрешённый комментарий к предпросмотру",
+          "few": "%1$lld неразрешённых комментария к предпросмотру",
+          "many": "%1$lld неразрешённых комментариев к предпросмотру",
+          "other": "%1$lld неразрешённого комментария к предпросмотру"
+        }
+      }
+    }
+  },
+  "Open %lld Comments ↗": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Открыть %1$lld комментарий ↗",
+          "few": "Открыть %1$lld комментария ↗",
+          "many": "Открыть %1$lld комментариев ↗",
+          "other": "Открыть %1$lld комментария ↗"
+        }
+      }
+    }
+  },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld открытый PR",
+          "few": "%lld открытых PR",
+          "many": "%lld открытых PR",
+          "other": "%lld открытого PR"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld на проверку",
+          "few": "%lld на проверку",
+          "many": "%lld на проверку",
+          "other": "%lld на проверку"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ветка",
+          "few": "%lld ветки",
+          "many": "%lld веток",
+          "other": "%lld ветки"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Группа %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld вкладка",
+          "few": "%2$lld вкладки",
+          "many": "%2$lld вкладок",
+          "other": "%2$lld вкладки"
+        }
+      }
+    }
+  },
+  "%lld untracked files are deleted permanently.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld неотслеживаемый файл будет удалён безвозвратно.",
+          "few": "%1$lld неотслеживаемых файла будут удалены безвозвратно.",
+          "many": "%1$lld неотслеживаемых файлов будут удалены безвозвратно.",
+          "other": "%1$lld неотслеживаемого файла будут удалены безвозвратно."
+        }
+      }
+    }
+  },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ошибка сервера",
+          "few": "%1$lld ошибки сервера",
+          "many": "%1$lld ошибок сервера",
+          "other": "%1$lld ошибки сервера"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ошибка в логах",
+          "few": "%1$lld ошибки в логах",
+          "many": "%1$lld ошибок в логах",
+          "other": "%1$lld ошибки в логах"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld объединённый коммит",
+          "few": "%1$lld объединённых коммита",
+          "many": "%1$lld объединённых коммитов",
+          "other": "%1$lld объединённого коммита"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld запуск агента за 24 часа",
+          "few": "%1$lld запуска агентов за 24 часа",
+          "many": "%1$lld запусков агентов за 24 часа",
+          "other": "%1$lld запуска агентов за 24 часа"
+        }
+      }
+    }
+  },
+  "%lld unresolved": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Не разрешено: %1$lld",
+          "few": "Не разрешено: %1$lld",
+          "many": "Не разрешено: %1$lld",
+          "other": "Не разрешено: %1$lld"
+        }
+      }
+    }
+  },
+  "Live · %lld errors": {
+    "format": "Активно · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ошибка",
+          "few": "%1$lld ошибки",
+          "many": "%1$lld ошибок",
+          "other": "%1$lld ошибки"
+        }
+      }
+    }
+  },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld файл",
+          "few": "%1$lld файла",
+          "many": "%1$lld файлов",
+          "other": "%1$lld файла"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld комментарий к строке в этой рецензии",
+          "few": "%1$lld комментария к строкам в этой рецензии",
+          "many": "%1$lld комментариев к строкам в этой рецензии",
+          "other": "%1$lld комментария к строкам в этой рецензии"
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld коммит из этой ветки будет добавлен в базовую ветку.",
+          "few": "%lld коммита из этой ветки будут добавлены в базовую ветку.",
+          "many": "%lld коммитов из этой ветки будут добавлены в базовую ветку.",
+          "other": "%lld коммита из этой ветки будут добавлены в базовую ветку."
+        }
+      }
+    }
+  },
+  "The %lld commits from this branch will be rebased and added to the base branch.": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld коммит из этой ветки будет перебазирован и добавлен в базовую ветку.",
+          "few": "%lld коммита из этой ветки будут перебазированы и добавлены в базовую ветку.",
+          "many": "%lld коммитов из этой ветки будут перебазированы и добавлены в базовую ветку.",
+          "other": "%lld коммита из этой ветки будут перебазированы и добавлены в базовую ветку."
+        }
+      }
+    }
+  }
+}

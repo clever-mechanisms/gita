@@ -1,0 +1,11 @@
+# Tests may unwrap and try directly: a failure there is a failed test, not a crash in the app.
+disabled_rules:
+  - force_unwrapping
+  - force_try
+  - force_cast
+  - implicitly_unwrapped_optional
+  - function_body_length
+  - type_body_length
+  - large_tuple
+  - discouraged_optional_collection
+  - discouraged_optional_boolean
