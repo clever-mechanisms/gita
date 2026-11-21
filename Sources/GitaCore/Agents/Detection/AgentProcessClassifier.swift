@@ -12,10 +12,18 @@ struct AgentProcessIdentity: Sendable, Hashable {
 /// Recognises coding agents by executable path and, for script interpreters only, by their script argument.
 /// Pure and allocation-light: it runs once per new process instance, never per sample.
 enum AgentProcessClassifier {
-    /// Interpreters whose script argument decides the tool (npm/pip installs). Only these have their arguments read.
+    /// Interpreters whose script argument decides the tool (npm/pip installs).
     static func isInterpreter(path: String) -> Bool {
         let base = lastComponent(path)
         return ["node", "bun", "deno"].contains(base) || base.hasPrefix("python") || base.hasPrefix("Python")
+    }
+
+    /// Whether `classify` needs the process's arguments: an interpreter's script argument names the tool, and a native
+    /// Codex or OpenCode binary runs as a daemon by subcommand (`codex app-server`, `opencode serve`). Everything else
+    /// is decided by its path alone, so its arguments are never read.
+    static func readsArguments(path: String) -> Bool {
+        if let tool = nativeTool(path: path) { return daemonSubcommandTools.contains(tool) }
+        return isInterpreter(path: path)
     }
 
     static func classify(path: String, arguments: [String] = []) -> AgentProcessIdentity? {
@@ -44,6 +52,9 @@ enum AgentProcessClassifier {
         }
         return nativeExecutables[base]
     }
+
+    /// Native tools whose daemon mode is a subcommand, so `isDaemon` needs their arguments.
+    private static let daemonSubcommandTools: Set<AgentTool> = [.codex, .opencode]
 
     /// The Codex app-server or MCP daemon, `opencode serve` / `opencode web`.
     private static func isDaemon(_ tool: AgentTool, path: String, arguments: [String]) -> Bool {
