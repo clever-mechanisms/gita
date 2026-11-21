@@ -79,7 +79,8 @@ public enum AgentProcessTable {
         return UInt64(Double(ticks) * Double(timebase.numer) / Double(timebase.denom))
     }
 
-    /// argv via `KERN_PROCARGS2`, bounded. Used only for interpreter processes (node/python) to find the script.
+    /// argv via `KERN_PROCARGS2`, bounded. Read only when `AgentProcessClassifier.readsArguments` asks: for
+    /// interpreters (node/python) to find the script, for native Codex/OpenCode binaries to spot daemon subcommands.
     public static func arguments(_ pid: Int32, limit: Int = 8) -> [String] {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
         var size = 0

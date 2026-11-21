@@ -94,9 +94,9 @@ public actor AgentProcessScanner {
                 continue
             }
             let identity = AgentProcessTable.executablePath(pid).flatMap { path in
-                AgentProcessClassifier.classify(
-                    path: path,
-                    arguments: AgentProcessClassifier.isInterpreter(path: path) ? AgentProcessTable.arguments(pid) : [])
+                let reads = AgentProcessClassifier.readsArguments(path: path)
+                let arguments = reads ? AgentProcessTable.arguments(pid) : []
+                return AgentProcessClassifier.classify(path: path, arguments: arguments)
             }
             known[pid] =
                 identity.map { .agent(name: row.name, start: pass.fullEntry(pid)?.start ?? 0, identity: $0) }
