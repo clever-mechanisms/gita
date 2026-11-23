@@ -9436,7 +9436,7 @@
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ ของ %@ ถูกปิดโดยไม่ได้ merge"
+            "value": "%2$@ ของ %1$@ ถูกปิดโดยไม่ได้ merge"
           }
         }
       }
@@ -13094,7 +13094,7 @@
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "มี Terminal เปิดอยู่ %lld หน้าต่างในหน้าต่างนี้ การปิดจะยุติโปรแกรมที่กำลังทำงานอยู่"
+            "value": "มี Terminal เปิดอยู่ %lld รายการในหน้าต่างนี้ การปิดจะยุติโปรแกรมที่กำลังทำงานอยู่"
           }
         }
       }
@@ -145502,7 +145502,7 @@
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "แสดง commit ของ merge บน"
+            "value": "แสดง commit ของ merge เมื่อ"
           }
         }
       }
@@ -193177,7 +193177,7 @@
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "“Review with …” ในเมนูของ branch หรือ commit จะเปิด agent นี้ใน Terminal เพื่อรีวิว แสดงเฉพาะ agent CLI ที่ติดตั้งบน Mac เครื่องนี้"
+            "value": "“รีวิวด้วย…” ในเมนูของ branch หรือ commit จะเปิด agent นี้ใน Terminal เพื่อรีวิว แสดงเฉพาะ agent CLI ที่ติดตั้งบน Mac เครื่องนี้"
           }
         }
       }
