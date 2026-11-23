@@ -24300,6 +24300,12 @@
             "state": "translated",
             "value": "Виправити"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ไข commit ล่าสุด"
+          }
         }
       }
     },
@@ -24411,6 +24417,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виправити останній коміт"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ไข commit ล่าสุด"
           }
         }
       }
@@ -24524,6 +24536,12 @@
             "state": "translated",
             "value": "Виправити коміт, який уже є у відстежуваній гілці?"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ไข commit ที่อยู่บน upstream แล้วหรือ?"
+          }
         }
       }
     },
@@ -24635,6 +24653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виправити цей коміт змінами з індексу та продовжити перебазовування"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ไข commit นี้ด้วยการเปลี่ยนแปลงที่ staged แล้วทำ rebase ต่อ"
           }
         }
       }
@@ -24748,6 +24772,12 @@
             "state": "translated",
             "value": "Сеанс gh одного з облікових записів закінчився: увійдіть знову за допомогою gh auth login."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "session gh ของบัญชีหมดอายุ: ให้ลงชื่อเข้าใช้อีกครั้งด้วย gh auth login"
+          }
         }
       }
     },
@@ -24859,6 +24889,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "代理已完成"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agent ทำงานเสร็จแล้ว"
           }
         }
       }
@@ -24972,6 +25008,12 @@
             "state": "translated",
             "value": "代理需要輸入"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agent รอข้อมูล"
+          }
         }
       }
     },
@@ -25083,6 +25125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Є незавершена послідовність Git. Завершіть її засобами Git перед новою операцією."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มีลำดับคำสั่ง Git ที่ยังทำไม่เสร็จอยู่ ให้ทำให้เสร็จด้วย Git ก่อนเริ่มการดำเนินการอื่น"
           }
         }
       }
@@ -25196,6 +25244,12 @@
             "state": "translated",
             "value": "Є непідтримувана послідовність Git. Завершіть її засобами Git перед новою операцією."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มีลำดับคำสั่ง Git ที่ไม่รองรับอยู่ ให้ทำให้เสร็จด้วย Git ก่อนเริ่มการดำเนินการอื่น"
+          }
         }
       }
     },
@@ -25307,6 +25361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Невідстежуваний або ігнорований шлях буде перезаписано. Перемістіть його перед жорстким скиданням."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พาธที่ยังไม่ถูกติดตามหรือถูก ignore จะถูกเขียนทับ ให้ย้ายออกก่อนทำ hard reset"
           }
         }
       }
@@ -25420,6 +25480,12 @@
             "state": "translated",
             "value": "斜線"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แบบเหลี่ยม"
+          }
         }
       }
     },
@@ -25531,6 +25597,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Анотований тег"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "annotated tag"
           }
         }
       }
@@ -25644,6 +25716,12 @@
             "state": "translated",
             "value": "Анотований тег · Коміт %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "annotated tag · commit %@"
+          }
         }
       }
     },
@@ -25755,6 +25833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Оформлення"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รูปลักษณ์"
           }
         }
       }
@@ -25868,6 +25952,12 @@
             "state": "translated",
             "value": "Застосувати неконфліктні"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้การเปลี่ยนแปลงที่ไม่ขัดแย้ง"
+          }
         }
       }
     },
@@ -25979,6 +26069,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Застосувати всі зміни з обох сторін, що ні з чим не конфліктують"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ทุกการเปลี่ยนแปลงที่ไม่ขัดแย้งกันจากทั้งสองฝ่าย"
           }
         }
       }
@@ -26092,6 +26188,12 @@
             "state": "translated",
             "value": "Застосувати всі неконфліктні зміни зі сторони «%@»"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ทุกการเปลี่ยนแปลงที่ไม่ขัดแย้งจาก %@"
+          }
         }
       }
     },
@@ -26203,6 +26305,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Застосувати патч"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ patch"
           }
         }
       }
@@ -26316,6 +26424,12 @@
             "state": "translated",
             "value": "Застосувати відкладені зміни"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ stash"
+          }
         }
       }
     },
@@ -26427,6 +26541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Застосувати зміну зі сторони «%@»"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้การเปลี่ยนแปลงแบบ %@"
           }
         }
       }
@@ -26540,6 +26660,12 @@
             "state": "translated",
             "value": "Застосування…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังใช้…"
+          }
         }
       }
     },
@@ -26651,6 +26777,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Потрібен дозвіл"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้องได้รับการอนุมัติ"
           }
         }
       }
@@ -26764,6 +26896,12 @@
             "state": "translated",
             "value": "核准"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติ"
+          }
         }
       }
     },
@@ -26875,6 +27013,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "核准下一階段"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติขั้นถัดไป"
           }
         }
       }
@@ -26988,6 +27132,12 @@
             "state": "translated",
             "value": "核准下一階段…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติขั้นถัดไป…"
+          }
         }
       }
     },
@@ -27099,6 +27249,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дозволити в Системних параметрах…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติในการตั้งค่าระบบ…"
           }
         }
       }
@@ -27212,6 +27368,12 @@
             "state": "translated",
             "value": "Схвалено"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติแล้ว"
+          }
         }
       }
     },
@@ -27323,6 +27485,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "核准…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุมัติ…"
           }
         }
       }
@@ -27436,6 +27604,12 @@
             "state": "translated",
             "value": "На %@ · %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่ %@ · %@"
+          }
         }
       }
     },
@@ -27547,6 +27721,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спроба"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ครั้งที่"
           }
         }
       }
@@ -27660,6 +27840,12 @@
             "state": "translated",
             "value": "提醒圓點"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จุดแจ้งเตือน"
+          }
         }
       }
     },
@@ -27771,6 +27957,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автор"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผู้เขียน"
           }
         }
       }
@@ -27884,6 +28076,12 @@
             "state": "translated",
             "value": "作者 %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผู้เขียน %@"
+          }
         }
       }
     },
@@ -27995,6 +28193,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автоматично"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัตโนมัติ"
           }
         }
       }
@@ -28108,6 +28312,12 @@
             "state": "translated",
             "value": "Автоматично (%@)"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัตโนมัติ (%@)"
+          }
         }
       }
     },
@@ -28219,6 +28429,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автоматично кожна лінія графа отримує власний колір. За будь-якого іншого вибору всі коміти малюються цим кольором."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โหมดอัตโนมัติให้แต่ละเส้นในกราฟมีสีของตัวเอง ตัวเลือกอื่นจะวาดทุก commit ด้วยสีนั้น"
           }
         }
       }
@@ -28332,6 +28548,12 @@
             "state": "translated",
             "value": "Назад"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย้อนกลับ"
+          }
         }
       }
     },
@@ -28443,6 +28665,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "橫幅和聲音"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แบนเนอร์และเสียง"
           }
         }
       }
@@ -28556,6 +28784,12 @@
             "state": "translated",
             "value": "Без робочого дерева"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bare"
+          }
         }
       }
     },
@@ -28667,6 +28901,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "До"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ก่อน"
           }
         }
       }
@@ -28780,6 +29020,12 @@
             "state": "translated",
             "value": "Двійковий файл · %lld байтів"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์ไบนารี · %lld ไบต์"
+          }
         }
       }
     },
@@ -28891,6 +29137,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Двійковий або не UTF-8 · %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไบนารีหรือไม่ใช่ UTF-8 · %@"
           }
         }
       }
@@ -29004,6 +29256,12 @@
             "state": "translated",
             "value": "Заблоковано"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถูกบล็อก"
+          }
         }
       }
     },
@@ -29115,6 +29373,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "藍色"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สีน้ำเงิน"
           }
         }
       }
@@ -29228,6 +29492,12 @@
             "state": "translated",
             "value": "В обох гілках є нові коміти"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งสอง branch มี commit ใหม่"
+          }
         }
       }
     },
@@ -29339,6 +29609,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обидві сторони змінюють різні частини: злийте їх"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งสองฝ่ายแก้คนละส่วน: merge เข้าด้วยกัน"
           }
         }
       }
@@ -29452,6 +29728,12 @@
             "state": "translated",
             "value": "На обох сторонах є нові коміти"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งสองฝ่ายมี commit ใหม่"
+          }
         }
       }
     },
@@ -29563,6 +29845,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Гілка"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch"
           }
         }
       }
@@ -29676,6 +29964,12 @@
             "state": "translated",
             "value": "Колір гілки"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สี branch"
+          }
         }
       }
     },
@@ -29787,6 +30081,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Гілка не вказує на коміт."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch ไม่ได้ชี้ไปที่ commit"
           }
         }
       }
@@ -29900,6 +30200,12 @@
             "state": "translated",
             "value": "Гілка вже активна або зарезервована в робочому дереві."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch ถูก checkout หรือจองไว้โดย worktree"
+          }
         }
       }
     },
@@ -30011,6 +30317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Гілка використовується робочим деревом."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch ถูกใช้งานโดย worktree"
           }
         }
       }
@@ -30124,6 +30436,12 @@
             "state": "translated",
             "value": "Гілку не злито з перевіреною цільовою гілкою."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch ยังไม่ถูก merge เข้าเป้าหมายที่รีวิว"
+          }
         }
       }
     },
@@ -30235,6 +30553,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ім’я гілки"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชื่อ branch"
           }
         }
       }
@@ -30348,6 +30672,12 @@
             "state": "translated",
             "value": "Гілка або коміт"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch หรือ commit"
+          }
         }
       }
     },
@@ -30459,6 +30789,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "分支："
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch:"
           }
         }
       }
@@ -30572,6 +30908,12 @@
             "state": "translated",
             "value": "Гілки"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch"
+          }
         }
       }
     },
@@ -30683,6 +31025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "將 %@ 移到最前"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำ %@ ขึ้นมา"
           }
         }
       }
@@ -30796,6 +31144,12 @@
             "state": "translated",
             "value": "將終端機移到最前"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำ Terminal ขึ้นมา"
+          }
         }
       }
     },
@@ -30907,6 +31261,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "建置"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "build"
           }
         }
       }
@@ -31020,6 +31380,12 @@
             "state": "translated",
             "value": "建置記錄"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "log การ build"
+          }
         }
       }
     },
@@ -31131,6 +31497,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "建置記錄 · 最後幾行"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "log การ build · บรรทัดท้าย"
           }
         }
       }
@@ -31244,6 +31616,12 @@
             "state": "translated",
             "value": "正在建立 commit-graph"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังสร้าง commit-graph"
+          }
         }
       }
     },
@@ -31355,6 +31733,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已建立 commit-graph"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้าง commit-graph แล้ว"
           }
         }
       }
@@ -31468,6 +31852,12 @@
             "state": "translated",
             "value": "建置耗時 %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้างด้วย %@"
+          }
         }
       }
     },
@@ -31579,6 +31969,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "內建終端機"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal ในตัว"
           }
         }
       }
@@ -31692,6 +32088,12 @@
             "state": "translated",
             "value": "內建字體、標誌和審查技能"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟอนต์ โลโก้ และ skill สำหรับรีวิวที่รวมมาให้"
+          }
         }
       }
     },
@@ -31800,6 +32202,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CI"
+          }
+        },
+        "th": {
           "stringUnit": {
             "state": "translated",
             "value": "CI"
@@ -31916,6 +32324,12 @@
             "state": "translated",
             "value": "Скасувати"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก"
+          }
         }
       }
     },
@@ -32027,6 +32441,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "取消部署"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก deployment"
           }
         }
       }
@@ -32140,6 +32560,12 @@
             "state": "translated",
             "value": "取消部署…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก deployment…"
+          }
         }
       }
     },
@@ -32251,6 +32677,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скасовано"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิกแล้ว"
           }
         }
       }
@@ -32364,6 +32796,12 @@
             "state": "translated",
             "value": "取消…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก…"
+          }
         }
       }
     },
@@ -32475,6 +32913,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не вдається відкрити цей конфлікт"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิด conflict นี้ไม่ได้"
           }
         }
       }
@@ -32588,6 +33032,12 @@
             "state": "translated",
             "value": "Не вдається розв’язати конфлікт"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ conflict ไม่ได้"
+          }
         }
       }
     },
@@ -32699,6 +33149,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Зміни дій, порядку та повідомлень буде втрачено."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การกระทำ ลำดับ และข้อความที่เปลี่ยนแปลงจะหายไป"
           }
         }
       }
@@ -32812,6 +33268,12 @@
             "state": "translated",
             "value": "已變更的檔案"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไฟล์ที่เปลี่ยนแปลง"
+          }
         }
       }
     },
@@ -32923,6 +33385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Змінено на одній стороні й видалено на іншій. Збережіть файл або видаліть його."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฝ่ายหนึ่งแก้ไข อีกฝ่ายลบ ให้เก็บไฟล์ไว้หรือลบ"
           }
         }
       }
@@ -33036,6 +33504,12 @@
             "state": "translated",
             "value": "Зміни"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเปลี่ยนแปลง"
+          }
         }
       }
     },
@@ -33147,6 +33621,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Зміни зі сторони «%@»"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเปลี่ยนแปลงจาก %@"
           }
         }
       }
@@ -33260,6 +33740,12 @@
             "state": "translated",
             "value": "Залишилося змін: %lld"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เหลือการเปลี่ยนแปลง: %lld"
+          }
         }
       }
     },
@@ -33371,6 +33857,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запитано зміни"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขอให้แก้ไข"
           }
         }
       }
@@ -33484,6 +33976,12 @@
             "state": "translated",
             "value": "已要求變更。"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขอให้แก้ไข"
+          }
         }
       }
     },
@@ -33595,6 +34093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевірка"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็ก"
           }
         }
       }
@@ -33708,6 +34212,12 @@
             "state": "translated",
             "value": "檢出"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout"
+          }
         }
       }
     },
@@ -33819,6 +34329,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "以分離狀態檢出"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout แบบ detached"
           }
         }
       }
@@ -33932,6 +34448,12 @@
             "state": "translated",
             "value": "在新工作樹中檢出…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout ใน worktree ใหม่…"
+          }
         }
       }
     },
@@ -34043,6 +34565,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перейти на «%@»"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout “%@”"
           }
         }
       }
@@ -34156,6 +34684,12 @@
             "state": "translated",
             "value": "請先簽出要拉取到的分支。"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout branch ที่จะ pull เข้า"
+          }
         }
       }
     },
@@ -34267,6 +34801,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перевірено %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตรวจสอบ %@ แล้ว"
           }
         }
       }
@@ -34380,6 +34920,12 @@
             "state": "translated",
             "value": "已在工作樹中簽出"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "checkout อยู่ใน worktree"
+          }
         }
       }
     },
@@ -34491,6 +35037,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Поточна гілка"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch ที่ checkout อยู่"
           }
         }
       }
@@ -34604,6 +35156,12 @@
             "state": "translated",
             "value": "Колір поточної гілки"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สี branch ที่ checkout อยู่"
+          }
         }
       }
     },
@@ -34715,6 +35273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在檢查…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังตรวจสอบ…"
           }
         }
       }
@@ -34828,6 +35392,12 @@
             "state": "translated",
             "value": "Перевірки"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเช็ก"
+          }
         }
       }
     },
@@ -34939,6 +35509,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢查已取消"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิกการเช็กแล้ว"
           }
         }
       }
@@ -35052,6 +35628,12 @@
             "state": "translated",
             "value": "檢查失敗"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กไม่ผ่าน"
+          }
         }
       }
     },
@@ -35163,6 +35745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的分支檢查失敗"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กไม่ผ่านบน branch ของฉัน"
           }
         }
       }
@@ -35276,6 +35864,12 @@
             "state": "translated",
             "value": "檢查失敗 · %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กไม่ผ่าน · %@"
+          }
         }
       }
     },
@@ -35387,6 +35981,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢查失敗"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กไม่ผ่าน"
           }
         }
       }
@@ -35500,6 +36100,12 @@
             "state": "translated",
             "value": "檢查已修復 · %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้เช็กแล้ว · %@"
+          }
         }
       }
     },
@@ -35611,6 +36217,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢查再次通過"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กผ่านอีกครั้ง"
           }
         }
       }
@@ -35724,6 +36336,12 @@
             "state": "translated",
             "value": "檢查通過"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กผ่าน"
+          }
         }
       }
     },
@@ -35835,6 +36453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢查已排入佇列"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เช็กอยู่ในคิว"
           }
         }
       }
@@ -35948,6 +36572,12 @@
             "state": "translated",
             "value": "檢查進行中"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังเช็ก"
+          }
         }
       }
     },
@@ -36059,6 +36689,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢查：%@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเช็ก: %@"
           }
         }
       }
@@ -36172,6 +36808,12 @@
             "state": "translated",
             "value": "Перенести коміт"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cherry-pick"
+          }
         }
       }
     },
@@ -36283,6 +36925,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перенести вибраний коміт…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cherry-pick commit ที่เลือก…"
           }
         }
       }
@@ -36396,6 +37044,12 @@
             "state": "translated",
             "value": "Перенести коміт…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cherry-pick…"
+          }
         }
       }
     },
@@ -36507,6 +37161,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть гілку"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก branch"
           }
         }
       }
@@ -36620,6 +37280,12 @@
             "state": "translated",
             "value": "Виберіть іншу відстежувану гілку."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก branch upstream อื่น"
+          }
         }
       }
     },
@@ -36731,6 +37397,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть повний ID локального коміту для скидання."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก ID ของ commit ในเครื่องแบบเต็มสำหรับ reset"
           }
         }
       }
@@ -36844,6 +37516,12 @@
             "state": "translated",
             "value": "Виберіть лінійний діапазон предків. Тут не можна редагувати історію зі зливаннями або непов’язану історію."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกช่วงของ ancestor แบบเส้นตรง ประวัติที่มี merge หรือไม่เกี่ยวข้องกันจะแก้ไขที่นี่ไม่ได้"
+          }
         }
       }
     },
@@ -36955,6 +37633,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть нову папку. Папка призначення вже існує."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกโฟลเดอร์ใหม่ ปลายทางมีอยู่แล้ว"
           }
         }
       }
@@ -37068,6 +37752,12 @@
             "state": "translated",
             "value": "Виберіть шлях у цьому репозиторії."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกพาธภายใน repository นี้"
+          }
         }
       }
     },
@@ -37179,6 +37869,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть діапазон не більше ніж 500 комітів."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกช่วงไม่เกิน 500 commit"
           }
         }
       }
@@ -37292,6 +37988,12 @@
             "state": "translated",
             "value": "Виберіть тег"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก tag"
+          }
         }
       }
     },
@@ -37403,6 +38105,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть припустиму гілку, тег або коміт."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก branch, tag หรือ commit ที่ถูกต้อง"
           }
         }
       }
@@ -37516,6 +38224,12 @@
             "state": "translated",
             "value": "Виберіть припустиме ім’я віддаленого репозиторію."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกชื่อ remote ที่ถูกต้อง"
+          }
         }
       }
     },
@@ -37627,6 +38341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть версію"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกเวอร์ชัน"
           }
         }
       }
@@ -37740,6 +38460,12 @@
             "state": "translated",
             "value": "Виберіть предка, після якого в поточній гілці є хоча б один коміт для перенесення."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก ancestor ที่อยู่ก่อน commit ของ branch ปัจจุบันอย่างน้อยหนึ่งรายการ"
+          }
         }
       }
     },
@@ -37851,6 +38577,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Виберіть відстежувану гілку або «Без відстежуваної гілки»."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก branch upstream หรือ ไม่มี upstream"
           }
         }
       }
@@ -37964,6 +38696,12 @@
             "state": "translated",
             "value": "Виберіть основного батька цього коміту зливання."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก parent สายหลักสำหรับ merge commit นี้"
+          }
         }
       }
     },
@@ -38076,6 +38814,12 @@
             "state": "translated",
             "value": "選取…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือก…"
+          }
         }
       }
     },
@@ -38186,6 +38930,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude"
+          }
+        },
+        "th": {
           "stringUnit": {
             "state": "translated",
             "value": "Claude"
@@ -38302,6 +39052,12 @@
             "state": "translated",
             "value": "Claude Code чекає на введення"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code รอข้อมูล"
+          }
         }
       }
     },
@@ -38413,6 +39169,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude Code、Codex 等，依分支和狀態顯示。"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code, Codex และอื่น ๆ แยกตาม branch และสถานะ"
           }
         }
       }
@@ -38526,6 +39288,12 @@
             "state": "translated",
             "value": "Claude Code、Codex 或 opencode 停下來詢問你某事（例如權限）時。在「AI 代理」中安裝代理的掛鉤，可最快收到通知。"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code, Codex หรือ opencode หยุดเพื่อถามคุณ เช่น ขอสิทธิ์ ให้ติดตั้ง hook ของ agent ใน AI Agents เพื่อรับแจ้งเตือนเร็วที่สุด"
+          }
         }
       }
     },
@@ -38636,6 +39404,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clever Mechanisms"
+          }
+        },
+        "th": {
           "stringUnit": {
             "state": "translated",
             "value": "Clever Mechanisms"
@@ -38752,6 +39526,12 @@
             "state": "translated",
             "value": "按一下"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลิก"
+          }
         }
       }
     },
@@ -38863,6 +39643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "按一下以收合"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลิกเพื่อย่อ"
           }
         }
       }
@@ -38976,6 +39762,12 @@
             "state": "translated",
             "value": "按一下以顯示其標籤頁"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลิกเพื่อแสดงแท็บ"
+          }
         }
       }
     },
@@ -39087,6 +39879,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Клонувати"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "clone"
           }
         }
       }
@@ -39200,6 +39998,12 @@
             "state": "translated",
             "value": "Клонувати репозиторій…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "clone repository…"
+          }
         }
       }
     },
@@ -39311,6 +40115,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Клонувати репозиторій"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "clone repository"
           }
         }
       }
@@ -39424,6 +40234,12 @@
             "state": "translated",
             "value": "Клонувати репозиторій…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "clone repository…"
+          }
         }
       }
     },
@@ -39535,6 +40351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрити"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
           }
         }
       }
@@ -39648,6 +40470,12 @@
             "state": "translated",
             "value": "Закрити %@"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด %@"
+          }
         }
       }
     },
@@ -39759,6 +40587,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрити вкладку"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดแท็บ"
           }
         }
       }
@@ -39872,6 +40706,12 @@
             "state": "translated",
             "value": "關閉終端機"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด Terminal"
+          }
         }
       }
     },
@@ -39983,6 +40823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрити вікно"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดหน้าต่าง"
           }
         }
       }
@@ -40096,6 +40942,12 @@
             "state": "translated",
             "value": "請先關閉其標籤頁"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดแท็บของมันก่อน"
+          }
         }
       }
     },
@@ -40207,6 +41059,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закрити вкладку"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดแท็บ"
           }
         }
       }
@@ -40320,6 +41178,12 @@
             "state": "translated",
             "value": "Закрити вікно?"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดหน้าต่างหรือ?"
+          }
         }
       }
     },
@@ -40431,6 +41295,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закритий"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดแล้ว"
           }
         }
       }
@@ -40544,6 +41414,12 @@
             "state": "translated",
             "value": "程式碼字體"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟอนต์โค้ด"
+          }
         }
       }
     },
@@ -40654,6 +41530,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex"
+          }
+        },
+        "th": {
           "stringUnit": {
             "state": "translated",
             "value": "Codex"
@@ -40770,6 +41652,12 @@
             "state": "translated",
             "value": "程式設計代理"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coding Agents"
+          }
         }
       }
     },
@@ -40881,6 +41769,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "程式設計代理"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "coding agent"
           }
         }
       }
@@ -40994,6 +41888,12 @@
             "state": "translated",
             "value": "工作中的程式設計代理"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "coding agent ที่กำลังทำงาน"
+          }
         }
       }
     },
@@ -41105,6 +42005,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部收合"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อทั้งหมด"
           }
         }
       }
@@ -41218,6 +42124,12 @@
             "state": "translated",
             "value": "收合群組"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อกลุ่ม"
+          }
         }
       }
     },
@@ -41329,6 +42241,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "離開群組時將其收合"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อกลุ่มเมื่อออกจากกลุ่ม"
           }
         }
       }
@@ -41442,6 +42360,12 @@
             "state": "translated",
             "value": "收合已合併的提交"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อ commit ที่ merge แล้ว"
+          }
         }
       }
     },
@@ -41553,6 +42477,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已收合"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย่อแล้ว"
           }
         }
       }
@@ -41666,6 +42596,12 @@
             "state": "translated",
             "value": "Кольори"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สี"
+          }
         }
       }
     },
@@ -41777,6 +42713,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загальний розмір нових повідомлень перевищує 1 МіБ."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความแทนที่รวมกันเกิน 1 MiB"
           }
         }
       }
@@ -41890,6 +42832,12 @@
             "state": "translated",
             "value": "指令面板…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command Palette…"
+          }
         }
       }
     },
@@ -42001,6 +42949,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "指令"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่ง"
           }
         }
       }
@@ -42114,6 +43068,12 @@
             "state": "translated",
             "value": "留言"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความคิดเห็น"
+          }
         }
       }
     },
@@ -42225,6 +43185,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "З коментарем"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงความคิดเห็นแล้ว"
           }
         }
       }
@@ -42338,6 +43304,12 @@
             "state": "translated",
             "value": "Коміт"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit"
+          }
         }
       }
     },
@@ -42449,6 +43421,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Коміт %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit %@"
           }
         }
       }
@@ -42562,6 +43540,12 @@
             "state": "translated",
             "value": "Повідомлення коміту"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความ commit"
+          }
         }
       }
     },
@@ -42673,6 +43657,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Колір коміту"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สี commit"
           }
         }
       }
@@ -42786,6 +43776,12 @@
             "state": "translated",
             "value": "Опис коміту"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำอธิบาย commit"
+          }
         }
       }
     },
@@ -42897,6 +43893,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Відомості про коміт"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รายละเอียด commit"
           }
         }
       }
@@ -43010,6 +44012,12 @@
             "state": "translated",
             "value": "Дерево файлів коміту"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tree ของไฟล์ใน commit"
+          }
         }
       }
     },
@@ -43121,6 +44129,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Історія комітів"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประวัติ commit"
           }
         }
       }
@@ -43234,6 +44248,12 @@
             "state": "translated",
             "value": "Для коміту потрібні зміни в індексі та повідомлення"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit ต้องมีการเปลี่ยนแปลงที่ staged และข้อความ"
+          }
         }
       }
     },
@@ -43345,6 +44365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перед цією операцією закомітьте або відкладіть відстежувані зміни."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit หรือ stash การเปลี่ยนแปลงที่ติดตามอยู่ก่อนเริ่มการดำเนินการนี้"
           }
         }
       }
@@ -43458,6 +44484,12 @@
             "state": "translated",
             "value": "Коміт з індексу"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit สิ่งที่ staged"
+          }
         }
       }
     },
@@ -43569,6 +44601,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Заголовок коміту"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หัวข้อ commit"
           }
         }
       }
@@ -43682,6 +44720,12 @@
             "state": "translated",
             "value": "commit-graph 建立失敗"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit-graph ล้มเหลว"
+          }
         }
       }
     },
@@ -43793,6 +44837,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提交"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commit"
           }
         }
       }
@@ -43906,6 +44956,12 @@
             "state": "translated",
             "value": "Порівняти з батьком"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เทียบกับ parent"
+          }
         }
       }
     },
@@ -44017,6 +45073,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成發布"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำ Rollout ให้เสร็จ"
           }
         }
       }
@@ -44130,6 +45192,12 @@
             "state": "translated",
             "value": "完成發布…"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำ Rollout ให้เสร็จ…"
+          }
         }
       }
     },
@@ -44241,6 +45309,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повне нове повідомлення коміту"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความ commit แทนที่แบบเต็ม"
           }
         }
       }
@@ -44354,6 +45428,12 @@
             "state": "translated",
             "value": "Завершено"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสร็จสิ้น"
+          }
         }
       }
     },
@@ -44465,6 +45545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำให้เสร็จ…"
           }
         }
       }
@@ -44578,6 +45664,12 @@
             "state": "translated",
             "value": "Налаштовано"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งค่าแล้ว"
+          }
         }
       }
     },
@@ -44689,6 +45781,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задана відстежувана гілка"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "upstream ที่ตั้งค่าไว้"
           }
         }
       }
@@ -44802,6 +45900,12 @@
             "state": "translated",
             "value": "Задана відстежувана гілка відсутня."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มี upstream ที่ตั้งค่าไว้"
+          }
         }
       }
     },
@@ -44913,6 +46017,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Задана відстежувана гілка недоступна"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "upstream ที่ตั้งค่าไว้ใช้ไม่ได้"
           }
         }
       }
@@ -45026,6 +46136,12 @@
             "state": "translated",
             "value": "Конфлікт"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conflict"
+          }
         }
       }
     },
@@ -45137,6 +46253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не вдалося розв’язати конфлікт"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้ conflict ไม่สำเร็จ"
           }
         }
       }
@@ -45250,6 +46372,12 @@
             "state": "translated",
             "value": "Конфлікти"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conflict"
+          }
         }
       }
     },
@@ -45361,6 +46489,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Залишилося конфліктів: %lld"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เหลือ conflict: %lld"
           }
         }
       }
@@ -45474,6 +46608,12 @@
             "state": "translated",
             "value": "Під’єднано"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชื่อมต่อแล้ว"
+          }
         }
       }
     },
@@ -45585,6 +46725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Під’єднання"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเชื่อมต่อ"
           }
         }
       }
@@ -45698,6 +46844,12 @@
             "state": "translated",
             "value": "Продовжити"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดำเนินการต่อ"
+          }
         }
       }
     },
@@ -45809,6 +46961,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Продовжити: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดำเนินการ %@ ต่อ"
           }
         }
       }
@@ -45922,6 +47080,12 @@
             "state": "translated",
             "value": "Продовжити операцію"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดำเนินการต่อ"
+          }
         }
       }
     },
@@ -46033,6 +47197,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спочатку продовжте або перервіть поточну операцію Git."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดำเนินการ Git ที่ค้างอยู่ต่อหรือยกเลิกก่อน"
           }
         }
       }
@@ -46146,6 +47316,12 @@
             "state": "translated",
             "value": "對話"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บทสนทนา"
+          }
         }
       }
     },
@@ -46257,6 +47433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "對話已重新打開。"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดบทสนทนาอีกครั้งแล้ว"
           }
         }
       }
@@ -46370,6 +47552,12 @@
             "state": "translated",
             "value": "對話已解決。"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แก้บทสนทนาแล้ว"
+          }
         }
       }
     },
@@ -46481,6 +47669,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已拷貝"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกแล้ว"
           }
         }
       }
@@ -46594,6 +47788,12 @@
             "state": "translated",
             "value": "Копіювати"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอก"
+          }
         }
       }
     },
@@ -46705,6 +47905,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "拷貝完整路徑"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกพาธเต็ม"
           }
         }
       }
@@ -46818,6 +48024,12 @@
             "state": "translated",
             "value": "拷貝名稱"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกชื่อ"
+          }
         }
       }
     },
@@ -46929,6 +48141,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "拷貝路徑"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอกพาธ"
           }
         }
       }
@@ -47042,6 +48260,12 @@
             "state": "translated",
             "value": "拷貝預覽 URL"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอก URL ตัวอย่าง"
+          }
         }
       }
     },
@@ -47153,6 +48377,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Копіювати SHA"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คัดลอก SHA"
           }
         }
       }
