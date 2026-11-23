@@ -75,6 +75,8 @@ final class ProviderTests: XCTestCase {
             "subagentObservation":"live","subagents":[{"id":"live","state":"working","description":"Parser"}]}]},
             {"path":"/tmp/gita-test","hostId":"ssh:host","terminalVerdict":"live","agents":[{"paneKey":"remote",\
             "hasLivePty":true,"state":"working"}]},
+            {"path":"/tmp/gita-test","terminalVerdict":"live","agents":[{"paneKey":"hostless",\
+            "hasLivePty":true,"state":"working"}]},
             {"path":"/tmp/unrelated","hostId":"local","terminalVerdict":"live","agents":[{"paneKey":"other",\
             "hasLivePty":true,"state":"working"}]}],"truncated":true,"hostScope":{"omittedHostIds":["paired"]}}}
             """)
@@ -116,9 +118,9 @@ final class ProviderTests: XCTestCase {
     func testOrcaTerminalHandlePicksTheAgentsTab() throws {
         func terminal(
             _ handle: String, path: String = "/tmp/gp-orca", title: String? = nil, last: Int? = nil,
-            host: String = "local", connected: Bool = true
+            host: String? = "local", connected: Bool = true
         ) -> String {
-            "{\"handle\":\"\(handle)\",\"worktreePath\":\"\(path)\",\"title\":\(title.map { "\"\($0)\"" } ?? "null"),\"lastOutputAt\":\(last.map(String.init) ?? "null"),\"executionHostId\":\"\(host)\",\"connected\":\(connected)}"
+            "{\"handle\":\"\(handle)\",\"worktreePath\":\"\(path)\",\"title\":\(title.map { "\"\($0)\"" } ?? "null"),\"lastOutputAt\":\(last.map(String.init) ?? "null"),\"executionHostId\":\(host.map { "\"\($0)\"" } ?? "null"),\"connected\":\(connected)}"
         }
         func list(_ rows: [String]) -> Data {
             json("{\"ok\":true,\"result\":{\"terminals\":[\(rows.joined(separator: ","))]}}")
@@ -127,6 +129,7 @@ final class ProviderTests: XCTestCase {
             terminal("term_shell"), terminal("term_agent", title: "Translate the app", last: 10),
             terminal("term_busy", last: 99),
             terminal("term_remote", title: "Translate the app", last: 500, host: "ssh-box"),
+            terminal("term_hostless", title: "Translate the app", last: 600, host: nil),
             terminal("term_other", path: "/tmp/elsewhere", last: 900),
         ]
         XCTAssertEqual(

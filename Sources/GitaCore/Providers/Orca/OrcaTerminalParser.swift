@@ -4,13 +4,13 @@ import Foundation
 /// tree cannot name the tab an agent runs in; the terminal list can.
 enum OrcaTerminalParser {
     /// The local terminal in `checkout` whose tab title is the agent's task title, else the one that printed most
-    /// recently, else the only one.
+    /// recently, else the only one. A terminal on an SSH or paired host, or with no host, never matches.
     static func handle(_ data: Data, checkout: String, title: String?) throws -> String? {
         let envelope = try JSONDecoder().decode(Envelope.self, from: data)
         guard envelope.ok, let result = envelope.result else { throw ProviderResponseError.shape }
         let path = OrcaAgentParser.normalizedPath(checkout)
         let here = result.terminals.filter {
-            ($0.executionHostId ?? "local") == "local" && $0.connected && $0.handle.hasPrefix("term_")
+            $0.executionHostId == "local" && $0.connected && $0.handle.hasPrefix("term_")
                 && $0.worktreePath.map(OrcaAgentParser.normalizedPath) == path
         }
         if let title = trimmed(title), let named = here.first(where: { trimmed($0.title) == title }) {

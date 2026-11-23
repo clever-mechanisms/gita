@@ -85,6 +85,12 @@ private actor PolicyRecorder: CommandRunning {
         #expect(orca["PATH"] == expected.joined(separator: ":"))
         #expect(orca["CI"] == "1")
         #expect(ChildEnvironment.searchPaths(policy: .orca, inherited: Self.inherited) == expected)
+        // Only this Mac's Orca is read: the variables that would send the CLI to a paired server never reach it.
+        let paired = ["ORCA_PAIRING_CODE": "orca://pair?x", "ORCA_REMOTE_PAIRING": "x", "ORCA_ENVIRONMENT": "box"]
+        let local = ChildEnvironment.make(
+            policy: ProviderTool.orca.environment, editors: nil,
+            inherited: paired.merging(["ORCA_USER_DATA_PATH": "/data"]) { $1 })
+        #expect(paired.keys.allSatisfy { local[$0] == nil } && local["ORCA_USER_DATA_PATH"] == "/data")
         let inheritedOrca = ["PATH": ChildEnvironment.orcaPath]
         #expect(
             !ChildEnvironment.searchPaths(policy: .git, inherited: inheritedOrca).contains(ChildEnvironment.orcaPath))

@@ -7,8 +7,12 @@ struct ChildEnvironmentPolicy: Sendable, Equatable {
     static let git = Self(isGit: true, removed: [])
     /// Provider and helper CLIs: also their prompt and telemetry switches.
     static let tool = Self(isGit: false, removed: [])
-    /// The Orca CLI: a tool whose `PATH` also has the folder inside Orca's app bundle where `orca` is installed.
-    static let orca = Self(isGit: false, removed: [], searchesOrca: true)
+    /// The Orca CLI: a tool whose `PATH` also has the folder inside Orca's app bundle where `orca` is installed,
+    /// and that never sees the variables that point it at a paired Orca server. Gita reads only this Mac's Orca: a
+    /// paired server calls its own workspaces "local", and their paths are on a machine Gita cannot reach.
+    static let orca = Self(isGit: false, removed: orcaRemoteSelectors, searchesOrca: true)
+    /// The variables the Orca CLI reads to run against a paired Orca server instead of this Mac's.
+    static let orcaRemoteSelectors: Set<String> = ["ORCA_PAIRING_CODE", "ORCA_REMOTE_PAIRING", "ORCA_ENVIRONMENT"]
 
     let isGit: Bool
     /// Inherited variables the program must not see, such as overrides of what Gita verified.
