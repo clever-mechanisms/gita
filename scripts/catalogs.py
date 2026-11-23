@@ -86,7 +86,7 @@ def read_plurals():
         if path.name.startswith("."):
             continue
         if path.suffix != ".json" or path.stem not in LOCALES:
-            raise CatalogError(f"{path}: expected one of the 18 <locale>.json files")
+            raise CatalogError(f"{path}: expected one of the {len(LOCALES)} <locale>.json files")
         entries = read_json(path)
         if not isinstance(entries, dict):
             raise CatalogError(f"{path}: expected a key-to-plural object")
@@ -238,11 +238,11 @@ def report_missing(checked):
 def check(source_only):
     checked = resources()
     if not source_only and report_missing(checked):
-        raise CatalogError("all 18 locales must be complete for the strict shipping check")
+        raise CatalogError(f"all {len(LOCALES)} locales must be complete for the strict shipping check")
     locales = complete_locales(checked)
     print("Source and present-translation formats are valid. UI-complete locales: " + " ".join(locales))
     if not source_only:
-        print("All 18 locales are complete in both catalogs and required plural forms.")
+        print(f"All {len(LOCALES)} locales are complete in both catalogs and required plural forms.")
 
 
 # Extraction merge --------------------------------------------------------------
