@@ -4,8 +4,8 @@ import AppKit
 @MainActor
 enum AppLanguage {
     static let targetLanguages = [
-        "en", "cs", "de", "es", "fr", "it", "hu", "nl", "pl", "pt-BR", "sv", "tr", "ru", "uk", "ja", "ko", "zh-Hans",
-        "zh-Hant",
+        "en", "cs", "de", "es", "fr", "it", "hu", "nl", "pl", "pt-BR", "sv", "th", "tr", "ru", "uk", "ja", "ko",
+        "zh-Hans", "zh-Hant",
     ]
     private static let languagesKey = "AppleLanguages"
     private(set) static var current = "en"
@@ -82,8 +82,8 @@ enum AppLanguage {
     static func flag(of code: String?) -> String {
         let regions = [
             "en": "US", "cs": "CZ", "de": "DE", "es": "ES", "fr": "FR", "it": "IT", "hu": "HU", "nl": "NL", "pl": "PL",
-            "pt-BR": "BR", "sv": "SE", "tr": "TR", "ru": "RU", "uk": "UA", "ja": "JP", "ko": "KR", "zh-Hans": "CN",
-            "zh-Hant": "TW",
+            "pt-BR": "BR", "sv": "SE", "th": "TH", "tr": "TR", "ru": "RU", "uk": "UA", "ja": "JP", "ko": "KR",
+            "zh-Hans": "CN", "zh-Hant": "TW",
         ]
         guard let code, let region = regions[code] else { return "🌐" }
         // Each letter's regional indicator symbol; the pair draws as the flag.

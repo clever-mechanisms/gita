@@ -194,6 +194,8 @@ struct PreferencesLoginItemTests {
     @Test func languageNamesAndLocales() {
         #expect(AppLanguage.locale(global: "es_ES", language: "de").hasPrefix("de"))
         #expect(AppLanguage.name(of: "de").first?.isUppercase == true)
+        #expect(AppLanguage.name(of: "th") == "ไทย")
+        #expect(AppLanguage.locale(global: "en_US", language: "th").hasPrefix("th"))
         #expect(!AppLanguage.available.isEmpty)
         #expect(AppLanguage.available.contains(AppLanguage.system))
         _ = AppLanguage.needsRestart

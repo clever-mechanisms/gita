@@ -92,6 +92,10 @@ struct SettingsOpenWithTests {
     @Test func languagesShowTheirFlags() {
         #expect(AppLanguage.flag(of: "de") == "🇩🇪")
         #expect(AppLanguage.flag(of: "pt-BR") == "🇧🇷")
+        #expect(AppLanguage.flag(of: "th") == "🇹🇭")
+        for code in AppLanguage.targetLanguages {
+            #expect(AppLanguage.flag(of: code) != "🌐")
+        }
         #expect(AppLanguage.flag(of: nil) == "🌐")
         #expect(AppLanguage.flag(of: "xx") == "🌐")
         let recorder = SettingsRecorder()
