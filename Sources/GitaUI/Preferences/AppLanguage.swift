@@ -50,10 +50,16 @@ enum AppLanguage {
     }
 
     static func configureForLaunch() {
-        if environment.isDevelopment {
-            // Keep development choices out of the installed release's preference domain.
+        if AppEnvironment.compiledForDevelopment {
+            // Keep development choices out of the installed release's preference domain. This must run before
+            // `AppEnvironment.current` (or AppKit) is initialized: either one caches Foundation's preferred-
+            // localization list, and a later `NSArgumentDomain` write no longer changes `Bundle.main` or
+            // `String(localized:)`, so the restarted app stayed in the system language.
+            let suite = UserDefaults(suiteName: AppEnvironment.developmentSuite) ?? .standard
+            let stored =
+                (suite.persistentDomain(forName: AppEnvironment.developmentSuite)?[languagesKey] as? [String])?.first
             var arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
-            arguments[languagesKey] = override.map { [$0] } ?? systemPreferences
+            arguments[languagesKey] = stored.map { [$0] } ?? systemPreferences
             UserDefaults.standard.setVolatileDomain(arguments, forName: UserDefaults.argumentDomain)
         }
         current = Bundle.main.preferredLocalizations.first ?? "en"
