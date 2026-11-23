@@ -15,15 +15,16 @@ import Testing
     }
 
     private func builder(
-        _ references: [GitReference], commands: RecordingCommands, remoteURLs: [String: String] = [:]
+        _ references: [GitReference], commands: RecordingCommands, remoteURLs: [String: String] = [:],
+        linked: [GitWorktree] = [], canOperate: Bool = true
     ) -> ReferenceMenuBuilder {
         var snapshot = RepositorySnapshot(
             root: URL(fileURLWithPath: "/repo"), branch: "feature", head: "h", changes: [], commits: [],
-            references: references, worktrees: [GitWorktree(path: "/repo", branch: "feature", head: "h")],
+            references: references, worktrees: [GitWorktree(path: "/repo", branch: "feature", head: "h")] + linked,
             stashes: [], remoteURL: nil, gitDirectory: URL(fileURLWithPath: "/repo/.git"))
         snapshot.remoteURLs = remoteURLs
         return ReferenceMenuBuilder(
-            snapshot: snapshot, canOperate: true, isMutating: false, filters: BranchFilters(), vercel: nil,
+            snapshot: snapshot, canOperate: canOperate, isMutating: false, filters: BranchFilters(), vercel: nil,
             productionBranch: nil, commits: [], commands: commands, target: nil,
             actions: ReferenceMenuActions(
                 worktreeItems: { _ in [] }, reviewReference: { _ in nil }, reviewCommit: { _ in nil },
@@ -69,6 +70,57 @@ import Testing
         ]
         let titles = itemTitles(builder(refs, commands: commands).menu(refs[1]))
         #expect(!titles.contains { $0.hasPrefix("Check Out") || $0.hasPrefix("Advance") })
+    }
+
+    private func commit(_ id: String) -> GitCommit {
+        GitCommit(
+            id: id, parents: [], subject: "Subject", author: "Ada", email: "ada@example.invalid",
+            date: Date(timeIntervalSince1970: 1_700_000_000), decorations: [])
+    }
+
+    @Test func doubleClickingAPillChecksItOutWhereItCan() {
+        UITestSupport.bootstrap()
+        let commands = RecordingCommands()
+        let refs = [
+            reference("main", "refs/heads/main", "old", .branch),
+            reference("origin/main", "refs/remotes/origin/main", "new", .remote),
+            reference("feature", "refs/heads/feature", "h", .branch, current: true),
+            reference("topic", "refs/heads/topic", "t", .branch),
+        ]
+        let linked = GitWorktree(path: "/repo-topic", branch: "topic", head: "t")
+        let builder = builder(refs, commands: commands, linked: [linked])
+        #expect(builder.open(refs[1])) // The remote: main is checked out and fast-forwarded onto it.
+        #expect(builder.open(refs[2])) // Already on it: nothing to do.
+        #expect(builder.open(refs[3])) // Checked out in a linked worktree: that worktree opens.
+        #expect(commands.calls == ["checkoutReference refs/remotes/origin/main", "openRepositoryTab repo-topic"])
+        #expect(!self.builder(refs, commands: commands, canOperate: false).open(refs[0]))
+        #expect(commands.calls.count == 2)
+    }
+
+    @Test func aRightClickedPillOffersItsCommit() throws {
+        UITestSupport.bootstrap()
+        let commands = RecordingCommands()
+        let refs = [
+            reference("main", "refs/heads/main", "abcdef123456", .branch),
+            reference("v1", "refs/tags/v1", "abcdef123456", .tag),
+        ]
+        let builder = builder(refs, commands: commands)
+        let menu = builder.menu(refs[0], pillOf: commit("abcdef123456"))
+        let titles = itemTitles(menu)
+        #expect(titles.first == "Check Out")
+        let header = try #require(titles.firstIndex(of: "Commit abcdef1"))
+        #expect(menu.items[header].isSectionHeader)
+        #expect(Array(titles[(header + 1)...].prefix(2)) == ["Check Out Detached", "Cherry-pick…"])
+        try #require(menu.items.first { $0.title == "Cherry-pick…" }).perform()
+        try #require(menu.items.first { $0.title == "Check Out Detached" }).perform()
+        #expect(commands.calls == ["cherryPick abcdef123456", "checkoutReference abcdef123456"])
+        // A tag's own Check Out is already detached at the commit.
+        let tagTitles = itemTitles(builder.menu(refs[1], pillOf: commit("abcdef123456")))
+        #expect(tagTitles.count { $0 == "Check Out Detached" } == 1)
+        // The commit HEAD is on has nothing to check out or pick.
+        let headTitles = itemTitles(builder.menu(refs[0], pillOf: commit("h")))
+        #expect(!headTitles.contains("Cherry-pick…") && !headTitles.contains { $0.hasPrefix("Commit ") })
+        #expect(itemTitles(builder.menu(refs[0])) == itemTitles(builder.menu(refs[0], pillOf: commit("h"))))
     }
 
     @Test func tagMenuOffersPushAndRemoteDeleteWhenRemotesExist() throws {

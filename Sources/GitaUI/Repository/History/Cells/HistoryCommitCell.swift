@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 /// The subject column of a history row: the graph and the message, with the merge chip, the eye button and the
-/// "+N" pill clickable and the whole row read by VoiceOver as one element.
+/// "+N" pill clickable, reference pills opened by a double-click, and the whole row read by VoiceOver as one element.
 @MainActor
 final class HistoryCommitCell: NSView, NSViewToolTipOwner {
     /// What one row shows.
@@ -31,6 +31,8 @@ final class HistoryCommitCell: NSView, NSViewToolTipOwner {
     var onMergeHide: ((String) -> Void)?
     /// The "+N" references pill was clicked: list every reference on the commit.
     var onReferencesClick: ((String, NSRect, NSView) -> Void)?
+    /// A reference pill was double-clicked: check it out (the commit's ID and the pill's reference).
+    var onReferenceOpen: ((String, ReferenceBadge) -> Void)?
     private(set) var representedCommitID = ""
     private var hoveringChip = false
     /// The tooltip is registered once per size and its text built only when shown (rows are reconfigured on
@@ -137,8 +139,20 @@ final class HistoryCommitCell: NSView, NSViewToolTipOwner {
         }
         return true
     }
+    /// The reference pill at `point` (in this cell).
+    func reference(at point: NSPoint) -> ReferenceBadge? {
+        message.reference(at: message.convert(point, from: self))
+    }
+    /// Opens the pill at `point`; false when there is none. The double-click's first click selected the row.
+    func doubleClick(at point: NSPoint) -> Bool {
+        guard let reference = reference(at: point) else { return false }
+        onReferenceOpen?(representedCommitID, reference)
+        return true
+    }
     override func mouseDown(with event: NSEvent) {
-        if !click(at: convert(event.locationInWindow, from: nil)) { super.mouseDown(with: event) }
+        let point = convert(event.locationInWindow, from: nil)
+        if event.clickCount == 2, doubleClick(at: point) { return }
+        if !click(at: point) { super.mouseDown(with: event) }
     }
 
     // MARK: Tooltip and layout
@@ -147,6 +161,7 @@ final class HistoryCommitCell: NSView, NSViewToolTipOwner {
         _: NSView, stringForToolTip _: NSView.ToolTipTag, point: NSPoint, userData _: UnsafeMutableRawPointer?
     ) -> String {
         if hideRect?.contains(point) == true { return String(localized: "Hide in History") }
+        if let reference = reference(at: point) { return Self.toolTip(reference) }
         if overflowRect?.contains(point) == true, let commit = message.commit {
             return commit.decorations.joined(separator: "\n")
         }
@@ -160,6 +175,14 @@ final class HistoryCommitCell: NSView, NSViewToolTipOwner {
             )
         }
         return message.commit.map { ($0.decorations + [$0.subject]).joined(separator: "\n") } ?? ""
+    }
+    /// A pill's full name (it may be cut short), and what a double-click does unless HEAD is already on it.
+    static func toolTip(_ reference: ReferenceBadge) -> String {
+        let names = [reference.name] + reference.remotes.map { $0 + "/" + reference.name }
+        let hint =
+            reference.fullName == nil || reference.kind == .head
+            ? [] : [String(localized: "Double-click to check out")]
+        return (names + hint).joined(separator: "\n")
     }
     override func layout() {
         super.layout()

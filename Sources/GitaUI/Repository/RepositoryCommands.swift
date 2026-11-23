@@ -20,6 +20,8 @@ protocol RepositoryCommands: AnyObject {
     func mergeReference(_ fullName: String)
     func rebaseOntoReference(_ fullName: String)
     func createTagAt(_ commit: GitCommit)
+    /// Cherry-pick `commit` onto the current branch, reviewed first like Repository › Cherry-pick….
+    func cherryPick(_ commit: GitCommit)
     func pushTag(_ name: String, to remote: String?)
     func deleteRemoteTag(_ name: String, on remote: String)
 }

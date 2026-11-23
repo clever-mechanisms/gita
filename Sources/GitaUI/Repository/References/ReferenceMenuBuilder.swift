@@ -50,9 +50,7 @@ struct ReferenceMenuBuilder {
         branch.isEnabled = canOperate
         items.append(branch)
         if commit.id != snapshot.head {
-            let detach = MenuAction(String(localized: "Check Out Detached"), symbol: "arrow.uturn.right") {
-                [weak commands] in commands?.checkoutReference(commit.id)
-            }
+            let detach = detachItem(commit)
             detach.isEnabled = canOperate
             items.append(detach)
         }
@@ -60,9 +58,15 @@ struct ReferenceMenuBuilder {
         return items
     }
 
-    func menu(_ reference: GitReference) -> NSMenu {
+    /// The reference's full menu. With `commit` (a right-click on its pill in the history), the commit's own
+    /// Check Out Detached and Cherry-pick follow the switch items.
+    func menu(_ reference: GitReference, pillOf commit: GitCommit? = nil) -> NSMenu {
         var menu = ReferenceMenu()
         switchItems(reference, into: &menu)
+        if let commit {
+            menu.section()
+            pillCommitItems(reference, commit: commit, into: &menu)
+        }
         menu.section()
         integrateItems(reference, into: &menu)
         if reference.kind != .tag, let review = actions.reviewReference(reference) {
@@ -82,44 +86,59 @@ struct ReferenceMenuBuilder {
         return menu.finished()
     }
 
+    private var switching: ReferenceSwitch { ReferenceSwitch(snapshot: snapshot) }
+
+    /// A double-click on the reference's pill: what the first item of its menu does (check it out, fast-forwarding
+    /// the local branch onto a remote one, or open the worktree that has it). False when it can't run now.
+    func open(_ reference: GitReference) -> Bool {
+        switch switching.action(reference) {
+        case .openWorktree(let path):
+            commands?.openRepositoryTab(URL(fileURLWithPath: path, isDirectory: true))
+        case .checkout(let fullName):
+            guard canOperate else { return false }
+            commands?.checkoutReference(fullName)
+        case .none: break
+        }
+        return true
+    }
+
     /// Switch: check out, advance the local branch onto a remote commit, or the worktree that already has it.
     private func switchItems(_ reference: GitReference, into menu: inout ReferenceMenu) {
-        if let worktree = occupiedWorktree(reference) {
-            menu.items += actions.worktreeItems(worktree.path)
-        } else if !standingOn(reference) {
+        switch switching.action(reference) {
+        case .openWorktree(let path):
+            menu.items += actions.worktreeItems(path)
+        case .checkout:
             menu.add(checkoutItem(reference), enabled: canOperate)
             if let advance = advanceItem(reference) { menu.add(advance, enabled: canOperate) }
             if reference.kind == .branch { menu.add(newWorktreeItem(reference), enabled: !isMutating) }
+        case .none: break
         }
     }
 
-    /// The linked worktree that has this branch, or the local branch a remote-tracking branch names.
-    private func occupiedWorktree(_ reference: GitReference) -> GitWorktree? {
-        let branch = reference.kind == .branch ? reference.name : localBranch(matching: reference)?.name
-        guard let branch else { return nil }
-        return snapshot.worktrees.dropFirst().first { !$0.isBare && $0.branch == branch }
+    /// The commit under a right-clicked pill: check it out detached, or cherry-pick it onto the current branch.
+    /// Nothing for the commit HEAD is on.
+    private func pillCommitItems(_ reference: GitReference, commit: GitCommit, into menu: inout ReferenceMenu) {
+        guard commit.id != snapshot.head else { return }
+        menu.add(.sectionHeader(title: String(localized: "Commit \(String(commit.id.prefix(7)))")))
+        // A tag's own Check Out is already detached at this commit.
+        if reference.kind != .tag { menu.add(detachItem(commit), enabled: canOperate) }
+        menu.add(
+            MenuAction(String(localized: "Cherry-pick…"), symbol: "arrow.turn.down.right") { [weak commands] in
+                commands?.cherryPick(commit)
+            }, enabled: canOperate)
     }
 
-    /// Already on the local branch this reference names, at this commit: checking it out would not move.
-    private func standingOn(_ reference: GitReference) -> Bool {
-        if reference.isCurrent { return true }
-        guard let local = localBranch(matching: reference) else { return false }
-        return local.isCurrent && local.commit == reference.commit
-    }
-
-    /// The local branch a remote-tracking branch names (`origin/main` → `main`); nil for `HEAD` and anything else.
-    private func localBranch(matching reference: GitReference) -> GitReference? {
-        guard reference.kind == .remote else { return nil }
-        let name = RemoteBranchName.branchName(reference)
-        guard name != "HEAD" else { return nil }
-        return snapshot.references.first { $0.kind == .branch && $0.name == name }
+    private func detachItem(_ commit: GitCommit) -> NSMenuItem {
+        MenuAction(String(localized: "Check Out Detached"), symbol: "arrow.uturn.right") { [weak commands] in
+            commands?.checkoutReference(commit.id)
+        }
     }
 
     private func checkoutItem(_ reference: GitReference) -> NSMenuItem {
         let title: String
         if reference.kind == .tag {
             title = String(localized: "Check Out Detached")
-        } else if let local = localBranch(matching: reference), local.commit == reference.commit {
+        } else if let local = switching.localBranch(matching: reference), local.commit == reference.commit {
             title = String(localized: "Check Out “\(local.name)”")
         } else {
             title = String(localized: "Check Out")
@@ -132,7 +151,9 @@ struct ReferenceMenuBuilder {
 
     /// Fast-forward the local branch onto this remote commit. Shown when the two are not already the same commit.
     private func advanceItem(_ reference: GitReference) -> NSMenuItem? {
-        guard let local = localBranch(matching: reference), local.commit != reference.commit else { return nil }
+        guard let local = switching.localBranch(matching: reference), local.commit != reference.commit else {
+            return nil
+        }
         let name = local.name
         let fullName = reference.fullName
         return MenuAction(String(localized: "Advance “\(name)” to Here"), symbol: "arrow.up.to.line") {

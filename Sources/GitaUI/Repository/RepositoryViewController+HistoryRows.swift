@@ -25,6 +25,12 @@ extension RepositoryViewController: HistoryTableDelegate {
         showReferences(of: commitID, rect: rect, in: view)
     }
 
+    func historyOpenReference(_ reference: ReferenceBadge, commitID _: String) { openReference(reference) }
+
+    func historyReferenceMenu(_ reference: ReferenceBadge, commitID: String) -> NSMenu? {
+        referenceMenu(reference, commitID: commitID)
+    }
+
     // MARK: Status chips
 
     func historyChipCandidates() -> Set<String> {

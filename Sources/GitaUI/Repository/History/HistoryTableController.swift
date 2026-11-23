@@ -58,6 +58,9 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
         table.allowsMultipleSelection = false
         table.allowsEmptySelection = true
         table.setAccessibilityLabel(String(localized: "Commit history"))
+        table.referenceMenu = { [weak self] id, reference in
+            self?.delegate?.historyReferenceMenu(reference, commitID: id)
+        }
         scroll.contentView.postsBoundsChangedNotifications = true
         scrollObservation = NotificationCenter.default.addObserver(
             forName: NSView.boundsDidChangeNotification, object: scroll.contentView, queue: .main

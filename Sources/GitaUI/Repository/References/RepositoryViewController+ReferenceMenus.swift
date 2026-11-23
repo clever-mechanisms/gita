@@ -52,6 +52,28 @@ extension RepositoryViewController {
         referenceMenuBuilder?.menu(reference)
     }
 
+    /// The repository's reference a history pill stands for; nil for a detached HEAD or one no longer listed.
+    private func gitReference(_ badge: ReferenceBadge) -> GitReference? {
+        guard let fullName = badge.fullName else { return nil }
+        return model.snapshot?.references.first { $0.fullName == fullName }
+    }
+
+    /// A double-clicked history pill: check out its branch (fast-forwarding the local branch onto a remote one) or
+    /// tag, or open the worktree that has the branch. A beep when that can't run now.
+    func openReference(_ badge: ReferenceBadge) {
+        guard let reference = gitReference(badge), let builder = referenceMenuBuilder else { return }
+        if !builder.open(reference) { NSSound.beep() }
+    }
+
+    /// A right-clicked history pill: its reference's menu, with the commit's Check Out Detached and Cherry-pick.
+    func referenceMenu(_ badge: ReferenceBadge, commitID: String) -> NSMenu? {
+        guard let reference = gitReference(badge),
+            let commit = historyCommits.first(where: { $0.id == commitID })
+                ?? model.snapshot?.commits.first(where: { $0.id == commitID })
+        else { return nil }
+        return referenceMenuBuilder?.menu(reference, pillOf: commit)
+    }
+
     /// The "+N" pill on a history row: every reference on that commit, each with its menu.
     func showReferences(of commitID: String, rect: NSRect, in view: NSView) {
         guard

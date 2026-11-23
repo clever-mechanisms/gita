@@ -141,6 +141,7 @@ final class RecordingCommands: RepositoryCommands {
     func mergeReference(_ fullName: String) { calls.append("mergeReference \(fullName)") }
     func rebaseOntoReference(_ fullName: String) { calls.append("rebaseOntoReference \(fullName)") }
     func createTagAt(_: GitCommit) { calls.append("createTagAt") }
+    func cherryPick(_ commit: GitCommit) { calls.append("cherryPick \(commit.id)") }
     func pushTag(_ name: String, to remote: String?) { calls.append("pushTag \(name) \(remote ?? "all")") }
     func deleteRemoteTag(_ name: String, on remote: String) { calls.append("deleteRemoteTag \(name) \(remote)") }
     func showAgentsPane() { calls.append("showAgentsPane") }

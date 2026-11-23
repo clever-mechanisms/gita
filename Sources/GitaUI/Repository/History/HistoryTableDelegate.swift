@@ -16,6 +16,11 @@ protocol HistoryTableDelegate: AnyObject {
     func historyDidDeselect()
     func historyMergeChip(_ event: HistoryMergeChipEvent)
     func historyShowReferences(of commitID: String, rect: NSRect, in view: NSView)
+    /// A reference pill was double-clicked.
+    func historyOpenReference(_ reference: ReferenceBadge, commitID: String)
+    /// The menu of a right-clicked reference pill: the reference's own, with the commit's Check Out Detached and
+    /// Cherry-pick; nil leaves the commit's menu.
+    func historyReferenceMenu(_ reference: ReferenceBadge, commitID: String) -> NSMenu?
     func historyOpenChip(_ target: HistoryChip.Target, commitID: String)
     /// The list scrolled.
     func historyDidScroll()

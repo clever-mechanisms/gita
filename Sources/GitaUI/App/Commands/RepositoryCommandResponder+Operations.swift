@@ -42,12 +42,13 @@ extension RepositoryCommandResponder {
         }
     }
 
-    @objc func cherryPickCommit() { promptCommitOperation(revert: false) }
-    @objc func revertCommit() { promptCommitOperation(revert: true) }
+    @objc func cherryPickCommit() { promptCommitOperation(revert: false, commit: model.selectedCommit) }
+    @objc func revertCommit() { promptCommitOperation(revert: true, commit: model.selectedCommit) }
+    func cherryPick(_ commit: GitCommit) { promptCommitOperation(revert: false, commit: commit) }
 
-    private func promptCommitOperation(revert: Bool) {
-        guard model.canStartOperation, let snapshot = model.snapshot, let commit = model.selectedCommit,
-            let service = model.service, let alerts = system?.alerts, let window = sheetWindow()
+    private func promptCommitOperation(revert: Bool, commit: GitCommit?) {
+        guard model.canStartOperation, let snapshot = model.snapshot, let commit, let service = model.service,
+            let alerts = system?.alerts, let window = sheetWindow()
         else { return }
         let title = revert ? GitOperationKind.revert.localizedTitle : GitOperationKind.cherryPick.localizedTitle
         RepositoryPrompts.commitOperation(

@@ -28,6 +28,8 @@ final class CommitMessageCell: NSView {
     private(set) var mergeChipRect: NSRect?
     private(set) var mergeHideRect: NSRect?
     private(set) var refsOverflowRect: NSRect?
+    /// Where the last drawing put each reference pill.
+    private(set) var badgeRects: [(rect: NSRect, reference: ReferenceBadge)] = []
     var hideHovered = false {
         didSet { if oldValue != hideHovered, let rect = mergeHideRect { setNeedsDisplay(rect) } }
     }
@@ -51,6 +53,7 @@ final class CommitMessageCell: NSView {
             mergeChipRect = nil
             mergeHideRect = nil
             refsOverflowRect = nil
+            badgeRects = []
             return
         }
         let layout = CommitMessageLayout(
@@ -59,12 +62,18 @@ final class CommitMessageCell: NSView {
         mergeChipRect = layout.merge?.rect
         mergeHideRect = layout.merge?.hideButton
         refsOverflowRect = layout.overflow?.rect
+        badgeRects = layout.badges.map { ($0.rect, $0.reference) }
         if let merge = layout.merge { draw(merge) }
         for badge in layout.badges { draw(badge) }
         if let overflow = layout.overflow { draw(overflow) }
         TextLines.draw(
             commit.subject, font: CommitMessageLayout.subjectFont(scale, isHead: isHead), color: Theme.text,
             in: layout.subjectRect)
+    }
+
+    /// The reference pill at `point` (in this view), as last drawn.
+    func reference(at point: NSPoint) -> ReferenceBadge? {
+        badgeRects.first { $0.rect.contains(point) }?.reference
     }
 
     private func draw(_ merge: CommitMessageLayout.Merge) {

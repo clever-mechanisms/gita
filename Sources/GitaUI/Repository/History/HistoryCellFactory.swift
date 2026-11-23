@@ -83,6 +83,9 @@ struct HistoryCellFactory {
         cell.onReferencesClick = { [weak delegate] id, rect, view in
             delegate?.historyShowReferences(of: id, rect: rect, in: view)
         }
+        cell.onReferenceOpen = { [weak delegate] id, reference in
+            delegate?.historyOpenReference(reference, commitID: id)
+        }
     }
 
     private func signals(_ commit: GitCommit, alpha: CGFloat) -> HistorySignalsCell {

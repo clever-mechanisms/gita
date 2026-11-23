@@ -14,6 +14,8 @@ struct CommitMessageLayout {
         let hideButton: NSRect?
     }
     struct Badge {
+        /// The reference the pill stands for (what a double-click checks out, a right-click lists).
+        let reference: ReferenceBadge
         let rect: NSRect
         let text: String
         let kind: Deck.PillKind
@@ -152,7 +154,7 @@ struct CommitMessageLayout {
                 x: rect.minX + padding / 2, y: rect.minY,
                 width: cloud - Metrics.cloudGap * scale, height: rect.height) : nil
         return Badge(
-            rect: rect, text: text, kind: Self.pillKind(reference.kind),
+            reference: reference, rect: rect, text: text, kind: Self.pillKind(reference.kind),
             textRect: textRect(x: rect.minX + padding / 2 + cloud, width: rect.width - padding - cloud, font: font),
             cloudBox: cloudBox)
     }
