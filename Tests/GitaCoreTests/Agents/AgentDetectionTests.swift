@@ -76,6 +76,27 @@ final class AgentDetectionTests: XCTestCase {
         XCTAssertFalse(AgentProcessClassifier.isInterpreter(path: "/Users/u/.local/share/claude/versions/2.1.319"))
     }
 
+    func testArgumentsAreReadForInterpretersAndForNativeToolsWithDaemonSubcommands() {
+        // Native Codex and OpenCode become daemons by subcommand, so the scanner must hand them their arguments.
+        XCTAssertTrue(AgentProcessClassifier.readsArguments(path: "/opt/homebrew/bin/codex"))
+        XCTAssertTrue(AgentProcessClassifier.readsArguments(path: "/Users/u/.opencode/bin/opencode"))
+        XCTAssertTrue(AgentProcessClassifier.readsArguments(path: "/usr/local/bin/node"))
+        XCTAssertTrue(AgentProcessClassifier.readsArguments(path: "/opt/homebrew/bin/python3.12"))
+        // Tools decided by path alone (Cursor Agent's bundled node too) and non-agents keep their arguments unread.
+        XCTAssertFalse(AgentProcessClassifier.readsArguments(path: "/Users/u/.local/share/claude/versions/2.1.319"))
+        XCTAssertFalse(
+            AgentProcessClassifier.readsArguments(path: "/Users/u/.local/share/cursor-agent/versions/2026.11.05/node"))
+        XCTAssertFalse(AgentProcessClassifier.readsArguments(path: "/opt/homebrew/bin/aider"))
+        XCTAssertFalse(AgentProcessClassifier.readsArguments(path: "/bin/zsh"))
+        let path = "/opt/homebrew/bin/opencode"
+        XCTAssertEqual(
+            AgentProcessClassifier.classify(path: path, arguments: ["opencode", "web"])?.isService, true)
+        XCTAssertEqual(AgentProcessClassifier.classify(path: path, arguments: ["opencode"])?.isService, false)
+        XCTAssertEqual(
+            AgentProcessClassifier.classify(path: "/opt/homebrew/bin/codex", arguments: ["codex", "mcp-server"])?
+                .isService, true)
+    }
+
     // MARK: Live libproc scan
 
     /// A tiny compiled program named `claude` stands in for an agent (copies of system binaries are killed by macOS):
