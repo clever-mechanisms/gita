@@ -67,7 +67,7 @@ final class ProviderTests: XCTestCase {
             {"path":"/tmp/gita-test","hostId":"local","branch":"refs/heads/main","terminalVerdict":"live","agents":[
             {"paneKey":"one","agentType":"codex","state":"working","hasLivePty":true,"programStatus":{"state":"done"},\
             "prompt":"DO NOT DISPLAY","toolInput":"DO NOT DISPLAY"},
-            {"paneKey":"two","agentType":"claude","state":"working","hasLivePty":false,\
+            {"paneKey":"two","agentType":"antigravity","state":"working","hasLivePty":false,\
             "programStatus":{"state":"working"}},
             {"paneKey":"three","agentType":"codex","hasLivePty":true,"programStatus":{"state":"blocked"},\
             "subagentObservation":"stale","subagents":[{"id":"stale","state":"working"}]},
@@ -89,6 +89,8 @@ final class ProviderTests: XCTestCase {
         XCTAssertEqual(parsed.items[0].detail, "Idle")
         XCTAssertEqual(parsed.items[0].state, .neutral)
         XCTAssertEqual(parsed.items[1].detail, "Unverified")
+        XCTAssertEqual(parsed.items[1].agent?.agentName, "Antigravity")
+        XCTAssertEqual(parsed.items[1].reportedAgentTool, .antigravity)
         XCTAssertEqual(parsed.items[2].state, .pending)
         XCTAssertEqual(parsed.items.filter { $0.state == .running }.count, 2)
         XCTAssertTrue(parsed.truncated)

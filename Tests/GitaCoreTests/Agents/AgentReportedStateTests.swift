@@ -89,6 +89,7 @@ final class AgentReportedStateTests: XCTestCase {
         XCTAssertEqual(item("Cursor", "Idle").reportedAgentTool, .cursorAgent)
         XCTAssertEqual(item("Gemini", "Failed").reportedAgentTool, .gemini)
         XCTAssertEqual(item("Gemini", "Cancelled").reportedAgentState, .idle)
+        XCTAssertEqual(item("Antigravity", "Done").reportedAgentTool, .antigravity)
         XCTAssertEqual(item("Claude Code", "Working").reportedAgentState, .working)
         XCTAssertNil(item("Claude Code", "Unverified").reportedAgentState)
         XCTAssertNil(item("Claude Code", "Working", role: .subagent).reportedAgentState)

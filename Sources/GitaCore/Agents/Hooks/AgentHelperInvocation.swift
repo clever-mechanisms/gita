@@ -44,7 +44,7 @@ public struct AgentHelperInvocation: Sendable, Equatable {
         switch tool {
         case .claudeCode: AgentHookEvent.claude(event: event, input: input, pids: pids)
         case .codex: AgentHookEvent.codex(argument: payload, pids: pids)
-        case .opencode, .aider, .gemini, .cursorAgent: nil
+        case .opencode, .aider, .gemini, .antigravity, .cursorAgent: nil
         }
     }
 

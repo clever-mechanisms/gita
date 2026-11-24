@@ -9,6 +9,7 @@ extension AgentTool {
         case .opencode: .detectOpencode
         case .aider: .detectAider
         case .gemini: .detectGemini
+        case .antigravity: .detectAntigravity
         case .cursorAgent: .detectCursorAgent
         }
     }

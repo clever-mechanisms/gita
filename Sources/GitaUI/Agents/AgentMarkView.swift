@@ -151,7 +151,7 @@ final class AgentMarkView: NSView {
             animation.toValue = -2 * CGFloat.pi
             animation.duration = 2.4
             animation.timingFunction = CAMediaTimingFunction(name: .linear)
-        case .cursor, .opencode, .aider:
+        case .cursor, .opencode, .aider, .antigravity:
             animation = CABasicAnimation(keyPath: "transform.scale")
             animation.fromValue = 1
             animation.toValue = 0.78

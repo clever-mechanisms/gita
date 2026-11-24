@@ -10,6 +10,7 @@ enum AgentMarks {
         case .claudeCode: .claude
         case .codex: .openAI
         case .gemini: .gemini
+        case .antigravity: .antigravity
         case .cursorAgent: .cursor
         case .opencode: .opencode
         case .aider: .aider

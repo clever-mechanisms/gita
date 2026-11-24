@@ -3,11 +3,12 @@ import os
 
 /// Small vector marks that identify each coding agent where its name used to be written out ("Claude Code").
 /// The official logos (LobeHub Icons, MIT, in `Resources/AgentMarks` with the licence; the same marks Orca shows):
-/// Claude's terracotta spark in its own colour, Gemini's sparkle filled with its blue-violet-rose gradient, and the
+/// Claude's terracotta spark in its own colour, Gemini's sparkle filled with its blue-violet-rose gradient,
+/// Antigravity's arch in Google's blue, green, yellow and red, and the
 /// monochrome ones (OpenAI's knot for Codex, Cursor's cube, opencode) in the text colour so they read on every theme.
 /// Aider has no official mark there and keeps a drawn tile; any mark whose file is missing falls back to a drawing.
 enum AgentMarkPainter {
-    enum Kind: CaseIterable { case claude, openAI, gemini, cursor, opencode, aider }
+    enum Kind: CaseIterable { case claude, openAI, gemini, antigravity, cursor, opencode, aider }
 
     /// Draws `kind` into `rect` (a square) of `context`, whose y axis points up. `ink` is the monochrome colour;
     /// `logos` are the official marks (a kind without one is drawn).
@@ -28,6 +29,7 @@ enum AgentMarkPainter {
         case .claude: claude(context)
         case .openAI: openAI(context, ink: ink, side: side)
         case .gemini: gemini(context)
+        case .antigravity: antigravity(context)
         case .cursor: cursor(context, ink: ink)
         case .opencode: opencode(context, ink: ink)
         case .aider: aider(context)
@@ -36,7 +38,8 @@ enum AgentMarkPainter {
 
     /// Official logo files per mark; `.aider` has none.
     private static let files: [Kind: String] = [
-        .claude: "claude-color", .openAI: "openai", .gemini: "gemini", .cursor: "cursor", .opencode: "opencode",
+        .claude: "claude-color", .openAI: "openai", .gemini: "gemini", .antigravity: "antigravity", .cursor: "cursor",
+        .opencode: "opencode",
     ]
     /// Loaded once per resource folder; NSImage renders the SVG as vectors (CoreSVG) at whatever size it is drawn.
     private static let logoCache = OSAllocatedUnfairLock<(root: URL?, logos: [Kind: NSImage])?>(initialState: nil)
@@ -71,9 +74,10 @@ enum AgentMarkPainter {
         NSGraphicsContext.restoreGraphicsState()
         guard recolour else { return }
         context.setBlendMode(.sourceIn)
-        if kind == .gemini {
-            fillGemini(context, box: box)
-        } else {
+        switch kind {
+        case .gemini: fillGemini(context, box: box)
+        case .antigravity: fillAntigravity(context, box: box)
+        default:
             context.setFillColor(ink)
             context.fill(box)
         }
@@ -159,6 +163,47 @@ enum AgentMarkPainter {
         c.drawLinearGradient(
             gradient, start: CGPoint(x: box.minX + box.width * 0.1, y: box.minY + box.height * 0.1),
             end: CGPoint(x: box.minX + box.width * 0.95, y: box.minY + box.height * 0.95), options: [])
+    }
+
+    /// Antigravity: an arch on two flared feet, the logo's own outline (its 24-point box, y pointing down).
+    private static func antigravity(_ c: CGContext) {
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x / 24, y: 1 - y / 24) }
+        let path = CGMutablePath()
+        path.move(to: point(21.751, 22.607))
+        path.addCurve(to: point(23.259, 21.099), control1: point(23.091, 23.612), control2: point(25.101, 22.942))
+        path.addCurve(to: point(12.037, 1), control1: point(17.73, 15.74), control2: point(18.904, 1))
+        path.addCurve(to: point(0.815, 21.1), control1: point(5.17, 1), control2: point(6.342, 15.74))
+        path.addCurve(to: point(2.322, 22.606), control1: point(-1.195, 23.109), control2: point(0.982, 23.611))
+        path.addCurve(to: point(12.037, 12.892), control1: point(7.514, 19.089), control2: point(7.179, 12.892))
+        path.addCurve(to: point(21.751, 22.607), control1: point(16.894, 12.892), control2: point(16.559, 19.089))
+        path.closeSubpath()
+        c.beginTransparencyLayer(auxiliaryInfo: nil)
+        c.addPath(path)
+        c.clip()
+        fillAntigravity(c, box: CGRect(x: 0, y: 0, width: 1, height: 1))
+        c.endTransparencyLayer()
+    }
+
+    /// Antigravity's colours as its logo blends them: blue below, green on the left foot, yellow over the top, red on
+    /// the right. Paints only where something is already drawn (the logo in its layer, or the clipped outline).
+    private static func fillAntigravity(_ c: CGContext, box: CGRect) {
+        c.setFillColor(rgb(0x3186FF))
+        c.fill(box)
+        c.setBlendMode(.sourceAtop)
+        let space = CGColorSpace(name: CGColorSpace.sRGB)
+        let blobs: [(UInt32, CGPoint, CGFloat)] = [
+            (0x00B95C, CGPoint(x: -0.05, y: 0.6), 0.55), (0xFFE432, CGPoint(x: 0.3, y: 1.05), 0.5),
+            (0xFC413D, CGPoint(x: 1, y: 0.8), 0.5),
+        ]
+        for (hex, centre, radius) in blobs {
+            guard
+                let gradient = CGGradient(
+                    colorsSpace: space, colors: [rgb(hex), rgb(hex, 0)] as CFArray, locations: nil)
+            else { continue }
+            let at = CGPoint(x: box.minX + box.width * centre.x, y: box.minY + box.height * centre.y)
+            c.drawRadialGradient(
+                gradient, startCenter: at, startRadius: 0, endCenter: at, endRadius: box.width * radius, options: [])
+        }
     }
 
     /// Cursor: an isometric cube, three faces in three tints of the text colour.

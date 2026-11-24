@@ -43,6 +43,7 @@ enum Preference: String, CaseIterable {
 
     // Agents
     case detectClaudeCode, detectCodex, detectOpencode, detectAider, detectGemini, detectCursorAgent // Bool
+    case detectAntigravity // Bool
     case useOrca // Bool: merge Orca task titles when Orca is running
     // [String: String]: GitHub repository (`GitHubRemote.sourceID`) → `GitHubAccountStore` entry, logins only
     case githubAccounts

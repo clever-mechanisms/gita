@@ -47,7 +47,7 @@ private final class HelperLocator {}
         #expect(event.tool == .claudeCode && event.event == "Notification" && event.effect == .needsInput)
     }
 
-    @Test(arguments: [AgentTool.opencode, .aider, .gemini, .cursorAgent])
+    @Test(arguments: [AgentTool.opencode, .aider, .gemini, .antigravity, .cursorAgent])
     func toolsWithoutHooksReportNothing(tool: AgentTool) throws {
         let invocation = try #require(AgentHelperInvocation(arguments: ["event", tool.rawValue, "Stop"]))
         #expect(invocation.hookEvent(input: Data("{}".utf8), pids: []) == nil)

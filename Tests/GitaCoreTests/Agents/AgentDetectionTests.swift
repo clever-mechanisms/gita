@@ -22,6 +22,10 @@ final class AgentDetectionTests: XCTestCase {
             AgentProcessClassifier.classify(
                 path: "/Users/u/.local/share/cursor-agent/versions/2026.11.05-86047df/node",
                 arguments: ["node", "index.js"])?.tool, .cursorAgent)
+        XCTAssertEqual(
+            AgentProcessClassifier.classify(
+                path: "/Users/u/.local/bin/agy", arguments: ["agy", "--dangerously-skip-permissions"]),
+            AgentProcessIdentity(tool: .antigravity, isService: false))
         XCTAssertNil(AgentProcessClassifier.classify(path: "/Applications/Claude.app/Contents/MacOS/Claude"))
         XCTAssertNil(AgentProcessClassifier.classify(path: "/bin/zsh"))
     }
@@ -112,9 +116,14 @@ final class AgentDetectionTests: XCTestCase {
         try Data(
             """
             #include <fcntl.h>
+            #include <sys/ioctl.h>
             #include <unistd.h>
             #include <sys/wait.h>
             int main(void) {
+                if (setsid() < 0) {
+                    int tty = open("/dev/tty", O_RDONLY);
+                    if (tty >= 0) { ioctl(tty, TIOCNOTTY); close(tty); }
+                }
                 pid_t child = fork();
                 if (child == 0) { int fd = open("/dev/null", O_WRONLY); dup2(fd, 1); execl("/usr/bin/yes", "yes", \
             (char *)0); _exit(1); }

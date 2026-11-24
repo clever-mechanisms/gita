@@ -26,7 +26,7 @@ struct AgentsMarksTests {
 
     @Test func everyKindIsDrawnFromItsLogoOrItsFallback() throws {
         let logos = Self.logos
-        #expect(logos.count == 5)
+        #expect(logos.count == 6)
         #expect(logos[.aider] == nil)
         for kind in AgentMarkPainter.Kind.allCases {
             for set in [logos, [:]] {
@@ -52,9 +52,11 @@ struct AgentsMarksTests {
             #expect(label.string.hasSuffix(" Working"))
         }
         #expect(AgentMarks.kind(.codex) == .openAI)
+        #expect(AgentMarks.kind(.antigravity) == .antigravity)
         let view = FlippedDrawingView(frame: NSRect(x: 0, y: 0, width: 20, height: 20)) {
             AgentMarks.draw(.gemini, in: NSRect(x: 2, y: 2, width: 16, height: 16), flipped: true)
             AgentMarks.draw(.aider, in: NSRect(x: 2, y: 2, width: 16, height: 16), flipped: false)
+            AgentMarks.draw(.antigravity, in: NSRect(x: 2, y: 2, width: 16, height: 16), flipped: true)
         }
         UITestSupport.render(view)
         #expect(view.drew)

@@ -40,6 +40,8 @@ enum AgentProcessClassifier {
 
     private static let nativeExecutables: [String: AgentTool] = [
         "codex": .codex, "opencode": .opencode, "aider": .aider, "gemini": .gemini,
+        // Google Antigravity's terminal agent (`~/.local/bin/agy`), a native binary.
+        "agy": .antigravity,
     ]
 
     /// The agent a native (non-interpreter) executable is.

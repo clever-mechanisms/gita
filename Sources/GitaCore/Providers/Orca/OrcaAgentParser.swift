@@ -127,6 +127,7 @@ enum OrcaAgentParser {
 
     private static let knownAgents = [
         "codex": "Codex", "claude": "Claude Code", "copilot": "GitHub Copilot", "cursor": "Cursor",
+        "antigravity": "Antigravity",
     ]
 
     private static func agentName(_ value: String?) -> String {
