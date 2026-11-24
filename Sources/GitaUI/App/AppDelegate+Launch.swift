@@ -45,7 +45,9 @@ extension AppDelegate {
         SettingsWindowController.appHooks = SettingsAppHooks(shell: self)
         ActivityWindowController.followedModel = { [weak self] in self?.model }
         MainToolbar.host = self
-        statusItem = StatusItemController(statusBar: environment.statusBar, host: self, defaults: defaults)
+        statusItem = StatusItemController(
+            statusItem: environment.statusBar.statusItem(withLength: NSStatusItem.variableLength),
+            host: self, defaults: defaults)
         if environment.startsServices { startServices() }
         NSApp.appearance = AppearanceChoice(stored: Preference.appearance.int(defaults)).appearance
         observeActiveModel(model)

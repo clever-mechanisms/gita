@@ -1,4 +1,18 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld репозиторій",
+          "few": "%3$lld репозиторії",
+          "many": "%3$lld репозиторіїв",
+          "other": "%3$lld репозиторію"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -9,6 +23,20 @@
           "few": "%2$lld відстежувані зміни",
           "many": "%2$lld відстежуваних змін",
           "other": "%2$lld відстежуваної зміни"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld запуск агента за 24 години",
+          "few": "%1$lld запуски агентів за 24 години",
+          "many": "%1$lld запусків агентів за 24 години",
+          "other": "%1$lld запуску агентів за 24 години"
         }
       }
     }
@@ -27,104 +55,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld змінений файл",
-          "few": "%1$lld змінені файли",
-          "many": "%1$lld змінених файлів",
-          "other": "%1$lld зміненого файлу"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Буде вилучено %1$lld коміт.",
-          "few": "Буде вилучено %1$lld коміти.",
-          "many": "Буде вилучено %1$lld комітів.",
-          "other": "Буде вилучено %1$lld коміту."
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld субагент",
-          "few": "%lld субагенти",
-          "many": "%lld субагентів",
-          "other": "%lld субагента"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Усі коміти буде вилучено (%1$lld коміт).",
-          "few": "Буде вилучено всі %1$lld коміти.",
-          "many": "Буде вилучено всі %1$lld комітів.",
-          "other": "Усі коміти буде вилучено (%1$lld коміту)."
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "Двійковий файл · %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld байт",
-          "few": "%1$lld байти",
-          "many": "%1$lld байтів",
-          "other": "%1$lld байта"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld невідстежуваний файл",
-          "few": "%2$lld невідстежувані файли",
-          "many": "%2$lld невідстежуваних файлів",
-          "other": "%2$lld невідстежуваного файлу"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%3$lld репозиторій",
-          "few": "%3$lld репозиторії",
-          "many": "%3$lld репозиторіїв",
-          "other": "%3$lld репозиторію"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -135,6 +65,62 @@
           "few": "%lld агенти працюють",
           "many": "%lld агентів працюють",
           "other": "%lld агента працюють"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld призначений репозиторій",
+          "few": "%lld призначені репозиторії",
+          "many": "%lld призначених репозиторіїв",
+          "other": "%lld призначеного репозиторію"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld позаду",
+          "few": "%1$lld позаду",
+          "many": "%1$lld позаду",
+          "other": "%1$lld позаду"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "відстає на %1$#@count@ від %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld коміт",
+          "few": "%1$lld коміти",
+          "many": "%1$lld комітів",
+          "other": "%1$lld коміта"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld гілка",
+          "few": "%lld гілки",
+          "many": "%lld гілок",
+          "other": "%lld гілки"
         }
       }
     }
@@ -153,6 +139,34 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld змінений файл",
+          "few": "%1$lld змінені файли",
+          "many": "%1$lld змінених файлів",
+          "other": "%1$lld зміненого файлу"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld коментар",
+          "few": "%1$lld коментарі",
+          "many": "%1$lld коментарів",
+          "other": "%1$lld коментаря"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -167,6 +181,34 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "На %lld коміт позаду відстежуваної гілки",
+          "few": "На %lld коміти позаду відстежуваної гілки",
+          "many": "На %lld комітів позаду відстежуваної гілки",
+          "other": "На %lld коміта позаду відстежуваної гілки"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "На %lld коміт позаду відстежуваної гілки; у віддаленому репозиторії є неотримані коміти",
+          "few": "На %lld коміти позаду відстежуваної гілки; у віддаленому репозиторії є неотримані коміти",
+          "many": "На %lld комітів позаду відстежуваної гілки; у віддаленому репозиторії є неотримані коміти",
+          "other": "На %lld коміта позаду відстежуваної гілки; у віддаленому репозиторії є неотримані коміти"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -177,6 +219,48 @@
           "few": "%lld коміти не надіслано",
           "many": "%lld комітів не надіслано",
           "other": "%lld коміта не надіслано"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Вибрано %lld коміт",
+          "few": "Вибрано %lld коміти",
+          "many": "Вибрано %lld комітів",
+          "other": "Вибрано %lld коміта"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Буде вилучено %1$lld коміт.",
+          "few": "Буде вилучено %1$lld коміти.",
+          "many": "Буде вилучено %1$lld комітів.",
+          "other": "Буде вилучено %1$lld коміту."
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld конфлікт",
+          "few": "%lld конфлікти",
+          "many": "%lld конфліктів",
+          "other": "%lld конфлікту"
         }
       }
     }
@@ -209,6 +293,20 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld файл",
+          "few": "%1$lld файли",
+          "many": "%1$lld файлів",
+          "other": "%1$lld файлу"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -219,6 +317,34 @@
           "few": "%lld без активності",
           "many": "%lld без активності",
           "other": "%lld без активності"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld коментар до рядка в цій рецензії",
+          "few": "%1$lld коментарі до рядків у цій рецензії",
+          "many": "%1$lld коментарів до рядків у цій рецензії",
+          "other": "%1$lld коментаря до рядків у цій рецензії"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld помилка в логах",
+          "few": "%1$lld помилки в логах",
+          "many": "%1$lld помилок у логах",
+          "other": "%1$lld помилки в логах"
         }
       }
     }
@@ -265,6 +391,20 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld відкритий PR",
+          "few": "%lld відкриті PR",
+          "many": "%lld відкритих PR",
+          "other": "%lld відкритого PR"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -293,6 +433,76 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld помилка сервера",
+          "few": "%1$lld помилки сервера",
+          "many": "%1$lld помилок сервера",
+          "other": "%1$lld помилки сервера"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld об’єднаний коміт",
+          "few": "%1$lld об’єднані коміти",
+          "many": "%1$lld об’єднаних комітів",
+          "other": "%1$lld об’єднаного коміта"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld в індексі",
+          "few": "%lld в індексі",
+          "many": "%lld в індексі",
+          "other": "%lld в індексі"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld субагент",
+          "few": "%lld субагенти",
+          "many": "%lld субагентів",
+          "other": "%lld субагента"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld на перевірку",
+          "few": "%lld на перевірку",
+          "many": "%lld на перевірку",
+          "other": "%lld на перевірку"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -307,95 +517,16 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld працює",
-          "few": "%lld працюють",
-          "many": "%lld працюють",
-          "other": "%lld працюють"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "Агенти, %1$#@working@, %2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld працює",
-          "few": "%1$lld працюють",
-          "many": "%1$lld працюють",
-          "other": "%1$lld працюють"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld чекає на введення",
-          "few": "%2$lld чекають на введення",
-          "many": "%2$lld чекають на введення",
-          "other": "%2$lld чекають на введення"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Надіслати %lld коміт",
-          "few": "Надіслати %lld коміти",
-          "many": "Надіслати %lld комітів",
-          "other": "Надіслати %lld коміта"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld позаду",
-          "few": "%1$lld позаду",
-          "many": "%1$lld позаду",
-          "other": "%1$lld позаду"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "відстає на %1$#@count@ від %2$@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld коміт",
-          "few": "%1$lld коміти",
-          "many": "%1$lld комітів",
-          "other": "%1$lld коміта"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld коментар",
-          "few": "%1$lld коментарі",
-          "many": "%1$lld коментарів",
-          "other": "%1$lld коментаря"
+          "one": "Не розв’язано: %1$lld",
+          "few": "Не розв’язано: %1$lld",
+          "many": "Не розв’язано: %1$lld",
+          "other": "Не розв’язано: %1$lld"
         }
       }
     }
@@ -428,72 +559,16 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Відкрити %1$lld коментар ↗",
-          "few": "Відкрити %1$lld коментарі ↗",
-          "many": "Відкрити %1$lld коментарів ↗",
-          "other": "Відкрити %1$lld коментаря ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%lld відкритий PR",
-          "few": "%lld відкриті PR",
-          "many": "%lld відкритих PR",
-          "other": "%lld відкритого PR"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld на перевірку",
-          "few": "%lld на перевірку",
-          "many": "%lld на перевірку",
-          "other": "%lld на перевірку"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld гілка",
-          "few": "%lld гілки",
-          "many": "%lld гілок",
-          "other": "%lld гілки"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "Група %1$@, %2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld вкладка",
-          "few": "%2$lld вкладки",
-          "many": "%2$lld вкладок",
-          "other": "%2$lld вкладки"
+          "one": "%lld поза індексом",
+          "few": "%lld поза індексом",
+          "many": "%lld поза індексом",
+          "other": "%lld поза індексом"
         }
       }
     }
@@ -512,72 +587,193 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld помилка сервера",
-          "few": "%1$lld помилки сервера",
-          "many": "%1$lld помилок сервера",
-          "other": "%1$lld помилки сервера"
+          "one": "%lld працює",
+          "few": "%lld працюють",
+          "many": "%lld працюють",
+          "other": "%lld працюють"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld помилка в логах",
-          "few": "%1$lld помилки в логах",
-          "many": "%1$lld помилок у логах",
-          "other": "%1$lld помилки в логах"
+          "one": "(різниця в %lld коміт)",
+          "few": "(різниця в %lld коміти)",
+          "many": "(різниця в %lld комітів)",
+          "other": "(різниця в %lld коміта)"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "(−%1$lld / +%2$#@count@)",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld об’єднаний коміт",
-          "few": "%1$lld об’єднані коміти",
-          "many": "%1$lld об’єднаних комітів",
-          "other": "%1$lld об’єднаного коміта"
+          "one": "%2$lld коміт",
+          "few": "%2$lld коміти",
+          "many": "%2$lld комітів",
+          "other": "%2$lld коміта"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "Агенти, %1$#@working@, %2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld запуск агента за 24 години",
-          "few": "%1$lld запуски агентів за 24 години",
-          "many": "%1$lld запусків агентів за 24 години",
-          "other": "%1$lld запуску агентів за 24 години"
+          "one": "%1$lld працює",
+          "few": "%1$lld працюють",
+          "many": "%1$lld працюють",
+          "other": "%1$lld працюють"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld чекає на введення",
+          "few": "%2$lld чекають на введення",
+          "many": "%2$lld чекають на введення",
+          "other": "%2$lld чекають на введення"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "Не розв’язано: %1$lld",
-          "few": "Не розв’язано: %1$lld",
-          "many": "Не розв’язано: %1$lld",
-          "other": "Не розв’язано: %1$lld"
+          "one": "Усі коміти буде вилучено (%1$lld коміт).",
+          "few": "Буде вилучено всі %1$lld коміти.",
+          "many": "Буде вилучено всі %1$lld комітів.",
+          "other": "Усі коміти буде вилучено (%1$lld коміту)."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Двійковий файл · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld байт",
+          "few": "%1$lld байти",
+          "many": "%1$lld байтів",
+          "other": "%1$lld байта"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "%1$#@count@ на %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Перенести %1$lld коміт",
+          "few": "Перенести %1$lld коміти",
+          "many": "Перенести %1$lld комітів",
+          "other": "Перенести %1$lld коміта"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Перенести %lld коміт?",
+          "few": "Перенести %lld коміти?",
+          "many": "Перенести %lld комітів?",
+          "other": "Перенести %lld коміта?"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "%1$#@count@ у %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Відкинути %1$lld змінений рядок",
+          "few": "Відкинути %1$lld змінені рядки",
+          "many": "Відкинути %1$lld змінених рядків",
+          "other": "Відкинути %1$lld зміненого рядка"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Відкинути %lld рядок…",
+          "few": "Відкинути %lld рядки…",
+          "many": "Відкинути %lld рядків…",
+          "other": "Відкинути %lld рядка…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "Отримати, %#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld гілка перемістилася",
+          "few": "%lld гілки перемістилися",
+          "many": "%lld гілок перемістилося",
+          "other": "%lld гілки перемістилося"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Група %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld вкладка",
+          "few": "%2$lld вкладки",
+          "many": "%2$lld вкладок",
+          "other": "%2$lld вкладки"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld невідстежуваний файл",
+          "few": "%2$lld невідстежувані файли",
+          "many": "%2$lld невідстежуваних файлів",
+          "other": "%2$lld невідстежуваного файлу"
         }
       }
     }
@@ -596,30 +792,86 @@
       }
     }
   },
-  "%lld files": {
+  "Open %lld Comments ↗": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld файл",
-          "few": "%1$lld файли",
-          "many": "%1$lld файлів",
-          "other": "%1$lld файлу"
+          "one": "Відкрити %1$lld коментар ↗",
+          "few": "Відкрити %1$lld коментарі ↗",
+          "many": "Відкрити %1$lld коментарів ↗",
+          "other": "Відкрити %1$lld коментаря ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
-    "format": "%1$#@count@",
+  "Production is %lld commits behind, open deployment": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld коментар до рядка в цій рецензії",
-          "few": "%1$lld коментарі до рядків у цій рецензії",
-          "many": "%1$lld коментарів до рядків у цій рецензії",
-          "other": "%1$lld коментаря до рядків у цій рецензії"
+          "one": "Робоче середовище відстає на %lld коміт, відкрити розгортання",
+          "few": "Робоче середовище відстає на %lld коміти, відкрити розгортання",
+          "many": "Робоче середовище відстає на %lld комітів, відкрити розгортання",
+          "other": "Робоче середовище відстає на %lld коміта, відкрити розгортання"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Отримати й злити %lld коміт",
+          "few": "Отримати й злити %lld коміти",
+          "many": "Отримати й злити %lld комітів",
+          "other": "Отримати й злити %lld коміта"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Надіслати %lld коміт",
+          "few": "Надіслати %lld коміти",
+          "many": "Надіслати %lld комітів",
+          "other": "Надіслати %lld коміта"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Скасувати %lld коміт?",
+          "few": "Скасувати %lld коміти?",
+          "many": "Скасувати %lld комітів?",
+          "other": "Скасувати %lld коміта?"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Додати %lld рядок до індексу",
+          "few": "Додати %lld рядки до індексу",
+          "many": "Додати %lld рядків до індексу",
+          "other": "Додати %lld рядка до індексу"
         }
       }
     }
@@ -648,6 +900,20 @@
           "few": "%lld коміти з цієї гілки буде перебазовано й додано до базової гілки.",
           "many": "%lld комітів із цієї гілки буде перебазовано й додано до базової гілки.",
           "other": "%lld коміта з цієї гілки буде перебазовано й додано до базової гілки."
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Прибрати %lld рядок з індексу",
+          "few": "Прибрати %lld рядки з індексу",
+          "many": "Прибрати %lld рядків з індексу",
+          "other": "Прибрати %lld рядка з індексу"
         }
       }
     }

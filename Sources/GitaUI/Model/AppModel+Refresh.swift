@@ -175,6 +175,7 @@ extension AppModel {
         if remoteChanged { forgetHostedRepository() }
         rebuildSignalIndex()
         finishRefresh(next, revision: revision)
+        syncRemoteMonitor(with: next)
         if first { didOpen(next) }
         emit(.repository)
         apply(RefreshPlan(before: before, next: next), previousFile: previousFile)
@@ -244,5 +245,31 @@ extension AppModel {
             emit(.history)
         case .none: break
         }
+    }
+
+    // MARK: Background Remote Awareness
+
+    var remoteCheckState: RemoteCheckState { RemoteMonitor.shared.state(for: root) }
+    var remoteDelta: RemoteDelta? { remoteCheckState.last }
+    var remoteCheckStatusSummary: String { RemoteMonitor.shared.statusSummary(for: root) }
+
+    func checkRemotesNow() { RemoteMonitor.shared.checkNow(for: root) }
+
+    func syncRemoteMonitor(with snapshot: RepositorySnapshot) {
+        guard let service else { return }
+        RemoteMonitor.shared.register(
+            model: self, root: snapshot.root, service: service, snapshot: snapshot, defaults: defaults)
+    }
+
+    func remoteCheckStateChanged(_ next: RemoteCheckState, previous: RemoteCheckState) {
+        if next.last != previous.last || next.isBusy != previous.isBusy
+            || next.statusSummary() != previous.statusSummary()
+        {
+            emit(.providers)
+        }
+    }
+
+    func remoteAutoFetchCompleted() {
+        refresh()
     }
 }

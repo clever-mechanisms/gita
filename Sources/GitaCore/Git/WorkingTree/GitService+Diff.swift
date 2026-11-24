@@ -20,29 +20,39 @@ extension GitService {
     /// usual case costs one round trip instead of two; the check still decides which result is returned.
     public func diff(
         path: String?, staged: Bool = false, commit: String? = nil, stagedBase: String? = nil,
-        tracking: TrackingGuess = .unknown
+        tracking: TrackingGuess = .unknown, options: DiffOptions = .standard
     ) async throws -> String {
         if let path { try GitInput.validatePath(path) }
         if let commit {
             let sha = try await resolveCommit(commit)
-            if GitInput.isStashReference(commit) { return try await stashDiff(sha: sha, path: path) }
+            if GitInput.isStashReference(commit) {
+                return try await stashDiff(sha: sha, path: path, options: options)
+            }
             return try await execute(
                 ["show", "--format=", "--no-show-signature", "--diff-merges=first-parent", "--find-renames"]
-                    + GitArguments.safeDiff + [sha, "--"] + (path.map { [$0] } ?? [])
+                    + GitArguments.safeDiff + options.arguments + [sha, "--"] + (path.map { [$0] } ?? []),
+                outputLimit: Self.hunkDiffLimit
             ).text
         }
         guard !staged, let path else {
             return String(
-                decoding: try await indexDiff(path: path, staged: staged, stagedBase: stagedBase), as: UTF8.self)
+                decoding: try await indexDiff(
+                    path: path, staged: staged, stagedBase: stagedBase, options: options),
+                as: UTF8.self)
         }
-        return String(decoding: try await workingDiff(path: path, guess: tracking), as: UTF8.self)
+        return String(decoding: try await workingDiff(path: path, guess: tracking, options: options), as: UTF8.self)
     }
 
     /// The exact bytes of `git diff [--cached [base]] -- path`, or of an untracked file's diff against nothing.
-    func indexDiff(path: String?, staged: Bool, stagedBase: String? = nil) async throws -> Data {
-        if let path, !staged { return try await workingDiff(path: path, guess: .unknown) }
+    func indexDiff(
+        path: String?, staged: Bool, stagedBase: String? = nil, options: DiffOptions = .standard
+    ) async throws -> Data {
+        if let path, !staged { return try await workingDiff(path: path, guess: .unknown, options: options) }
         if staged, let stagedBase { try GitInput.validateReference(stagedBase) }
-        return try await execute(Self.trackedDiff(path: path, staged: staged, stagedBase: stagedBase)).stdout
+        return try await execute(
+            Self.trackedDiff(path: path, staged: staged, stagedBase: stagedBase, options: options),
+            outputLimit: Self.hunkDiffLimit
+        ).stdout
     }
 
     /// What the last status said about a working-tree file, used only to start the likely diff early.
@@ -50,26 +60,36 @@ extension GitService {
         case tracked, untracked, unknown
     }
 
-    private func workingDiff(path: String, guess: TrackingGuess) async throws -> Data {
+    private func workingDiff(path: String, guess: TrackingGuess, options: DiffOptions) async throws -> Data {
         async let tracked = execute(["ls-files", "--error-unmatch", "--", path], allowFailure: true)
         // Started speculatively; a guess that turns out wrong is cancelled when it goes out of scope unread.
-        async let speculative = speculativeDiff(path: path, guess: guess)
+        async let speculative = speculativeDiff(path: path, guess: guess, options: options)
         let check = try await tracked
         guard check.exitCode <= 1 else { throw Self.failure(check) }
         let isTracked = check.exitCode == 0
         if guess != .unknown, (guess == .tracked) == isTracked, let result = try await speculative {
             return try Self.diffOutput(result, untracked: !isTracked)
         }
-        let result = try await execute(
-            isTracked ? Self.trackedDiff(path: path, staged: false) : Self.untrackedDiff(path: path),
-            allowFailure: true)
+        let arguments =
+            isTracked
+            ? Self.trackedDiff(path: path, staged: false, options: options)
+            : Self.untrackedDiff(path: path, options: options)
+        let result = try await execute(arguments, outputLimit: Self.hunkDiffLimit, allowFailure: true)
         return try Self.diffOutput(result, untracked: !isTracked)
     }
 
-    private func speculativeDiff(path: String, guess: TrackingGuess) async throws -> CommandResult? {
+    private func speculativeDiff(
+        path: String, guess: TrackingGuess, options: DiffOptions
+    ) async throws -> CommandResult? {
         switch guess {
-        case .tracked: try await execute(Self.trackedDiff(path: path, staged: false), allowFailure: true)
-        case .untracked: try await execute(Self.untrackedDiff(path: path), allowFailure: true)
+        case .tracked:
+            try await execute(
+                Self.trackedDiff(path: path, staged: false, options: options),
+                outputLimit: Self.hunkDiffLimit, allowFailure: true)
+        case .untracked:
+            try await execute(
+                Self.untrackedDiff(path: path, options: options),
+                outputLimit: Self.hunkDiffLimit, allowFailure: true)
         case .unknown: nil
         }
     }
@@ -80,23 +100,25 @@ extension GitService {
         return result.stdout
     }
 
-    private static func trackedDiff(path: String?, staged: Bool, stagedBase: String? = nil) -> [String] {
-        ["diff"] + GitArguments.safeDiff + ["--find-renames"]
+    private static func trackedDiff(
+        path: String?, staged: Bool, stagedBase: String? = nil, options: DiffOptions = .standard
+    ) -> [String] {
+        ["diff"] + GitArguments.safeDiff + options.arguments + ["--find-renames"]
             + (staged ? ["--cached"] + (stagedBase.map { [$0] } ?? []) : [])
             + ["--"] + (path.map { [$0] } ?? [])
     }
 
     /// Git handles symlinks as links here, never reading their targets.
-    private static func untrackedDiff(path: String) -> [String] {
-        ["diff", "--no-index"] + GitArguments.safeDiff + ["--", "/dev/null", path]
+    private static func untrackedDiff(path: String, options: DiffOptions = .standard) -> [String] {
+        ["diff", "--no-index"] + GitArguments.safeDiff + options.arguments + ["--", "/dev/null", path]
     }
 
-    private func stashDiff(sha: String, path: String?) async throws -> String {
-        let options =
+    private func stashDiff(sha: String, path: String?, options: DiffOptions) async throws -> String {
+        let commandOptions =
             ["show", "--format=", "--no-show-signature", "--diff-merges=first-parent", "--find-renames"]
-            + GitArguments.safeDiff
+            + GitArguments.safeDiff + options.arguments
         let pathArguments = ["--"] + (path.map { [$0] } ?? [])
-        async let tracked = execute(options + [sha] + pathArguments)
+        async let tracked = execute(commandOptions + [sha] + pathArguments, outputLimit: Self.hunkDiffLimit)
         let thirdParent = try await execute(["rev-parse", "--verify", "--quiet", sha + "^3"], allowFailure: true)
         var untracked = Data()
         if thirdParent.exitCode == 0 {
@@ -104,7 +126,9 @@ extension GitService {
             guard GitParsers.isObjectID(objectID) else { throw GitError.invalidReference }
             // stash show cannot filter paths. Its third parent is a root commit
             // containing the saved untracked files; show preserves NUL-safe argv paths.
-            untracked = try await execute(options + [objectID] + pathArguments).stdout
+            untracked = try await execute(
+                commandOptions + [objectID] + pathArguments, outputLimit: Self.hunkDiffLimit
+            ).stdout
         } else if thirdParent.exitCode != 1 {
             throw Self.failure(thirdParent)
         }

@@ -1,6 +1,11 @@
 import AppKit
 
-/// Settings ▸ toolbar panes. Raw values are stored in `Preference.settingsPane`.
+/// Deep-link targets inside a Settings pane.
+enum SettingsAnchor: Hashable {
+    case remoteUpdates
+}
+
+/// Settings ▸ sidebar panes. Raw values are stored in `Preference.settingsPane`.
 enum SettingsPane: String, CaseIterable {
     case general, appearance, history, git, integrations, agents, shortcuts, notifications, menuBar, about
 
@@ -34,11 +39,6 @@ enum SettingsPane: String, CaseIterable {
     }
     /// AI Agents' symbol, also before the coding-agent groups elsewhere in Settings.
     static let agentsSymbol = "sparkles"
-    var itemIdentifier: NSToolbarItem.Identifier { NSToolbarItem.Identifier("settings." + rawValue) }
-    init?(itemIdentifier: NSToolbarItem.Identifier) {
-        guard let pane = Self.allCases.first(where: { $0.itemIdentifier == itemIdentifier }) else { return nil }
-        self = pane
-    }
 
     @MainActor func makeContent(_ environment: SettingsEnvironment) -> SettingsPaneContent {
         switch self {

@@ -26,7 +26,7 @@ final class MenuPanelController: NSViewController {
         action: #selector(showMore))
     private lazy var activityButton = footerButton(
         String(localized: "Activity ›"), style: .subtle, action: .showActivity, identifier: "activity")
-    private let problem = NSStackView()
+    private let problem = PanelProblemBand()
     private let footer = PanelFooterView()
     private lazy var problemHeight = problem.heightAnchor.constraint(equalToConstant: 0)
     private lazy var listHeight = scroll.heightAnchor.constraint(equalToConstant: 100)
@@ -101,9 +101,7 @@ final class MenuPanelController: NSViewController {
         problemLabel.lineBreakMode = .byTruncatingTail
         problemLabel.setAccessibilityIdentifier("panel.problem")
         problemLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        problem.setViews([problemIcon, problemLabel], in: .leading)
-        problem.spacing = 6
-        problem.edgeInsets = NSEdgeInsets(top: 0, left: Self.inset, bottom: 0, right: Self.inset)
+        problem.configure(icon: problemIcon, label: problemLabel, inset: Self.inset)
     }
 
     /// Open Repository… and New Workspace… at the leading edge, Activity › at the trailing one.
@@ -193,10 +191,22 @@ final class MenuPanelController: NSViewController {
         activityButton.isHidden = page == .activity
         refreshButton.isEnabled = !state.isRefreshing
         refreshButton.toolTip = Self.refreshText(state, now: now)
-        problemLabel.stringValue = state.problem ?? ""
-        problemLabel.toolTip = state.problem
-        problemHeight.constant = state.problem == nil ? 0 : Self.problemLineHeight
-        problem.isHidden = state.problem == nil
+        let displayProblem = state.problem.map {
+            state.problemDetail ?? MenuPanelState.Problem(text: $0, toolTip: $0, repository: nil, provider: nil)
+        }
+        problemLabel.stringValue = displayProblem?.text ?? ""
+        problemLabel.toolTip = displayProblem?.toolTip
+        problem.toolTip = displayProblem?.toolTip
+        problem.setAccessibilityLabel(displayProblem?.text ?? "")
+        problem.setAccessibilityHelp(displayProblem?.toolTip)
+        if let repository = displayProblem?.repository {
+            let provider = displayProblem?.provider ?? .github
+            problem.onPress = { [weak self] in self?.perform(.showProviderPage(repository, provider)) }
+        } else {
+            problem.onPress = nil
+        }
+        problemHeight.constant = displayProblem == nil ? 0 : Self.problemLineHeight
+        problem.isHidden = displayProblem == nil
         fit()
     }
 
@@ -248,14 +258,17 @@ final class MenuPanelController: NSViewController {
             if expanded.remove(id) == nil { expanded.insert(id) }
             rebuild()
         case .showActivity: show(.activity)
-        case .showRepository, .showTab, .push, .reveal, .openRepository, .openWorkspace, .newWorkspace: ask(action)
+        case .showRepository, .showProviderPage, .showTab, .push, .reveal, .openRepository, .openWorkspace,
+            .newWorkspace:
+            ask(action)
         }
     }
 
     /// What the panel cannot do itself goes to the app.
     private func ask(_ action: PanelAction) {
         switch action {
-        case .showRepository(let url): actions.showRepository(url)
+        case .showRepository(let url): _ = actions.showRepository(url)
+        case .showProviderPage(let url, let provider): actions.showProviderPage(url, provider)
         case .showTab(let url, let workspace): actions.showTab(url, workspace)
         case .push(let url): actions.push(url)
         case .reveal(let id): if let session = state.sessions.first(where: { $0.id == id }) { actions.reveal(session) }
@@ -310,5 +323,90 @@ final class MenuPanelController: NSViewController {
             actions.openWorkspace(state.workspaces[number - 1].id)
         }
         return true
+    }
+}
+
+@MainActor
+private final class PanelProblemBand: NSView {
+    private let stack = NSStackView()
+    private var isHovering = false
+    private var isPressed = false
+    var onPress: (() -> Void)? {
+        didSet {
+            setAccessibilityRole(onPress == nil ? .group : .button)
+            updateTrackingAreas()
+            window?.invalidateCursorRects(for: self)
+            if onPress == nil {
+                isHovering = false
+                isPressed = false
+            }
+            needsDisplay = true
+        }
+    }
+
+    func configure(icon: NSImageView, label: NSTextField, inset: CGFloat) {
+        stack.setViews([icon, label], in: .leading)
+        stack.spacing = 6
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: inset, bottom: 0, right: inset)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+        setAccessibilityIdentifier("panel.problem.band")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden, bounds.contains(point) else { return nil }
+        return onPress != nil ? self : super.hitTest(point)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        HoverTracking.update(self, enabled: onPress != nil)
+    }
+
+    override func resetCursorRects() {
+        if onPress != nil { addCursorRect(bounds, cursor: .pointingHand) }
+    }
+
+    override func mouseEntered(with _: NSEvent) {
+        guard onPress != nil else { return }
+        isHovering = true
+        needsDisplay = true
+    }
+
+    override func mouseExited(with _: NSEvent) {
+        isHovering = false
+        isPressed = false
+        needsDisplay = true
+    }
+
+    override func mouseDown(with _: NSEvent) {
+        guard onPress != nil else { return }
+        isPressed = true
+        needsDisplay = true
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        let shouldFire = isPressed && bounds.contains(convert(event.locationInWindow, from: nil))
+        isPressed = false
+        needsDisplay = true
+        if shouldFire { onPress?() }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard let onPress else { return false }
+        onPress()
+        return true
+    }
+
+    override func draw(_ _: NSRect) {
+        guard isHovering || isPressed, onPress != nil else { return }
+        Theme.control.setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 8, dy: 2), xRadius: 5, yRadius: 5).fill()
     }
 }

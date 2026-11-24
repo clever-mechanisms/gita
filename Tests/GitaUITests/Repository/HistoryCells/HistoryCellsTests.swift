@@ -206,7 +206,6 @@ struct HistoryCellsTests {
             table.addTableColumn(column)
         }
         table.headerView = header
-        header.accessoryWidth = 200
         UITestSupport.render(header)
         let row = DeckTableRowView(frame: NSRect(x: 0, y: 0, width: 600, height: 24))
         row.isSelected = true

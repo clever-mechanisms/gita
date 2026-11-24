@@ -11,6 +11,7 @@ final class ProviderDisclosureList: NSView {
     private let empty = Deck.label("", font: Theme.title, color: Theme.secondaryText)
     private let columns = PullRequestColumns.header()
     private let columnsLine = Deck.separator()
+    private var columnsWidthConstraint: NSLayoutConstraint?
     private var items: [ProviderItem] = []
     private var expanded: String?
     private var rows: [String: ProviderDisclosureRow] = [:]
@@ -21,6 +22,18 @@ final class ProviderDisclosureList: NSView {
     var onSelectionChange: ((ProviderItem?) -> Void)?
     var selectedItem: ProviderItem? { items.first { Self.key($0) == expanded } }
     var emptyMessage = "" { didSet { empty.stringValue = emptyMessage } }
+    var usesSplitDetail = false {
+        didSet {
+            guard usesSplitDetail != oldValue else { return }
+            syncPresentationMode()
+        }
+    }
+    var isCompact = false {
+        didSet {
+            guard isCompact != oldValue else { return }
+            syncPresentationMode()
+        }
+    }
     /// Gives each deployment row its main URL (`VercelContext.primaryURL`).
     private var vercel: VercelContext?
 
@@ -33,7 +46,9 @@ final class ProviderDisclosureList: NSView {
         let column = Deck.vstack([columns, columnsLine, scroll], spacing: 0)
         column.distribution = .fill
         Deck.pin(column, in: self)
-        for view in column.arrangedSubviews { view.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true }
+        columnsWidthConstraint = columns.widthAnchor.constraint(equalTo: column.widthAnchor)
+        columnsLine.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        scroll.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
         columns.isHidden = true
         columnsLine.isHidden = true
         Deck.pin(stack, in: Deck.document(in: scroll))
@@ -68,6 +83,8 @@ final class ProviderDisclosureList: NSView {
             row.onToggle = { [weak self] in self?.toggle(id) }
             row.loader = loader
             row.makeReview = makeReview
+            row.isSplitDetail = usesSplitDetail
+            row.isCompact = isCompact
             row.setExpanded(id == expanded)
             next[id] = row
             stack.addArrangedSubview(row)
@@ -76,10 +93,31 @@ final class ProviderDisclosureList: NSView {
         rows = next
         if let expanded, next[expanded] == nil { self.expanded = nil }
         empty.isHidden = !items.isEmpty
-        let showsColumns = items.contains { $0.kind == .pullRequest }
+        updateColumnsVisibility()
+        if previous != selectedItem { onSelectionChange?(selectedItem) }
+    }
+
+    func clearSelection() {
+        guard expanded != nil else { return }
+        expanded = nil
+        for row in rows.values { row.setExpanded(false) }
+        onSelectionChange?(nil)
+    }
+
+    private func syncPresentationMode() {
+        for (key, row) in rows {
+            row.isSplitDetail = usesSplitDetail
+            row.isCompact = isCompact
+            row.setExpanded(key == expanded)
+        }
+        updateColumnsVisibility()
+    }
+
+    private func updateColumnsVisibility() {
+        let showsColumns = !usesSplitDetail && !isCompact && items.contains { $0.kind == .pullRequest }
+        columnsWidthConstraint?.isActive = showsColumns
         columns.isHidden = !showsColumns
         columnsLine.isHidden = !showsColumns
-        if previous != selectedItem { onSelectionChange?(selectedItem) }
     }
     /// The row already shown for this item when nothing it shows changed, else a new one.
     private func reusableRow(_ id: String, item: ProviderItem, openURL: URL?) -> ProviderDisclosureRow {

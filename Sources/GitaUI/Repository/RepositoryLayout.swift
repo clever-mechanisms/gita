@@ -22,7 +22,10 @@ enum RepositoryLayout {
     static let settledWidth: CGFloat = 500
     static let filePaneWidth: CGFloat = 240
     static let filePaneMinimum: CGFloat = 180
+    static let changesFilePaneMinimum: CGFloat = 260
     static let codePaneMinimum: CGFloat = 270
+    static let historyTopMinimumID = "repository.historyTopMinimum"
+    static let fileColumnMinimumID = "repository.fileColumnMinimum"
     static let retryFooterHeight: CGFloat = 25
     static let welcomeTitleSize: CGFloat = 30
     static let welcomeSpacing: CGFloat = 24
@@ -39,6 +42,10 @@ struct PaneState {
     var bottomHeight: CGFloat = 268
     var sidebarWidth = Theme.sidebarWidth
     var agentsPaneWidth: CGFloat = 340
+    var activeSection: Section = .history
+    var sectionDividers = SectionPanes.DividerMemory()
+    var isPlacingSectionPanes = false
+    var recentMessagesKey: String?
 
     /// The history/detail divider for a split of `height`: the detail pane keeps its remembered height, at most
     /// `detailShare` of the split.

@@ -1,8 +1,8 @@
 import Foundation
 
 /// Which repository URLs the app accepts for clone, fetch and remote configuration: HTTPS, SSH (URL or scp form)
-/// and local paths, never credentials, queries, helpers (`ext::`) or option-like values.
-enum RemoteURLPolicy {
+/// and local paths, never credentials, queries, plain HTTP, helpers (`ext::`) or option-like values.
+public enum RemoteURLPolicy {
     static let maximumLength = 32_768
     private static let allowedSchemes: Set<String> = ["https", "ssh", "file"]
     private static let host = #"(?:[A-Za-z0-9][A-Za-z0-9.-]*|\[[0-9A-Fa-f:]+\])"#
@@ -22,7 +22,7 @@ enum RemoteURLPolicy {
         return remote
     }
 
-    static func isAccepted(_ remote: String) -> Bool { (try? validate(remote)) != nil }
+    public static func isAccepted(_ remote: String) -> Bool { (try? validate(remote)) != nil }
 
     private static func validateURL(_ remote: String) throws -> String {
         guard let decoded = remote.removingPercentEncoding, !GitInput.containsControlCharacters(decoded),
@@ -59,7 +59,7 @@ enum RemoteURLPolicy {
     }
 
     /// A URL safe to show: no user (except for SSH, where it selects the account), password, query or fragment.
-    static func displayURL(_ value: String) -> String {
+    public static func displayURL(_ value: String) -> String {
         if var components = URLComponents(string: value), let scheme = components.scheme?.lowercased(),
             ["http", "https", "ssh", "file"].contains(scheme)
         {

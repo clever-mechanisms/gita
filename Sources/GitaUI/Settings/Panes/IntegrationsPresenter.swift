@@ -1,7 +1,8 @@
 import AppKit
 import GitaCore
 
-/// What the Integrations pane shows for the active repository's provider reports, the agents and their hooks.
+/// What the Integrations pane shows for the active repository's provider reports, the `gh` accounts and their
+/// assigned repositories, the agents and their hooks.
 @MainActor
 enum IntegrationsPresenter {
     /// A repository row: the repository's name, the provider's status and its colour.
@@ -10,6 +11,21 @@ enum IntegrationsPresenter {
         var value: String
         var status: ProviderStatus
         var tooltip: String?
+    }
+
+    struct RepositoryAssignment: Equatable {
+        var sourceID: String
+        var displayName: String
+        var choice: GitHubAccountChoice
+        var isChosen: Bool
+    }
+
+    struct AccountSection: Equatable {
+        var account: GitHubAccount
+        var statusText: String
+        var statusColor: NSColor
+        var tooltip: String?
+        var repositories: [RepositoryAssignment]
     }
 
     /// The row for `provider` in the repository, nil (hidden) when there is no repository or no report.
@@ -58,6 +74,49 @@ enum IntegrationsPresenter {
         guard let account else { return AccountRow(value: checkingText, color: nil) }
         if checking { return AccountRow(value: account.value, color: Theme.running, tooltip: checkingText) }
         return AccountRow(value: account.value, color: accountColor(account.status), tooltip: account.tooltip)
+    }
+
+    /// Groups stored repository assignments under every `gh` account (signed-in active first, then signed-in, then
+    /// expired), returning any assignments whose login is no longer reported by `gh` under `orphaned`.
+    static func githubSections(
+        accounts: [GitHubAccount], assignments: [GitHubAccountStore.Assignment]
+    ) -> (sections: [AccountSection], orphaned: [RepositoryAssignment]) {
+        let ordered = accounts.sorted { lhs, rhs in
+            if lhs.isSignedIn != rhs.isSignedIn { return lhs.isSignedIn }
+            if lhs.isActive != rhs.isActive { return lhs.isActive }
+            return lhs.login < rhs.login
+        }
+        let mapped = assignments.map { item in
+            RepositoryAssignment(
+                sourceID: item.sourceID, displayName: GitHubAccountStore.displayName(for: item.sourceID),
+                choice: item.choice, isChosen: item.isChosen)
+        }
+        var matchedIDs = Set<String>()
+        let sections = ordered.map { account in
+            let repos = mapped.filter { $0.choice.login.value.lowercased() == account.login.value.lowercased() }
+            for repo in repos { matchedIDs.insert(repo.sourceID) }
+            let statusText: String
+            let statusColor: NSColor
+            let tooltip: String?
+            if !account.isSignedIn {
+                statusText = String(localized: "Session expired")
+                statusColor = Theme.needsInput
+                tooltip = String(localized: "Sign in again with gh auth login --hostname github.com.")
+            } else if account.isActive {
+                statusText = String(localized: "Active")
+                statusColor = Theme.success
+                tooltip = nil
+            } else {
+                statusText = String(localized: "Signed in")
+                statusColor = Theme.success
+                tooltip = nil
+            }
+            return AccountSection(
+                account: account, statusText: statusText, statusColor: statusColor, tooltip: tooltip,
+                repositories: repos)
+        }
+        let orphaned = mapped.filter { !matchedIDs.contains($0.sourceID) }
+        return (sections, orphaned)
     }
 
     /// "1 needs input · 2 working" for one tool's sessions, most urgent first.

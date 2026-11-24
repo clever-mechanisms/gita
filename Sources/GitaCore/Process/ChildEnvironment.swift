@@ -5,6 +5,8 @@ import Foundation
 struct ChildEnvironmentPolicy: Sendable, Equatable {
     /// Git and the user hooks it runs: only Git's non-interactive settings, and no Orca CLI folder in `PATH`.
     static let git = Self(isGit: true, removed: [])
+    /// Background Git checks and auto-fetches: blocks all terminal and GUI credential prompts.
+    static let gitBackground = Self(isGit: true, removed: [], isBackground: true)
     /// Provider and helper CLIs: also their prompt and telemetry switches.
     static let tool = Self(isGit: false, removed: [])
     /// The Orca CLI: a tool whose `PATH` also has the folder inside Orca's app bundle where `orca` is installed,
@@ -19,6 +21,8 @@ struct ChildEnvironmentPolicy: Sendable, Equatable {
     let removed: Set<String>
     /// `ChildEnvironment.orcaPath` is searched, after the system folders.
     var searchesOrca = false
+    /// Prevents GUI credential helpers and interactive SSH prompts during background remote operations.
+    var isBackground = false
 
     /// A provider CLI that must not see `variables`.
     static func tool(removing variables: Set<String>) -> Self { Self(isGit: false, removed: variables) }
@@ -33,6 +37,9 @@ enum ChildEnvironment {
     private static let shared = [
         "GIT_TERMINAL_PROMPT": "0", "GIT_PAGER": "cat", "PAGER": "cat", "GIT_EDITOR": "true", "NO_COLOR": "1",
         "TERM": "dumb", "LC_ALL": "en_US.UTF-8",
+    ]
+    private static let backgroundGit = [
+        "GIT_ASKPASS": "/usr/bin/false", "SSH_ASKPASS_REQUIRE": "never", "GCM_INTERACTIVE": "never",
     ]
     private static let toolOnly = ["GH_PROMPT_DISABLED": "1", "VERCEL_TELEMETRY_DISABLED": "1", "CI": "1"]
     /// An inherited Git checkout, index, config or history override must never redirect this app's commands.
@@ -61,12 +68,19 @@ enum ChildEnvironment {
         var environment = inherited.filter { !isRedirect($0.key) && !policy.removed.contains($0.key) }
         environment.merge(shared) { _, new in new }
         if !policy.isGit { environment.merge(toolOnly) { _, new in new } }
+        if policy.isBackground { environment.merge(backgroundGit) { _, new in new } }
         environment["PATH"] = searchPaths(policy: policy, inherited: inherited).joined(separator: ":")
         if let editors {
             environment["GIT_EDITOR"] = editors.editor
             environment["GIT_SEQUENCE_EDITOR"] = editors.sequenceEditor
         }
-        if environment["GIT_SSH_COMMAND"] == nil { environment["GIT_SSH_COMMAND"] = "/usr/bin/ssh -oBatchMode=yes" }
+        if let ssh = environment["GIT_SSH_COMMAND"] {
+            if policy.isBackground, !ssh.contains("BatchMode") {
+                environment["GIT_SSH_COMMAND"] = ssh + " -oBatchMode=yes"
+            }
+        } else {
+            environment["GIT_SSH_COMMAND"] = "/usr/bin/ssh -oBatchMode=yes"
+        }
         return environment
     }
 

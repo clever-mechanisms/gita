@@ -16,8 +16,8 @@ struct AppShellSyncTests {
         await shell.launch(waitingFor: repository.url)
         defer { shell.tearDown() }
         shell.app.commands.fetch()
-        await appWaitUntil { shell.alerts.last != nil }
-        #expect(shell.alerts.last?.informativeText == "This repository has no remote.")
+        await appWaitUntil { shell.app.model.contentBanner != .none }
+        #expect(shell.app.model.contentBanner == .info(String(localized: "This repository has no remote.")))
     }
 
     @Test func pushThenFetchAndPullThroughTheSheets() async throws {

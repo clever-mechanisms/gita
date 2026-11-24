@@ -1,4 +1,15 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%3$lld 个仓库"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -6,6 +17,17 @@
         "type": "lld",
         "forms": {
           "other": "%2$lld 项已跟踪更改"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "24 小时内 %1$lld 次智能体运行"
         }
       }
     }
@@ -21,83 +43,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld 个已更改文件"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "将丢弃 %1$lld 次提交。"
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%lld 个子代理"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "将丢弃全部 %1$lld 次提交。"
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "二进制文件 · %1$lld 字节"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%2$lld 个未跟踪文件"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%3$lld 个仓库"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -105,6 +50,50 @@
         "type": "lld",
         "forms": {
           "other": "%lld 个代理正在工作"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个已分配的仓库"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "落后 %1$lld 个提交"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "落后 %2$@ %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个提交"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个分支"
         }
       }
     }
@@ -120,6 +109,28 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个已更改文件"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 条评论"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -131,6 +142,28 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "落后上游 %lld 次提交"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "落后上游 %lld 次提交；远程有未获取的提交"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -138,6 +171,39 @@
         "type": "lld",
         "forms": {
           "other": "%lld 次提交未推送"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "已选择 %lld 次提交"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "将丢弃 %1$lld 次提交。"
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个冲突"
         }
       }
     }
@@ -164,6 +230,17 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个文件"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -171,6 +248,28 @@
         "type": "lld",
         "forms": {
           "other": "%lld 个空闲"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "此审查中的 %1$lld 条行评论"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个日志错误"
         }
       }
     }
@@ -208,6 +307,17 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个打开的 PR"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -230,6 +340,61 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个服务器错误"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 个被压缩的提交"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 项已暂存"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个子代理"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%lld 个待审查"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -241,74 +406,13 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%lld 个工作中"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "代理，%1$#@working@，%2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld 个工作中"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "other": "%2$lld 个需要输入"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "推送 %lld 次提交"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "落后 %1$lld 个提交"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "落后 %2$@ %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld 个提交"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld 条评论"
+          "other": "%1$lld 项未解决"
         }
       }
     }
@@ -335,57 +439,13 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "打开 %1$lld 条评论 ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%lld 个打开的 PR"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%lld 个待审查"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%lld 个分支"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "组 %1$@，%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%2$lld 个标签页"
+          "other": "%lld 项未暂存"
         }
       }
     }
@@ -401,57 +461,151 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%1$lld 个服务器错误"
+          "other": "%lld 个工作中"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%1$lld 个日志错误"
+          "other": "（相差 %lld 次提交）"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "（−%1$lld / +%2$#@count@）",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%1$lld 个被压缩的提交"
+          "other": "%2$lld 次提交"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "代理，%1$#@working@，%2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "other": "24 小时内 %1$lld 次智能体运行"
+          "other": "%1$lld 个工作中"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "other": "%2$lld 个需要输入"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%1$lld 项未解决"
+          "other": "将丢弃全部 %1$lld 次提交。"
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "二进制文件 · %1$lld 字节"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "要将 %1$#@count@遴选到 %2$@ 吗？",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 次提交"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "要遴选 %lld 次提交吗？"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "要丢弃 %2$@ 中的 %1$#@count@吗？",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld 行更改"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "丢弃 %lld 行…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "获取，%lld 个分支已移动"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "组 %1$@，%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%2$lld 个标签页"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%2$lld 个未跟踪文件"
         }
       }
     }
@@ -467,24 +621,68 @@
       }
     }
   },
-  "%lld files": {
+  "Open %lld Comments ↗": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "%1$lld 个文件"
+          "other": "打开 %1$lld 条评论 ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
-    "format": "%1$#@count@",
+  "Production is %lld commits behind, open deployment": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "此审查中的 %1$lld 条行评论"
+          "other": "生产环境落后 %lld 次提交，打开部署"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "拉取 %lld 次提交"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "推送 %lld 次提交"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "要还原 %lld 次提交吗？"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "暂存 %lld 行"
         }
       }
     }
@@ -507,6 +705,17 @@
         "type": "lld",
         "forms": {
           "other": "此分支的 %lld 个提交将变基后添加到基础分支。"
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "取消暂存 %lld 行"
         }
       }
     }

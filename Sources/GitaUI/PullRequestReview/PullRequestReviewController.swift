@@ -20,6 +20,10 @@ final class PullRequestReviewController {
     /// The window the review was last shown in; closing it retires the controller.
     private weak var host: NSWindow?
     private var closeObserver: NSObjectProtocol?
+    private(set) var popOutWindow: PullRequestReviewWindowController?
+    var onBack: (() -> Void)?
+    var onPopOut: (() -> Void)?
+    var onReturnFromWindow: ((PullRequestReviewView) -> Void)?
     /// Out of the cache: it reads nothing more, even after a write that was in flight succeeds.
     private(set) var isRetired = false
     /// Asks before merging; replaceable in tests.
@@ -34,12 +38,23 @@ final class PullRequestReviewController {
     ) -> PullRequestReviewController? {
         guard let target = item.target, case .pullRequest = target else { return nil }
         if let controller = live[target] {
-            if controller.root == root { return controller }
+            if controller.root == root {
+                controller.state.windowTitle = Self.windowTitle(for: item)
+                return controller
+            }
             controller.retire()
         }
         let controller = PullRequestReviewController(target: target, root: root, service: service)
+        controller.state.windowTitle = Self.windowTitle(for: item)
         live[target] = controller
         return controller
+    }
+
+    private static func windowTitle(for item: ProviderItem) -> String {
+        if let number = item.pullRequest?.number {
+            return "#\(number) \(item.title)"
+        }
+        return item.title
     }
 
     init(target: ProviderTarget, root: URL, service: PullRequestReviewService) {
@@ -59,6 +74,9 @@ final class PullRequestReviewController {
     /// is left to finish: stopping it halfway would leave its outcome unknown.
     func retire() {
         isRetired = true
+        popOutWindow?.onClose = nil
+        popOutWindow?.close()
+        popOutWindow = nil
         loadTask?.cancel()
         loadTask = nil
         if state.load == .loading {
@@ -70,9 +88,12 @@ final class PullRequestReviewController {
         if Self.live[target] === self { Self.live[target] = nil }
     }
 
-    /// Follows the window the review is shown in, so closing that window retires it.
+    /// Follows the window the review is shown in, so closing that window retires it (pop-out windows return the view
+    /// to the workspace instead of retiring the controller).
     private func hosted(in window: NSWindow?) {
-        guard !isRetired, let window, window !== host else { return }
+        guard !isRetired, let window, window !== host,
+            !(window.windowController is PullRequestReviewWindowController)
+        else { return }
         host = window
         if let closeObserver { NotificationCenter.default.removeObserver(closeObserver) }
         closeObserver = NotificationCenter.default.addObserver(
@@ -81,9 +102,12 @@ final class PullRequestReviewController {
     }
 
     private func bind() {
+        reviewView.onBack = { [weak self] in self?.onBack?() }
+        reviewView.onPopOut = { [weak self] in self?.popOutToWindow() }
         reviewView.onRefresh = { [weak self] in self?.load() }
         reviewView.onWindow = { [weak self] window in self?.hosted(in: window) }
         reviewView.onTerminal = { [weak self] in self?.openTerminal() }
+        reviewView.onToggleViewed = { [weak self] path in self?.toggleViewed(path) }
         reviewView.sidebar.onSelect = { [weak self] page in self?.select(page) }
         reviewView.composer.onChange = { [weak self] body, verdict in
             guard let self else { return }
@@ -132,6 +156,29 @@ final class PullRequestReviewController {
         guard page != state.page else { return }
         state.page = page
         render()
+    }
+
+    func toggleViewed(_ path: String) {
+        state.toggleViewed(path)
+        render()
+    }
+
+    /// Moves the exact `reviewView` + `PullRequestReviewState` into a dedicated `NSWindowController`.
+    func popOutToWindow() {
+        guard !isRetired else { return }
+        if let existing = popOutWindow {
+            existing.show()
+            return
+        }
+        let windowController = PullRequestReviewWindowController(controller: self, title: state.windowTitle)
+        windowController.onClose = { [weak self] view in
+            guard let self else { return }
+            self.popOutWindow = nil
+            self.onReturnFromWindow?(view)
+        }
+        popOutWindow = windowController
+        windowController.show()
+        onPopOut?()
     }
 
     // MARK: Reading

@@ -12,6 +12,8 @@ protocol MainToolbarHost: NSToolbarItemValidation {
     func showAgentsPane()
     /// File ▸ Workspace: switch, New, Rename and Delete.
     func workspaceSwitcherMenu() -> NSMenu?
+    func pillDropOperation(for pasteboard: NSPasteboard) -> NSDragOperation
+    func performPillDrop(from pasteboard: NSPasteboard, anchor: NSView) -> Bool
 }
 
 /// Each repository tab's Git commands live in its own `RepositoryCommandResponder`. The selected tab's (the resting
@@ -37,6 +39,31 @@ extension AppDelegate: RepositoryCommandHost, MainToolbarHost, SettingsShell {
         let responder = commands(for: model)
         NSApp.nextResponder = responder
         repositoryController?.commands = responder
+        installPaneFocusMenuItemsIfNeeded(in: NSApp.mainMenu)
+    }
+
+    func installPaneFocusMenuItemsIfNeeded(in menu: NSMenu?) {
+        guard let viewMenu = menu?.item(withTitle: String(localized: "View"))?.submenu else { return }
+        let entries: [(ShortcutCommand, Selector)] = [
+            (.focusSidebar, #selector(Self.focusSidebar)),
+            (.focusHistory, #selector(Self.focusHistory)),
+            (.focusFiles, #selector(Self.focusFiles)),
+            (.focusDiff, #selector(Self.focusDiff)),
+            (.cyclePaneFocus, #selector(Self.cyclePaneFocus)),
+        ]
+        var inserted = false
+        for (command, action) in entries {
+            let identifier = command.menuIdentifier
+            guard !viewMenu.items.contains(where: { $0.identifier == identifier }) else { continue }
+            let item = NSMenuItem(title: command.title, action: action, keyEquivalent: "")
+            item.target = self
+            item.identifier = identifier
+            item.isHidden = true
+            item.allowsKeyEquivalentWhenHidden = true
+            viewMenu.addItem(item)
+            inserted = true
+        }
+        if inserted { ShortcutStore.apply(to: viewMenu, defaults) }
     }
 
     /// The chain must not keep a responder this shell no longer owns (`nextResponder` does not retain it).
@@ -56,5 +83,13 @@ extension AppDelegate: RepositoryCommandHost, MainToolbarHost, SettingsShell {
         let rows = zip(labels, values).map { RepositoryPrompts.Field(label: $0, value: $1) }
         RepositoryPrompts.fields(
             title, rows, button: button, on: mainWindow, alerts: environment.system.alerts, action: action)
+    }
+
+    func pillDropOperation(for pasteboard: NSPasteboard) -> NSDragOperation {
+        repositoryController?.pillDropOperation(for: pasteboard.pasteboardItems ?? []) ?? []
+    }
+
+    func performPillDrop(from pasteboard: NSPasteboard, anchor: NSView) -> Bool {
+        repositoryController?.handlePillDrop(items: pasteboard.pasteboardItems ?? [], anchor: anchor) ?? false
     }
 }

@@ -49,10 +49,15 @@ struct AlertPresenter {
 
     /// A warning with a title and a message (cut to a readable length).
     func showError(_ title: String, _ message: String) {
+        showDestructiveError(title, message, on: nil)
+    }
+
+    /// Modal alert reserved for destructive failures (reset, discard, force-push, unrecoverable writes).
+    func showDestructiveError(_ title: String, _ message: String, on window: NSWindow? = nil) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = String(message.prefix(2_000))
         alert.alertStyle = .warning
-        present(alert)
+        present(alert, on: window)
     }
 }

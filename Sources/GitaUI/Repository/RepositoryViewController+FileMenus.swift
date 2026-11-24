@@ -36,6 +36,10 @@ extension RepositoryViewController: FileMenuActions {
         rebuildSidebar()
     }
 
+    func blameFile(_ path: String, commit: String?) {
+        showBlame(path: path, revision: commit)
+    }
+
     func confirmReset(_ paths: [String], to commit: String, message: String) {
         guard let window = view.window, !paths.isEmpty else { return }
         let confirmation = DestructiveConfirmation(

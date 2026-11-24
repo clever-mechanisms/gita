@@ -1,4 +1,15 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "repository %3$lld รายการ"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -6,6 +17,17 @@
         "type": "lld",
         "forms": {
           "other": "ติดตามการเปลี่ยนแปลง %2$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "การทำงานของ agent ใน 24 ชั่วโมง %1$lld ครั้ง"
         }
       }
     }
@@ -21,72 +43,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "ไฟล์ที่เปลี่ยนแปลง %1$lld รายการ"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "commit %1$lld รายการจะถูกทิ้ง"
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "subagent %1$lld ตัว"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "commit ทั้งหมด %1$lld รายการจะถูกทิ้ง"
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "ไฟล์ไบนารี · %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld ไบต์"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "ไฟล์ที่ยังไม่ถูกติดตาม %2$lld รายการ"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -94,6 +50,50 @@
         "type": "lld",
         "forms": {
           "other": "agent กำลังทำงาน %1$lld ตัว"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "repository ที่กำหนด %lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ตามหลัง %1$lld"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ตามหลัง %1$lld"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "branch %1$lld รายการ"
         }
       }
     }
@@ -109,6 +109,28 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ไฟล์ที่เปลี่ยนแปลง %1$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ความคิดเห็น %1$lld รายการ"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -120,6 +142,28 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ตามหลัง upstream %lld commit"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ตามหลัง upstream %lld commit และ remote มี commit ที่ยังไม่ได้ fetch"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -127,6 +171,39 @@
         "type": "lld",
         "forms": {
           "other": "commit %1$lld รายการที่ยังไม่ push"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "เลือก commit %lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "commit %1$lld รายการจะถูกทิ้ง"
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "conflict %lld รายการ"
         }
       }
     }
@@ -153,6 +230,17 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ไฟล์ %1$lld รายการ"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -160,6 +248,28 @@
         "type": "lld",
         "forms": {
           "other": "ไม่ได้ใช้งาน %1$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ความคิดเห็นแบบบรรทัดในรีวิวนี้ %1$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ข้อผิดพลาดที่บันทึกไว้ %1$lld รายการ"
         }
       }
     }
@@ -197,6 +307,17 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "PR ที่เปิดอยู่ %1$lld รายการ"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -219,6 +340,61 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ข้อผิดพลาดของเซิร์ฟเวอร์ %1$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "commit ที่ squash แล้ว %1$lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "staged %lld รายการ"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "subagent %1$lld ตัว"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "รอรีวิว %1$lld รายการ"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -230,85 +406,13 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "กำลังทำงาน %1$lld รายการ"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "push %1$lld commit"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "repository %3$lld รายการ"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "agent, กำลังทำงาน %1$#@working@, รอข้อมูล %2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "other": "%1$lld รายการ"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "other": "%2$lld รายการ"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ตามหลัง %1$lld"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "%1$#@count@ %2$@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "ตามหลัง %1$lld"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "ความคิดเห็น %1$lld รายการ"
+          "other": "ยังไม่แก้ %1$lld รายการ"
         }
       }
     }
@@ -335,57 +439,13 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "เปิดความคิดเห็น %1$lld รายการ ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "PR ที่เปิดอยู่ %1$lld รายการ"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "รอรีวิว %1$lld รายการ"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "branch %1$lld รายการ"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "กลุ่ม %1$@, %2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "other": "%2$lld แท็บ"
+          "other": "ยังไม่ staged %lld รายการ"
         }
       }
     }
@@ -401,57 +461,151 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ข้อผิดพลาดของเซิร์ฟเวอร์ %1$lld รายการ"
+          "other": "กำลังทำงาน %1$lld รายการ"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ข้อผิดพลาดที่บันทึกไว้ %1$lld รายการ"
+          "other": "(ห่างกัน %lld commit)"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "(−%1$lld / +%2$#@count@)",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "commit ที่ squash แล้ว %1$lld รายการ"
+          "other": "%2$lld commit"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "agent, กำลังทำงาน %1$#@working@, รอข้อมูล %2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "other": "การทำงานของ agent ใน 24 ชั่วโมง %1$lld ครั้ง"
+          "other": "%1$lld รายการ"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "other": "%2$lld รายการ"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ยังไม่แก้ %1$lld รายการ"
+          "other": "commit ทั้งหมด %1$lld รายการจะถูกทิ้ง"
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "ไฟล์ไบนารี · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%1$lld ไบต์"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "%1$#@count@ ลงบน %2$@ หรือ?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "cherry-pick %1$lld commit"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "cherry-pick %lld commit หรือ?"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "%1$#@count@ ใน %2$@ หรือ?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ทิ้งบรรทัดที่เปลี่ยนแปลง %1$lld บรรทัด"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ทิ้ง %lld บรรทัด…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "fetch, branch เลื่อน %lld รายการ"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "กลุ่ม %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "%2$lld แท็บ"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "ไฟล์ที่ยังไม่ถูกติดตาม %2$lld รายการ"
         }
       }
     }
@@ -467,24 +621,68 @@
       }
     }
   },
-  "%lld files": {
-    "format": "%#@count@",
+  "Open %lld Comments ↗": {
+    "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ไฟล์ %1$lld รายการ"
+          "other": "เปิดความคิดเห็น %1$lld รายการ ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
+  "Production is %lld commits behind, open deployment": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "other": "ความคิดเห็นแบบบรรทัดในรีวิวนี้ %1$lld รายการ"
+          "other": "production ตามหลัง %lld commit เปิด deployment"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "pull %lld commit"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "push %1$lld commit"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "revert %lld commit หรือ?"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "stage %lld บรรทัด"
         }
       }
     }
@@ -507,6 +705,17 @@
         "type": "lld",
         "forms": {
           "other": "commit %1$lld รายการจาก branch นี้จะถูก rebase และเพิ่มไปยัง base branch"
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "other": "unstage %lld บรรทัด"
         }
       }
     }

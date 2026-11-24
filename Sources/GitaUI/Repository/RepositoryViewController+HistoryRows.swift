@@ -14,6 +14,27 @@ extension RepositoryViewController: HistoryTableDelegate {
         model.select(commit)
     }
 
+    func historyDidChangeSelection(_ selection: HistorySelection) {
+        guard !updating else { return }
+        if model.section == .changes { model.section = .history }
+        switch selection {
+        case .none, .commit:
+            // Handled by historyDidSelect / historyDidDeselect; ensure multi/working-changes overlay clears.
+            if case .commit(let id) = selection {
+                model.graphState.isReviewingWorkingChanges = false
+                model.graphState.historySelection = .commit(id)
+                model.graphState.compare = nil
+                model.graphState.compareTask?.cancel()
+            } else {
+                model.graphState.historySelection = .none
+            }
+            syncHistoryDetailOverlay()
+        case .pair, .many:
+            model.selectHistory(selection)
+            syncHistoryDetailOverlay()
+        }
+    }
+
     func historyDidDeselect() {
         guard !updating, model.section == .history else { return }
         model.deselectCommit()
@@ -91,7 +112,8 @@ extension RepositoryViewController: HistoryTableDelegate {
                 commit: commit, squashTip: squashTip, mergedCount: mergedCommitIDs(commit).count,
                 mergedBy: ProviderSignalQuery(signals: model.allSignals).mergedBy(commit.id),
                 references: model.snapshot?.references ?? [],
-                expanded: model.collapsesMerges && model.focusedReference == nil && model.isMergeExpanded(commit.id)))
+                expanded: model.collapsesMerges && model.focusedReference == nil && model.inlineAuthor == nil
+                    && model.isMergeExpanded(commit.id)))
     }
 
     /// Commits a merge brought in, within the loaded history (bounded walk, cached per history reload).
@@ -120,7 +142,7 @@ extension RepositoryViewController: HistoryTableDelegate {
         let commits = MergedCommitCache.commits(mergedCommitIDs(merge), in: model.mergeHistory)
         guard !commits.isEmpty else { return nil }
         var action: (title: String, run: () -> Void)?
-        if model.collapsesMerges, model.focusedReference == nil {
+        if model.collapsesMerges, model.focusedReference == nil, model.inlineAuthor == nil {
             let expanded = model.isMergeExpanded(id)
             action = (
                 expanded ? String(localized: "Hide in History") : String(localized: "Show in History"),

@@ -8,7 +8,8 @@ import GitaCore
 @MainActor
 final class AppModel {
     enum Change {
-        case repository, history, historyAppearance, selection, diff, providers, status, section, activity, commitDraft
+        case repository, history, historyAppearance, selection, diff, providers, status, section, activity, commitDraft,
+            banner
     }
     let defaults: UserDefaults
     private var observers: [UUID: (Change) -> Void] = [:]
@@ -25,6 +26,10 @@ final class AppModel {
     private(set) var amendStaging = AmendStaging.off
     let draftController: CommitDraftController
     var graphState = HistoryGraphState()
+    var contentBanner: ContentBanner = .none {
+        didSet { if oldValue != contentBanner { emit(.banner) } }
+    }
+    var diffOptions: DiffOptions
     var selection = SelectionState()
     var search = HistorySearch()
     var focus = BranchFocus()
@@ -89,6 +94,7 @@ final class AppModel {
         alerts: AlertPresenter = .shared, dependencies: AppModelDependencies = .standard
     ) {
         self.defaults = defaults
+        diffOptions = DiffOptions(ignoreWhitespace: DiffPreference.ignoreWhitespace(defaults))
         providerService = providers
         self.alerts = alerts
         self.dependencies = dependencies
@@ -215,6 +221,7 @@ final class AppModel {
         selection.supersede()
         search.invalidate()
         scheduler.stop()
+        RemoteMonitor.shared.unregister(model: self)
         replaceWatcher(nil)
         isWindowVisible = false
         isMenuVisible = false

@@ -1,5 +1,5 @@
-/// The code pane's header and empty text: the shown path and Stage / Unstage hunk (a conflict opens in the merge
-/// editor instead).
+/// The code pane's header, inline hunk availability, and empty text: the shown path and hunk action eligibility
+/// (a conflict opens in the merge editor instead).
 struct CodePaneState: Equatable {
     struct Input {
         var isChanges: Bool
@@ -16,29 +16,26 @@ struct CodePaneState: Equatable {
         var isDiffLoading: Bool
         /// The diff on screen can apply hunks.
         var canApplyHunks: Bool
-        /// A hunk is selected in the diff the model has (not in one it has replaced since).
-        var hasSelectedHunk: Bool
+        var ignoreWhitespace: Bool = false
     }
 
     var path: String
     var showsHunk: Bool
-    var hunkTitle: String
-    var canApplyHunk: Bool
-    var hunkToolTip: String
+    var isStaged: Bool
+    var canApplyDocumentHunks: Bool
+    var showsWhitespaceNotice: Bool
     var emptyMessage: String
 
     init(_ input: Input) {
         path = input.path ?? ""
         let conflict = input.selectedFileIsConflict
         showsHunk = input.isChanges && !conflict
-        hunkTitle = input.isStaged ? String(localized: "Unstage hunk") : String(localized: "Stage hunk")
-        canApplyHunk =
-            input.isChanges && !input.isMutating && !input.isDiffLoading && input.hasSelectedFile
-            && input.canApplyHunks && input.hasSelectedHunk
-        hunkToolTip =
-            input.canApplyHunks
-            ? String(localized: "Select a diff line to choose its hunk")
-            : String(localized: "Use whole-file staging for this change")
+        isStaged = input.isStaged
+        showsWhitespaceNotice =
+            input.isChanges && !conflict && !input.isTreeReview && input.hasSelectedFile && input.ignoreWhitespace
+        canApplyDocumentHunks =
+            input.isChanges && !conflict && !input.isMutating && !input.isDiffLoading
+            && input.hasSelectedFile && input.canApplyHunks && !input.ignoreWhitespace
         emptyMessage = Self.emptyMessage(input)
     }
 

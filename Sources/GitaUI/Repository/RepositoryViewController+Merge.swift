@@ -5,7 +5,6 @@ import GitaCore
 /// moves on to the next one, and the operation bar resolves every simple conflict at once.
 extension RepositoryViewController {
     func wireMerge() {
-        Style.fill(merge.view, in: codePane)
         merge.view.isHidden = true
         merge.onSaved = { [weak self] path in self?.selectConflict(after: path) }
         merge.onReopen = { [weak self] path in self?.reopenConflict(path: path) }
@@ -25,6 +24,11 @@ extension RepositoryViewController {
         simpleScan.update(
             conflicts: (model.snapshot?.changes ?? []).filter(\.isConflict).map(\.path), service: model.service)
         let file = selectedConflict
+        if file != nil {
+            if merge.view.superview !== codePane { Style.fill(merge.view, in: codePane) }
+        } else {
+            merge.view.removeFromSuperview()
+        }
         merge.show(file, model: model)
         merge.view.isHidden = file == nil
     }

@@ -23,6 +23,12 @@ struct SidebarRepositoryList {
     var key: (URL?) -> String?
     var sessionsAt: (URL) -> [AgentSession]
     var sessionsIn: (URL) -> [AgentSession]
+    /// Most recently used checkout per canonical repository root.
+    var mruCheckouts: [String: String] = [:]
+    /// Repository keys (`WindowAgents.key`) whose remote moved per `RemoteMonitor`.
+    var remoteMovedRoots: Set<String> = []
+    /// Checkout keys (`WindowAgents.key`) whose current branch upstream moved per `RemoteMonitor`.
+    var remoteMovedCheckouts: Set<String> = []
 
     private func key(_ path: String) -> String? { key(URL(fileURLWithPath: path)) }
     private var currentKey: String? { key(snapshot?.root) }
@@ -80,14 +86,17 @@ struct SidebarRepositoryList {
     private func repository(_ root: URL, key rootKey: String, isCurrent: Bool) -> Repository {
         let status = status(root)
         var ahead = status?.ahead ?? 0
+        var behind = status?.behind ?? 0
         var changed = status?.changedFiles ?? 0
         let checkouts: [Checkout]
         if isCurrent, let snapshot, let first = trees.first, !first.isBare,
             key(first.path) != currentKey
         {
+            behind = max(behind, snapshot.behind)
             checkouts = linkedWorktreeCheckouts(snapshot, rootKey: rootKey, status: status)
         } else if isCurrent, let snapshot {
             ahead = snapshot.ahead
+            behind = snapshot.behind
             changed = snapshot.changes.count
             checkouts = currentCheckouts(snapshot, rootKey: rootKey)
         } else if let status {
@@ -95,14 +104,38 @@ struct SidebarRepositoryList {
         } else {
             checkouts = sessionCheckouts(root)
         }
+        let moved = remoteMovedRoots.contains(rootKey) || checkouts.contains(where: \.remoteMoved)
         return Repository(
-            root: root, name: status?.name ?? root.lastPathComponent, badge: Self.badge(ahead: ahead, changed: changed),
-            badgeIsChange: ahead == 0 && changed > 0, isCurrent: isCurrent, checkouts: checkouts,
-            error: status?.error)
+            root: root, name: status?.name ?? root.lastPathComponent,
+            badge: Self.badge(ahead: ahead, behind: behind, changed: changed, remoteMoved: moved),
+            badgeIsChange: ahead == 0 && behind == 0 && !moved && changed > 0, isCurrent: isCurrent,
+            checkouts: checkouts, error: status?.error, behind: behind, remoteMoved: moved,
+            mruCheckoutPath: mruCheckoutPath(for: rootKey, checkouts: checkouts))
     }
 
-    static func badge(ahead: Int, changed: Int) -> String {
-        ahead > 0 ? "↑\(ahead)" : changed > 0 ? String(localized: "\(changed) changed") : ""
+    private func mruCheckoutPath(for rootKey: String, checkouts: [Checkout]) -> String? {
+        let checkoutKeys = Set(checkouts.compactMap { key($0.path) })
+        if let stored = mruCheckouts[rootKey], let storedKey = key(stored), checkoutKeys.contains(storedKey) {
+            return stored
+        }
+        return recent.first { path in
+            guard let candidate = key(path) else { return false }
+            return checkoutKeys.contains(candidate)
+        }
+    }
+
+    static func badge(ahead: Int, behind: Int = 0, changed: Int, remoteMoved: Bool = false) -> String {
+        var parts: [String] = []
+        if behind > 0 { parts.append("↓\(behind)") } else if remoteMoved { parts.append("⇣") }
+        if ahead > 0 { parts.append("↑\(ahead)") }
+        if !parts.isEmpty { return parts.joined(separator: " ") }
+        return changed > 0 ? String(localized: "\(changed) changed") : ""
+    }
+
+    private struct CheckoutMetrics {
+        var ahead = 0
+        var behind = 0
+        var locked = false
     }
 
     /// A linked worktree is open: the repository's checkouts in the worktree list's order (main first).
@@ -113,26 +146,36 @@ struct SidebarRepositoryList {
             guard !tree.isBare else { return nil }
             let here = key(tree.path)
             let ahead = here == currentKey ? snapshot.ahead : here == rootKey ? status?.ahead ?? 0 : 0
+            let behind = here == currentKey ? snapshot.behind : here == rootKey ? status?.behind ?? 0 : 0
             return checkout(
                 tree.path, branch: here == currentKey ? snapshot.localizedBranch : Self.label(tree),
-                isMain: index == 0, ahead: ahead, locked: tree.isLocked)
+                isMain: index == 0, metrics: CheckoutMetrics(ahead: ahead, behind: behind, locked: tree.isLocked))
         }
     }
 
     private func currentCheckouts(_ snapshot: RepositorySnapshot, rootKey: String) -> [Checkout] {
-        [checkout(snapshot.root.path, branch: snapshot.localizedBranch, isMain: true, ahead: snapshot.ahead)]
+        [
+            checkout(
+                snapshot.root.path, branch: snapshot.localizedBranch, isMain: true,
+                metrics: CheckoutMetrics(ahead: snapshot.ahead, behind: snapshot.behind))
+        ]
             + trees.filter { !$0.isBare && key($0.path) != rootKey }.map {
-                checkout($0.path, branch: Self.label($0), isMain: false, ahead: 0, locked: $0.isLocked)
+                checkout(
+                    $0.path, branch: Self.label($0), isMain: false,
+                    metrics: CheckoutMetrics(locked: $0.isLocked))
             }
     }
 
     private func statusCheckouts(_ root: URL, status: RepositoryStatus) -> [Checkout] {
         [
             checkout(
-                root.path, branch: status.branch ?? String(localized: "Detached"), isMain: true, ahead: status.ahead)
+                root.path, branch: status.branch ?? String(localized: "Detached"), isMain: true,
+                metrics: CheckoutMetrics(ahead: status.ahead, behind: status.behind))
         ]
             + status.worktrees.filter { !$0.isBare }.map {
-                checkout($0.path, branch: Self.label($0), isMain: false, ahead: 0, locked: $0.isLocked)
+                checkout(
+                    $0.path, branch: Self.label($0), isMain: false,
+                    metrics: CheckoutMetrics(locked: $0.isLocked))
             }
     }
 
@@ -147,11 +190,18 @@ struct SidebarRepositoryList {
         ]
     }
 
-    private func checkout(_ path: String, branch: String, isMain: Bool, ahead: Int, locked: Bool = false) -> Checkout {
+    private func checkout(_ path: String, branch: String, isMain: Bool, metrics: CheckoutMetrics) -> Checkout {
         let url = URL(fileURLWithPath: path)
-        return Checkout(
-            path: path, branch: branch, sessions: sessionsAt(url), meta: ahead > 0 ? "↑\(ahead)" : "",
-            isMain: isMain, isLocked: locked, isLoading: key(url).map(loading.contains) == true)
+        let checkoutKey = key(url)
+        let moved = checkoutKey.map(remoteMovedCheckouts.contains) == true
+        var result = Checkout(
+            path: path, branch: branch, sessions: sessionsAt(url), meta: "",
+            isMain: isMain, isLocked: metrics.locked,
+            isLoading: checkoutKey.map(loading.contains) == true,
+            behind: metrics.behind, remoteMoved: moved)
+        let aheadText = metrics.ahead > 0 ? "↑\(metrics.ahead)" : ""
+        result.meta = [result.remoteUpdateText, aheadText].filter { !$0.isEmpty }.joined(separator: " ")
+        return result
     }
 
     private static func label(_ tree: GitWorktree) -> String {

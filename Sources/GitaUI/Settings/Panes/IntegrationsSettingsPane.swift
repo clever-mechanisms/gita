@@ -1,27 +1,35 @@
 import AppKit
 import GitaCore
 
-/// Settings ▸ Integrations: GitHub and Vercel, each switchable, refreshing on its own or not, with its account and the
-/// active repository's status. The coding agents, Orca and their hooks live in AI Agents.
+/// Settings ▸ Integrations: GitHub (including every signed-in/expired `gh` account and its per-repository assignments)
+/// and Vercel, each switchable, refreshing on its own or not, with its account and the active repository's status.
 @MainActor
 final class IntegrationsSettingsPane: SettingsPaneContent {
-    /// Accounts are read again when the pane appears this long after the last check.
     private static let accountRecheckInterval: TimeInterval = 60
 
-    /// An integration's on/off switch.
     private(set) var integrationSwitches: [Integration: AccentSwitch] = [:]
-    /// GitHub's and Vercel's "Refresh automatically".
     private(set) var refreshSwitches: [Integration: AccentSwitch] = [:]
     let githubAccount = SettingsStatus()
     let githubRepository = SettingsStatus()
     private(set) lazy var githubRepositoryRow = SettingsRow("", [githubRepository])
+    private(set) lazy var addGitHubAccountButton: ActionButton = {
+        let button = SettingsForm.button(String(localized: "Add account…"), symbol: "plus") { [weak self] in
+            self?.triggerAddGitHubAccount()
+        }
+        button.setAccessibilityIdentifier("settings.github.addAccount")
+        return button
+    }()
     private lazy var githubGroup = SettingsGroup(
         "GitHub",
         [
             integrationRow(.github, String(localized: "Pull requests, workflows and checks")),
             refreshRow(.github, .providerRefresh),
-            SettingsRow(String(localized: "Account"), [githubAccount]), githubRepositoryRow,
+            SettingsRow(String(localized: "Account"), [addGitHubAccountButton, githubAccount]),
+            githubRepositoryRow,
         ])
+    private(set) lazy var githubAccountsGroup = SettingsGroup(String(localized: "GitHub Accounts"), [])
+    private(set) var accountAssignmentControls: [String: (popup: ActionPopUpButton, reset: ActionButton)] = [:]
+
     let vercelAccount = SettingsStatus()
     let vercelRepository = SettingsStatus()
     private(set) lazy var vercelRepositoryRow = SettingsRow("", [vercelRepository])
@@ -35,13 +43,14 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
     private lazy var follower = ActiveModelFollower { [weak self] change in
         if change == .providers || change == .repository { self?.refresh() }
     }
-    /// What one read of the accounts found, and when.
+
     struct AccountsRead {
         var github: CLIAccountProbe.Account
         var vercel: CLIAccountProbe.Account
         var at: Date
+        var githubAccounts: [GitHubAccount] = []
     }
-    /// The accounts' read: none yet, a read running (what the last one found stays on screen meanwhile), or read.
+
     enum AccountsCheck {
         case unchecked
         case checking(Task<Void, Never>, last: AccountsRead?)
@@ -55,31 +64,41 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
             }
         }
         var isChecking: Bool { if case .checking = self { true } else { false } }
-        /// Shown again: read when nothing has been read yet or the last read is older than `interval`.
         func isDue(at now: Date, interval: TimeInterval) -> Bool {
             last.map { now.timeIntervalSince($0.at) > interval } ?? true
         }
-        /// The read stopped (the pane went away, or a new read replaces it): back to what was read before it.
         var stopped: Self {
             guard case .checking(_, let last) = self else { return self }
             return last.map(Self.checked) ?? .unchecked
         }
         var task: Task<Void, Never>? { if case .checking(let task, _) = self { task } else { nil } }
     }
+
     private(set) var accounts = AccountsCheck.unchecked
-    /// Between didAppear and didDisappear: coming back to the front reads the accounts again.
     private var isShown = false
+    private var preferenceObserver: NSObjectProtocol?
 
     override init(environment: SettingsEnvironment) {
         super.init(environment: environment)
         showAccounts()
         SettingsForm.mark(githubGroup.titleLabel, BrandMarks.image(.github, size: SettingsForm.markSize), "GitHub")
         SettingsForm.mark(vercelGroup.titleLabel, BrandMarks.image(.vercel, size: SettingsForm.markSize), "Vercel")
-        setGroups([githubGroup, vercelGroup])
+        setGroups([githubGroup, githubAccountsGroup, vercelGroup])
+        preferenceObserver = NotificationCenter.default.addObserver(
+            forName: .gitaPreferenceChanged, object: nil, queue: .main
+        ) { [weak self] note in
+            let preference = Preference(changed: note)
+            MainActor.assumeIsolated {
+                guard preference == .githubAccounts else { return }
+                self?.rebuildGitHubAccounts()
+            }
+        }
     }
-    isolated deinit { accounts.task?.cancel() }
+    isolated deinit {
+        accounts.task?.cancel()
+        if let preferenceObserver { NotificationCenter.default.removeObserver(preferenceObserver) }
+    }
 
-    /// The switch that turns an integration on or off as a whole.
     private func integrationRow(_ integration: Integration, _ title: String) -> SettingsRow {
         let toggle = AccentSwitch(accessibility: title) { [weak self] on in
             guard let self else { return }
@@ -90,8 +109,6 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         return SettingsRow(title, [toggle])
     }
 
-    /// Whether the integration is read again on its own while a window is open (every minute, more often while a
-    /// deployment builds); off, it is read when a repository opens and on ⌘R.
     private func refreshRow(_ integration: Integration, _ preference: Preference) -> SettingsRow {
         let title = String(localized: "Refresh automatically")
         let toggle = AccentSwitch(accessibility: title) { [weak self] on in
@@ -147,6 +164,7 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         githubGroup.updateSeparators()
         vercelGroup.updateSeparators()
         refreshToggles()
+        rebuildGitHubAccounts()
         if before != [githubRepositoryRow.isHidden, vercelRepositoryRow.isHidden] { onLayoutChange?() }
     }
     private func show(_ value: IntegrationsPresenter.RepositoryRow?, in row: SettingsRow, _ status: SettingsStatus) {
@@ -171,21 +189,146 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         let last = accounts.last
         let probe = environment.accounts
         let task = Task { [weak self] in
-            async let github = probe.account(.github)
+            async let github = probe.githubStatus()
             async let vercel = probe.account(.vercel)
-            let (githubAccount, vercelAccount) = await (github, vercel)
+            let (githubRead, vercelAccount) = await (github, vercel)
             guard let self, !Task.isCancelled else { return }
-            self.accounts = .checked(AccountsRead(github: githubAccount, vercel: vercelAccount, at: Date()))
+            self.accounts = .checked(
+                AccountsRead(
+                    github: githubRead.account, vercel: vercelAccount, at: Date(),
+                    githubAccounts: githubRead.accounts))
             self.showAccounts()
         }
         accounts = .checking(task, last: last)
         showAccounts()
     }
+
     private func showAccounts() {
         let last = accounts.last
         for (status, account) in [(githubAccount, last?.github), (vercelAccount, last?.vercel)] {
             let row = IntegrationsPresenter.accountRow(account, checking: accounts.isChecking)
             status.set(row.value, color: row.color, tooltip: row.tooltip)
         }
+        rebuildGitHubAccounts()
+    }
+
+    func rebuildGitHubAccounts() {
+        let beforeSignature = githubAccountsGroup.rows.map {
+            $0.titleLabel.stringValue + "\0" + ($0.subtitleLabel?.stringValue ?? "")
+        }
+        accountAssignmentControls.removeAll()
+        let store = GitHubAccountStore(defaults: defaults)
+        let assignments = store.allAssignments()
+        let listed = accounts.last?.githubAccounts ?? []
+        let signedInLogins = listed.filter(\.isSignedIn).map(\.login).sorted()
+        var rows: [SettingsRow] = []
+
+        if accounts.last == nil && accounts.isChecking && assignments.isEmpty {
+            rows.append(SettingsRow(String(localized: "Checking GitHub accounts…"), []))
+        } else {
+            let (sections, orphaned) = IntegrationsPresenter.githubSections(
+                accounts: listed, assignments: assignments)
+            for section in sections {
+                rows.append(accountRow(for: section))
+                for repo in section.repositories {
+                    rows.append(assignmentRow(for: repo, signedInLogins: signedInLogins, missingLogin: nil))
+                }
+            }
+            for repo in orphaned {
+                rows.append(
+                    assignmentRow(for: repo, signedInLogins: signedInLogins, missingLogin: repo.choice.login))
+            }
+            if rows.isEmpty {
+                let add = SettingsForm.button(String(localized: "Add account…"), symbol: "plus") { [weak self] in
+                    self?.triggerAddGitHubAccount()
+                }
+                rows.append(SettingsRow(String(localized: "No signed-in GitHub accounts"), [add]))
+            }
+        }
+        githubAccountsGroup.setRows(rows)
+        let afterSignature = rows.map {
+            $0.titleLabel.stringValue + "\0" + ($0.subtitleLabel?.stringValue ?? "")
+        }
+        if beforeSignature != afterSignature { onLayoutChange?() }
+    }
+
+    private func accountRow(for section: IntegrationsPresenter.AccountSection) -> SettingsRow {
+        let status = SettingsStatus()
+        status.set(section.statusText, color: section.statusColor, tooltip: section.tooltip)
+        let count = section.repositories.count
+        let subtitle =
+            count == 0
+            ? String(localized: "No assigned repositories")
+            : String(localized: "\(count) assigned repositories")
+        var accessories: [NSView] = [status]
+        if !section.account.isSignedIn {
+            let signIn = SettingsForm.button(String(localized: "Sign in…"), symbol: "person.badge.key") { [weak self] in
+                self?.triggerAddGitHubAccount()
+            }
+            accessories.append(signIn)
+        }
+        let row = SettingsRow(section.account.login.value, accessories, subtitle: subtitle)
+        row.setAccessibilityIdentifier("settings.github.account." + section.account.login.value)
+        return row
+    }
+
+    private func assignmentRow(
+        for repo: IntegrationsPresenter.RepositoryAssignment, signedInLogins: [GitHubLogin],
+        missingLogin: GitHubLogin?
+    ) -> SettingsRow {
+        let popup = ActionPopUpButton { [weak self] control in
+            let login = control.selectedValue.flatMap { $0.isEmpty ? nil : GitHubLogin($0) }
+            self?.changeAssignment(sourceID: repo.sourceID, login: login)
+        }
+        popup.controlSize = .small
+        popup.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        popup.setAccessibilityLabel(String(localized: "Account for \(repo.displayName)"))
+        popup.setAccessibilityIdentifier("settings.github.assignment." + repo.sourceID)
+        popup.addItem(String(localized: "Automatic"), value: "")
+        for login in signedInLogins { popup.addItem(login.value, value: login.value) }
+        if repo.isChosen {
+            if !popup.select(value: repo.choice.login.value) {
+                let title = String(localized: "\(repo.choice.login.value) (signed out)")
+                popup.addItem(title, value: repo.choice.login.value)
+                popup.select(value: repo.choice.login.value)
+            }
+        } else {
+            popup.selectItem(at: 0)
+        }
+        let reset = SettingsForm.button(String(localized: "Reset"), symbol: "arrow.counterclockwise") { [weak self] in
+            self?.resetAssignment(sourceID: repo.sourceID)
+        }
+        reset.controlSize = .small
+        reset.setAccessibilityLabel(String(localized: "Reset account for \(repo.displayName)"))
+        reset.setAccessibilityIdentifier("settings.github.reset." + repo.sourceID)
+        accountAssignmentControls[repo.sourceID] = (popup, reset)
+
+        let subtitle: String =
+            if let missingLogin {
+                String(localized: "Assigned to \(missingLogin.value) (not signed in)")
+            } else if repo.isChosen {
+                String(localized: "Chosen for this repository")
+            } else {
+                String(localized: "Detected automatically")
+            }
+        let row = SettingsRow(repo.displayName, [popup, reset], subtitle: subtitle)
+        row.titleLabel.toolTip = repo.sourceID
+        return row
+    }
+
+    private func changeAssignment(sourceID: String, login: GitHubLogin?) {
+        GitHubAccountStore(defaults: defaults).choose(login, sourceID: sourceID)
+        environment.app.activeModel()?.gitHubAccountAssignmentChanged(for: sourceID)
+        rebuildGitHubAccounts()
+    }
+
+    private func resetAssignment(sourceID: String) {
+        GitHubAccountStore(defaults: defaults).reset(sourceID: sourceID)
+        environment.app.activeModel()?.gitHubAccountAssignmentChanged(for: sourceID)
+        rebuildGitHubAccounts()
+    }
+
+    private func triggerAddGitHubAccount() {
+        environment.system.addGitHubAccount()
     }
 }

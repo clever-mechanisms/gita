@@ -56,6 +56,17 @@ final class SettingsGroup: NSView {
         updateSeparators()
     }
 
+    /// Replaces the group's rows in place (for dynamic lists such as GitHub accounts).
+    func setRows(_ newRows: [SettingsRow]) {
+        for row in rows {
+            stack.removeArrangedSubview(row)
+            row.removeFromSuperview()
+        }
+        rows.removeAll()
+        for row in newRows { add(row) }
+        updateSeparators()
+    }
+
     /// Call after showing or hiding rows. The whole group hides when no row is visible.
     func updateSeparators() {
         var first = true
@@ -73,12 +84,16 @@ private final class SettingsGroupBox: NSView {
 
 extension SettingsGroup {
     /// A group's rounded box, also drawn around a `SettingsFeatureCard`.
-    static func drawBox(_ bounds: NSRect) {
+    static func drawBox(_ bounds: NSRect, highlighted: Bool = false) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 9, yRadius: 9)
         Theme.toolbar.setFill()
         path.fill()
-        Theme.separator.setStroke()
-        path.lineWidth = 1
+        if highlighted {
+            Theme.accent.withAlphaComponent(0.10).setFill()
+            path.fill()
+        }
+        (highlighted ? Theme.accent : Theme.separator).setStroke()
+        path.lineWidth = highlighted ? 1.5 : 1
         path.stroke()
     }
 }

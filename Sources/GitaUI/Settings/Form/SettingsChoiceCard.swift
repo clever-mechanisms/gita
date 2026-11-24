@@ -7,6 +7,10 @@ final class SettingsChoiceCard: NSView {
     let titleLabel: NSTextField
     let help: SettingsHelpButton?
     private let box = SettingsChoiceCardBox()
+    var isSearchHighlighted: Bool {
+        get { box.isSearchHighlighted }
+        set { box.isSearchHighlighted = newValue }
+    }
 
     init(_ title: String, popup: NSPopUpButton, help explanation: String?, illustration: NSView) {
         titleLabel = SettingsForm.label(title, color: Theme.secondaryText, font: Theme.bodyEmphasis)
@@ -56,5 +60,6 @@ final class SettingsChoiceCard: NSView {
 }
 
 private final class SettingsChoiceCardBox: NSView {
-    override func draw(_: NSRect) { SettingsGroup.drawBox(bounds) }
+    var isSearchHighlighted = false { didSet { if oldValue != isSearchHighlighted { needsDisplay = true } } }
+    override func draw(_: NSRect) { SettingsGroup.drawBox(bounds, highlighted: isSearchHighlighted) }
 }

@@ -109,7 +109,6 @@ struct RepositoryWindowProviderTests {
         fixture.controller.strip.onChecks?()
         try await fixture.wait("the head commit") { fixture.model.selectedCommit?.id == head }
         #expect(fixture.model.section == .history)
-        fixture.controller.strip.onBranch?(fixture.controller.strip)
         fixture.controller.strip.onAgent?(nil)
         #expect(fixture.controller.isAgentsPaneShown)
     }

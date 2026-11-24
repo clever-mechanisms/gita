@@ -28,7 +28,43 @@ enum HistoryRelayout {
     case running(UUID, Task<Void, Never>, then: [@MainActor () -> Void])
 }
 
-/// The laid-out history and what shapes it: folded merges, squash links and an author tab's links.
+/// Inline `⏷` author filter state, using `AuthorHistory` inside the current tab.
+struct InlineAuthorFilter {
+    var author: CommitAuthor?
+    var commits: [GitCommit] = []
+    var graph: [GraphRow] = []
+    var index = HistoryIndex.empty
+    private(set) var identity = UUID()
+    var hasMore = false
+    var read = HistoryPageRead.idle
+
+    var isActive: Bool { author != nil }
+    var isLoading: Bool { read.isReading }
+
+    mutating func discard() {
+        read.cancel()
+        identity = UUID()
+        author = nil
+        commits = []
+        graph = []
+        index = .empty
+        hasMore = false
+    }
+}
+
+/// Compare state for 2-commit comparison (`HistorySelection.pair`).
+struct CompareState: Equatable {
+    var base: String
+    var head: String
+    var files: [FileChange] = []
+    var selectedFile: FileChange?
+    var diff = ""
+    var distance: CommitDistance?
+    var isLoadingFiles = false
+    var isLoadingDiff = false
+}
+
+/// The laid-out history and what shapes it: folded merges, squash links, selection, inline filters, and compare.
 struct HistoryGraphState {
     /// Built off the main thread, set with the snapshot it describes.
     var layout = HistoryLayout.empty
@@ -42,11 +78,37 @@ struct HistoryGraphState {
     private(set) var relayout = HistoryRelayout.idle
     /// An author tab's graph links (`AuthorHistory.graphParents`) for the loaded commits.
     var lensLinks: [String: [String]] = [:]
+    /// §6b multi-selection lifecycle enum.
+    var historySelection = HistorySelection.none
+    /// §6b whether the user clicked the pinned Working Changes row while in All Commits.
+    var isReviewingWorkingChanges = false
+    /// §6b 2-commit comparison state.
+    var compare: CompareState?
+    var compareTask: Task<Void, Never>?
+    var compareGeneration = 0
+    /// §6a inline `⏷` author filter and cached repository top authors / `Me`.
+    var inlineAuthor = InlineAuthorFilter()
+    var topAuthors: [AuthorSummary] = []
+    var configuredMe: CommitAuthor?
+    var authorsGeneration = 0
+    var authorsTask: Task<Void, Never>?
 
     /// A newly opened repository: nothing laid out (the squash revision keeps counting).
     mutating func reset() {
         cancelSquashSearch()
         cancelRelayout()
+        inlineAuthor.discard()
+        compareTask?.cancel()
+        compareTask = nil
+        compare = nil
+        compareGeneration += 1
+        authorsTask?.cancel()
+        authorsTask = nil
+        topAuthors = []
+        configuredMe = nil
+        authorsGeneration += 1
+        historySelection = .none
+        isReviewingWorkingChanges = false
         squashLinks = [:]
         squashRevision += 1
         layout = .empty

@@ -18,11 +18,31 @@ final class SidebarTable: NSTableView {
     var onReturn: (() -> Void)?
     /// Changes the selected group; false when the selected row is not one (the table then handles the key).
     var onExpand: ((GroupChange) -> Bool)?
+    /// Clicking directly on a row's disclosure chevron toggles expansion without selecting or navigating.
+    var onChevronClick: ((Int) -> Void)?
+    /// Modifier flags captured from the latest mouse down event on this table.
+    private(set) var lastClickModifiers: NSEvent.ModifierFlags?
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let index = row(at: convert(event.locationInWindow, from: nil))
         guard index >= 0, index < numberOfRows else { return nil }
         return rowMenu?(index)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let hitRow = row(at: point)
+        if hitRow >= 0, hitRow < numberOfRows,
+            let cell = view(atColumn: 0, row: hitRow, makeIfNecessary: false) as? SidebarCell,
+            cell.isChevronHit(at: cell.convert(point, from: self))
+        {
+            lastClickModifiers = nil
+            onChevronClick?(hitRow)
+            return
+        }
+        lastClickModifiers = event.modifierFlags
+        defer { lastClickModifiers = nil }
+        super.mouseDown(with: event)
     }
 
     override func keyDown(with event: NSEvent) {

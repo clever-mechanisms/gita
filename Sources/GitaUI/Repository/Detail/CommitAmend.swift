@@ -1,6 +1,35 @@
 import GitaCore
 
-/// Local Changes' Amend Last Commit (Fork's checkbox): off, loading HEAD's message, or armed at one commit.
+/// Single lifecycle state for the commit composer: normal commit, loading HEAD for amend, or armed at a commit.
+enum CommitMode: Equatable {
+    case commit
+    case amendLoading
+    case amend(published: Bool, detached: Bool)
+
+    var isAmend: Bool {
+        if case .commit = self { return false }
+        return true
+    }
+
+    var isArmed: Bool {
+        if case .amend = self { return true }
+        return false
+    }
+
+    var isLoading: Bool { self == .amendLoading }
+
+    var isPublished: Bool {
+        if case .amend(let published, _) = self { return published }
+        return false
+    }
+
+    var isDetached: Bool {
+        if case .amend(_, let detached) = self { return detached }
+        return false
+    }
+}
+
+/// Local Changes' Amend Last Commit: off, loading HEAD's message, or armed at one commit.
 enum CommitAmend: Equatable {
     case off
     case loading
@@ -9,6 +38,14 @@ enum CommitAmend: Equatable {
     var isOn: Bool {
         if case .off = self { return false }
         return true
+    }
+
+    var mode: CommitMode {
+        switch self {
+        case .off: .commit
+        case .loading: .amendLoading
+        case .armed(let source, _): .amend(published: source.isPublished, detached: source.isDetached)
+        }
     }
 
     var source: GitService.AmendCommit? {

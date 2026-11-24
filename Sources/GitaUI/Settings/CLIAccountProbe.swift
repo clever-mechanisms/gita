@@ -1,7 +1,7 @@
 import Foundation
 import GitaCore
 
-/// The account signed in to a provider CLI's existing session, read-only (`gh api user`, `vercel whoami`). Gita
+/// The account signed in to a provider CLI's existing session, read-only (`gh auth status`, `vercel whoami`). Gita
 /// never sees or stores the credentials.
 struct CLIAccountProbe: Sendable {
     enum Status: Sendable, Equatable { case connected, attention, failed, idle }
@@ -46,12 +46,33 @@ struct CLIAccountProbe: Sendable {
                 return Self.github(accounts)
             }
             return Self.parse(result, label: service.label)
-        } catch CommandError.executableNotFound {
-            return Account(value: String(localized: "Not installed"), status: .idle)
-        } catch CommandError.timedOut {
-            return Account(value: String(localized: "Timed out"), status: .failed)
         } catch {
-            return Account(value: String(localized: "Unavailable"), status: .failed)
+            return Self.failureAccount(for: error)
+        }
+    }
+
+    /// Reads both the summary status and every individual `gh` account (signed-in and expired).
+    func githubStatus() async -> (account: Account, accounts: [GitHubAccount]) {
+        do {
+            let result = try await run(Service.github.executable, Service.github.arguments)
+            if let accounts = try? GitHubAccounts.parse(result) {
+                return (Self.github(accounts), accounts)
+            }
+            let parsed = Self.parse(result, label: Service.github.label)
+            if parsed.status == .connected, let login = GitHubLogin(parsed.value) {
+                return (parsed, [GitHubAccount(login: login, isActive: true, isSignedIn: true)])
+            }
+            return (parsed, [])
+        } catch {
+            return (Self.failureAccount(for: error), [])
+        }
+    }
+
+    private static func failureAccount(for error: Error) -> Account {
+        switch error {
+        case CommandError.executableNotFound: Account(value: String(localized: "Not installed"), status: .idle)
+        case CommandError.timedOut: Account(value: String(localized: "Timed out"), status: .failed)
+        default: Account(value: String(localized: "Unavailable"), status: .failed)
         }
     }
 
@@ -71,6 +92,7 @@ struct CLIAccountProbe: Sendable {
         }
         return Account(value: String(localized: "Unavailable"), status: .failed)
     }
+
     /// `gh`'s accounts, the active one first: several mean each repository is read as the account that can see it.
     static func github(_ accounts: [GitHubAccount]) -> Account {
         let signedIn = accounts.filter(\.isSignedIn).sorted { lhs, rhs in

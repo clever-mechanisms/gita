@@ -9,26 +9,46 @@ enum GitHubAccountsRead {
     case read([GitHubAccount])
 }
 
-/// The GitHub page's account picker: Automatic, then each signed-in login. Shown only when there are several.
+/// The GitHub page's account picker: Automatic, then each signed-in login (even when 0 or 1 account is signed in).
 struct GitHubAccountPicker: Equatable {
     var logins: [GitHubLogin]
     var choice: GitHubAccountChoice?
     /// The account the latest list read ran as.
     var viewer: String?
 
-    /// "Automatic (login)" names the account Automatic read with; after a choice it no longer knows.
+    private var missingChosenLogin: GitHubLogin? {
+        guard case .chosen(let login) = choice, !logins.contains(login) else { return nil }
+        return login
+    }
+
+    /// "Automatic (login)" names the account Automatic read with (or the sole signed-in account); after a choice it
+    /// no longer knows.
     var titles: [String] {
+        if logins.isEmpty {
+            if let missing = missingChosenLogin {
+                return [String(localized: "Automatic"), String(localized: "\(missing.value) (signed out)")]
+            }
+            return [String(localized: "No signed-in account")]
+        }
         let isChosen = if case .chosen = choice { true } else { false }
-        let named = isChosen ? nil : viewer.map { String(localized: "Automatic (\($0))") }
-        return [named ?? String(localized: "Automatic")] + logins.map(\.value)
+        let soleLogin = logins.count == 1 ? logins[0].value : nil
+        let automaticName = isChosen ? nil : (viewer ?? choice?.login.value ?? soleLogin)
+        let named = automaticName.map { String(localized: "Automatic (\($0))") }
+        var result = [named ?? String(localized: "Automatic")] + logins.map(\.value)
+        if let missing = missingChosenLogin {
+            result.append(String(localized: "\(missing.value) (signed out)"))
+        }
+        return result
     }
 
     var selectedIndex: Int {
-        guard case .chosen(let login) = choice, let index = logins.firstIndex(of: login) else { return 0 }
-        return index + 1
+        guard case .chosen(let login) = choice else { return 0 }
+        if logins.isEmpty { return 1 }
+        if let index = logins.firstIndex(of: login) { return index + 1 }
+        return logins.count + 1
     }
 
-    /// The login at a menu index; nil for Automatic.
+    /// The login at a menu index; nil for Automatic or when no account is signed in.
     func login(at index: Int) -> GitHubLogin? {
         logins.indices.contains(index - 1) ? logins[index - 1] : nil
     }
@@ -63,13 +83,13 @@ extension AppModel {
             })
     }
 
-    /// The picker for this repository; nil until the accounts are read, for a non-GitHub remote, or with one account.
+    /// The picker for this repository; nil until the accounts are read or for a non-GitHub remote. Always shown on
+    /// GitHub pages even when 0 or 1 account is signed in.
     var githubAccountPicker: GitHubAccountPicker? {
         guard case .read(let accounts) = providers.githubAccounts, let sourceID = snapshot?.github?.sourceID else {
             return nil
         }
         let logins = accounts.filter(\.isSignedIn).map(\.login).sorted()
-        guard logins.count > 1 else { return nil }
         return GitHubAccountPicker(
             logins: logins, choice: GitHubAccountStore(defaults: defaults).choice(for: sourceID),
             viewer: providers.viewerLogin)
@@ -79,6 +99,16 @@ extension AppModel {
     func chooseGitHubAccount(_ login: GitHubLogin?) {
         guard let sourceID = snapshot?.github?.sourceID else { return }
         GitHubAccountStore(defaults: defaults).choose(login, sourceID: sourceID)
+        reloadGitHubAccount()
+    }
+
+    /// Called when Settings ▸ Integrations changed or reset an assignment for `sourceID`.
+    func gitHubAccountAssignmentChanged(for sourceID: String) {
+        guard snapshot?.github?.sourceID == sourceID else { return }
+        reloadGitHubAccount()
+    }
+
+    private func reloadGitHubAccount() {
         providers.details.removeAll()
         // A read still running as the previous account must not land, nor keep this one from starting.
         providers.full.cancel()

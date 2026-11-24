@@ -143,18 +143,6 @@ struct TabsLayoutTests {
         #expect(TabTitles.short("other", after: "") == "other")
     }
 
-    @Test(arguments: [
-        (selected: true, hovering: false, dark: true, expected: CGFloat(0.30)),
-        (selected: true, hovering: true, dark: false, expected: 0.24),
-        (selected: false, hovering: true, dark: true, expected: 0.24),
-        (selected: false, hovering: true, dark: false, expected: 0.18),
-        (selected: false, hovering: false, dark: true, expected: 0.17),
-        (selected: false, hovering: false, dark: false, expected: 0.13),
-    ])
-    func tabTintAlpha(selected: Bool, hovering: Bool, dark: Bool, expected: CGFloat) {
-        #expect(RepositoryTabView.tintAlpha(selected: selected, hovering: hovering, dark: dark) == expected)
-    }
-
     @Test func groupNamesAreTrimmedAndCapped() {
         #expect(RepositoryTabsController.groupName("  work \n") == "work")
         #expect(RepositoryTabsController.groupName(String(repeating: "x", count: 80)).count == 60)
@@ -178,23 +166,23 @@ struct TabsStateTests {
         }
     }
 
-    @Test func plainTabStateSpellsNothing() {
+    @Test func plainTabStateHasNoBadge() {
         let state = RepositoryTabState(name: "app")
-        #expect(state.spelledState.isEmpty)
+        #expect(state.badge == .none)
         #expect(state.toolTip == "app")
         #expect(state.accessibilityLabel == "app")
         #expect(state.closeTitle == "Close app")
     }
 
-    @Test func agentStatesAreSpelledWhenTheMarkCannotTell() {
+    @Test func agentStatesMapToTabBadges() {
         let working = RepositoryTabState(name: "app", agent: .working, tool: .codex)
-        #expect(working.spelledState.isEmpty)
+        #expect(working.badge == .none)
         let waiting = RepositoryTabState(name: "app", agent: .needsInput, tool: .codex)
-        #expect(!waiting.spelledState.isEmpty)
+        #expect(waiting.badge == .needsInput)
         let done = RepositoryTabState(name: "app", agent: .done, tool: .codex)
-        #expect(!done.spelledState.isEmpty)
-        let unknown = RepositoryTabState(name: "app", agent: .idle)
-        #expect(!unknown.spelledState.isEmpty)
+        #expect(done.badge == .done)
+        let idle = RepositoryTabState(name: "app", agent: .idle, tool: .codex)
+        #expect(idle.badge == .none)
     }
 
     @Test func toolTipAndAccessibilityListEverything() {

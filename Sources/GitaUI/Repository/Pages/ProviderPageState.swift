@@ -21,7 +21,7 @@ struct ProviderPageState {
     var emptyMessage: String
     var status: String
     var statusToolTip: String?
-    /// The GitHub pages' account picker; nil on Deployments or when `gh` has one account.
+    /// The GitHub pages' account picker; nil on Deployments or non-GitHub remotes.
     var accounts: GitHubAccountPicker?
 
     init(

@@ -31,9 +31,12 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     let editor = ReviewLineEditorCard()
     private let scroll = NSScrollView()
     private(set) var lines: [DiffLine] = []
+    private(set) var wordHighlights: [[Range<Int>]] = []
+    private(set) var syntaxTokens: [[SyntaxToken]] = []
     private(set) var rows: [ReviewDiffRow] = []
     private(set) var content: Content?
     private var parsedPatch: String?
+    var defaults: UserDefaults = Preference.store
     /// The comment or reply box open, if any.
     private(set) var box = ReviewDiffBox.none
     private var cards: [String: NSView] = [:]
@@ -83,13 +86,20 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         self.content = content
         let linesChanged = parsedPatch != content.patch || !sameFile
         if linesChanged {
-            parsedPatch = content.patch
-            lines = ReviewDiffRows.visible(UnifiedDiff.parse(content.patch).lines)
-            longestLine = lines.reduce(0) { max($0, $1.text.utf16.count) }
+            parseDiff(content.patch, path: content.path)
         }
         box = box.kept(showing: content, sameFile: sameFile, linesChanged: linesChanged)
         editor.canSend = content.canWrite
         rebuild(keepingScroll: sameFile)
+    }
+
+    /// Parses the unified patch and computes intra-line word highlights and syntax tokens.
+    private func parseDiff(_ patch: String, path: String?) {
+        parsedPatch = patch
+        lines = ReviewDiffRows.visible(UnifiedDiff.parse(patch).lines)
+        wordHighlights = DiffDocumentBuilder.wordHighlights(for: lines)
+        syntaxTokens = SyntaxTokenizer.tokenize(lines: lines, path: path, isBlob: false)
+        longestLine = lines.reduce(0) { max($0, $1.text.utf16.count) }
     }
 
     // MARK: Writing
@@ -150,6 +160,10 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     // MARK: Rows
 
+    private var fontSize: CGFloat { CodeFont.diffSize(defaults) }
+    private var tabWidth: Int { CodeFont.tabWidth(defaults) }
+    private var lineRowHeight: CGFloat { max(Self.lineHeight, ceil(fontSize * 1.6 + 3)) }
+
     private func rebuild(keepingScroll: Bool) {
         guard let content else { return }
         let origin = scroll.contentView.bounds.origin
@@ -160,7 +174,7 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         let visible = scroll.contentView.bounds.width
         cardWidth = max(240, visible - Self.cardInsets.left - Self.cardInsets.right)
         table.tableColumns.first?.width =
-            DiffDocumentBuilder.columnWidth(longestLine: longestLine, minimum: visible)
+            DiffDocumentBuilder.columnWidth(longestLine: longestLine, minimum: visible, fontSize: fontSize)
             + Self.plusLane
         cardLeadings.removeAll()
         table.reloadData()
@@ -197,7 +211,7 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     func numberOfRows(in _: NSTableView) -> Int { rows.count }
 
     func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
-        guard rows.indices.contains(row), let card = card(for: rows[row]) else { return Self.lineHeight }
+        guard rows.indices.contains(row), let card = card(for: rows[row]) else { return lineRowHeight }
         let width = card.widthAnchor.constraint(equalToConstant: cardWidth)
         width.isActive = card === editor
         defer { if card === editor { width.isActive = false } }
@@ -210,7 +224,11 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             let cell = tableView.makeView(withIdentifier: Self.cellID, owner: nil) as? DiffCell ?? DiffCell()
             cell.identifier = Self.cellID
             cell.textInset = Self.plusLane
+            cell.fontSize = fontSize
+            cell.tabWidth = tabWidth
             cell.line = lines[index]
+            cell.wordHighlights = wordHighlights.indices.contains(index) ? wordHighlights[index] : []
+            cell.syntaxTokens = syntaxTokens.indices.contains(index) ? syntaxTokens[index] : []
             cell.toolTip = lines[index].text.count > 120 ? lines[index].text : nil
             return cell
         }

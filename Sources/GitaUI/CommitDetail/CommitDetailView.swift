@@ -47,6 +47,13 @@ final class CommitDetailView: NSView {
     private let divider = Deck.separator(vertical: true)
     private lazy var rightWidth = rightScroll.widthAnchor.constraint(equalToConstant: Metrics.maximumRight)
     private let empty = Deck.label(String(localized: "Select a commit"), font: Theme.title, color: Theme.secondaryText)
+    let compareView = CommitCompareView()
+    let multiCommitView = MultiCommitSummaryView()
+    private var detailOverlayMode: OverlayMode = .none
+
+    private enum OverlayMode: Equatable {
+        case none, compare, multi
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -62,7 +69,13 @@ final class CommitDetailView: NSView {
         }
         addSubview(divider)
         addSubview(empty)
+        addSubview(compareView)
+        addSubview(multiCommitView)
         empty.translatesAutoresizingMaskIntoConstraints = false
+        Deck.pin(compareView, in: self)
+        Deck.pin(multiCommitView, in: self)
+        compareView.isHidden = true
+        multiCommitView.isHidden = true
         NSLayoutConstraint.activate([
             leftScroll.leadingAnchor.constraint(equalTo: leadingAnchor),
             leftScroll.topAnchor.constraint(equalTo: topAnchor),
@@ -89,7 +102,17 @@ final class CommitDetailView: NSView {
     }
 
     func update(_ next: Input) {
-        guard next != input else { return }
+        if next.commit != nil || next.stash != nil {
+            clearOverlay()
+        } else if detailOverlayMode != .none {
+            return
+        }
+        guard next != input else {
+            if let input, input.commit == nil, input.stash == nil {
+                empty.isHidden = false
+            }
+            return
+        }
         if next.commit?.id != input?.commit?.id || next.stash != input?.stash {
             expanded = []
             collapsedPullRequests = []
@@ -97,6 +120,36 @@ final class CommitDetailView: NSView {
         }
         input = next
         rebuild()
+    }
+
+    func clearOverlay() {
+        guard detailOverlayMode != .none else { return }
+        detailOverlayMode = .none
+        compareView.isHidden = true
+        multiCommitView.isHidden = true
+        rebuild()
+    }
+
+    func showCompare(_ compare: CompareState) {
+        detailOverlayMode = .compare
+        empty.isHidden = true
+        leftScroll.isHidden = true
+        rightScroll.isHidden = true
+        divider.isHidden = true
+        multiCommitView.isHidden = true
+        compareView.isHidden = false
+        compareView.update(compare)
+    }
+
+    func showMultiCommit(eligibility: MultiCommitActionEligibility, actions: MultiCommitSummaryView.Actions) {
+        detailOverlayMode = .multi
+        empty.isHidden = true
+        leftScroll.isHidden = true
+        rightScroll.isHidden = true
+        divider.isHidden = true
+        compareView.isHidden = true
+        multiCommitView.isHidden = false
+        multiCommitView.update(eligibility: eligibility, actions: actions)
     }
     /// Expands one item's details and scrolls to it (history status chips).
     func focus(_ item: ProviderItem) {

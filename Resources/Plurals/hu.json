@@ -1,4 +1,16 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld tároló",
+          "other": "%3$lld tároló"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -7,6 +19,18 @@
         "forms": {
           "one": "%2$lld követett változás",
           "other": "%2$lld követett változás"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld ügynökfuttatás 24 óra alatt",
+          "other": "%1$lld ügynökfuttatás 24 óra alatt"
         }
       }
     }
@@ -23,90 +47,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld módosított fájl",
-          "other": "%1$lld módosított fájl"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld commit lesz elhagyva.",
-          "other": "%1$lld commit lesz elhagyva."
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld alügynök",
-          "other": "%lld alügynök"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Az összes (%1$lld) commit el lesz hagyva.",
-          "other": "Az összes (%1$lld) commit el lesz hagyva."
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "Bináris fájl · %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld bájt",
-          "other": "%1$lld bájt"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld nem követett fájl",
-          "other": "%2$lld nem követett fájl"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%3$lld tároló",
-          "other": "%3$lld tároló"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -115,6 +55,54 @@
         "forms": {
           "one": "%lld ügynök dolgozik",
           "other": "%lld ügynök dolgozik"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld hozzárendelt tároló",
+          "other": "%lld hozzárendelt tároló"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld lemaradva",
+          "other": "%1$lld lemaradva"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ a(z) %2$@ mögött",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld committal",
+          "other": "%1$lld committal"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ág",
+          "other": "%lld ág"
         }
       }
     }
@@ -131,6 +119,30 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld módosított fájl",
+          "other": "%1$lld módosított fájl"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld megjegyzés",
+          "other": "%1$lld megjegyzés"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -143,6 +155,30 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld committal lemaradva a követett ágtól",
+          "other": "%lld committal lemaradva a követett ágtól"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld committal lemaradva a követett ágtól; a távoli tárolón le nem kért commitok vannak",
+          "other": "%lld committal lemaradva a követett ágtól; a távoli tárolón le nem kért commitok vannak"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -151,6 +187,42 @@
         "forms": {
           "one": "%lld fel nem töltött commit",
           "other": "%lld fel nem töltött commit"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit kijelölve",
+          "other": "%lld commit kijelölve"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit lesz elhagyva.",
+          "other": "%1$lld commit lesz elhagyva."
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ütközés",
+          "other": "%lld ütközés"
         }
       }
     }
@@ -179,6 +251,18 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld fájl",
+          "other": "%1$lld fájl"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -187,6 +271,30 @@
         "forms": {
           "one": "%lld tétlen",
           "other": "%lld tétlen"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld sorhoz fűzött megjegyzés ebben a véleményezésben",
+          "other": "%1$lld sorhoz fűzött megjegyzés ebben a véleményezésben"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld naplózott hiba",
+          "other": "%1$lld naplózott hiba"
         }
       }
     }
@@ -227,6 +335,18 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld nyitott PR",
+          "other": "%lld nyitott PR"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -251,6 +371,66 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld szerverhiba",
+          "other": "%1$lld szerverhiba"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld összevont commit",
+          "other": "%1$lld összevont commit"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld előkészítve",
+          "other": "%lld előkészítve"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld alügynök",
+          "other": "%lld alügynök"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld áttekintendő",
+          "other": "%lld áttekintendő"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -263,81 +443,14 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld dolgozik",
-          "other": "%lld dolgozik"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "Ügynökök, %1$#@working@, %2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld dolgozik",
-          "other": "%1$lld dolgozik"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld választ vár",
-          "other": "%2$lld választ vár"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld commit feltöltése",
-          "other": "%lld commit feltöltése"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld lemaradva",
-          "other": "%1$lld lemaradva"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "%1$#@count@ a(z) %2$@ mögött",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld committal",
-          "other": "%1$lld committal"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld megjegyzés",
-          "other": "%1$lld megjegyzés"
+          "one": "%1$lld feloldatlan",
+          "other": "%1$lld feloldatlan"
         }
       }
     }
@@ -366,62 +479,14 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld megjegyzés megnyitása ↗",
-          "other": "%1$lld megjegyzés megnyitása ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%lld nyitott PR",
-          "other": "%lld nyitott PR"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld áttekintendő",
-          "other": "%lld áttekintendő"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld ág",
-          "other": "%lld ág"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "%1$@ csoport, %2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld lap",
-          "other": "%2$lld lap"
+          "one": "%lld előkészítetlen",
+          "other": "%lld előkészítetlen"
         }
       }
     }
@@ -438,62 +503,165 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld szerverhiba",
-          "other": "%1$lld szerverhiba"
+          "one": "%lld dolgozik",
+          "other": "%lld dolgozik"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld naplózott hiba",
-          "other": "%1$lld naplózott hiba"
+          "one": "(%lld commit eltérés)",
+          "other": "(%lld commit eltérés)"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "(−%1$lld / +%2$#@count@)",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld összevont commit",
-          "other": "%1$lld összevont commit"
+          "one": "%2$lld commit",
+          "other": "%2$lld commit"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "Ügynökök, %1$#@working@, %2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld ügynökfuttatás 24 óra alatt",
-          "other": "%1$lld ügynökfuttatás 24 óra alatt"
+          "one": "%1$lld dolgozik",
+          "other": "%1$lld dolgozik"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld választ vár",
+          "other": "%2$lld választ vár"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld feloldatlan",
-          "other": "%1$lld feloldatlan"
+          "one": "Az összes (%1$lld) commit el lesz hagyva.",
+          "other": "Az összes (%1$lld) commit el lesz hagyva."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "Bináris fájl · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld bájt",
+          "other": "%1$lld bájt"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "%1$#@count@ erre az ágra: %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Átvesz %1$lld commitot",
+          "other": "Átvesz %1$lld commitot"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Átvesz %lld commitot?",
+          "other": "Átvesz %lld commitot?"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "%1$#@count@ ebben a fájlban: %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Elvet %1$lld módosított sort",
+          "other": "Elvet %1$lld módosított sort"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld sor elvetése…",
+          "other": "%lld sor elvetése…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Lekérés, %lld ág mozgatva",
+          "other": "Lekérés, %lld ág mozgatva"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "%1$@ csoport, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld lap",
+          "other": "%2$lld lap"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld nem követett fájl",
+          "other": "%2$lld nem követett fájl"
         }
       }
     }
@@ -510,26 +678,74 @@
       }
     }
   },
-  "%lld files": {
+  "Open %lld Comments ↗": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld fájl",
-          "other": "%1$lld fájl"
+          "one": "%1$lld megjegyzés megnyitása ↗",
+          "other": "%1$lld megjegyzés megnyitása ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
-    "format": "%1$#@count@",
+  "Production is %lld commits behind, open deployment": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld sorhoz fűzött megjegyzés ebben a véleményezésben",
-          "other": "%1$lld sorhoz fűzött megjegyzés ebben a véleményezésben"
+          "one": "Az éles környezet %lld committal le van maradva, telepítés megnyitása",
+          "other": "Az éles környezet %lld committal le van maradva, telepítés megnyitása"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit lehúzása",
+          "other": "%lld commit lehúzása"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit feltöltése",
+          "other": "%lld commit feltöltése"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Visszavon %lld commitot?",
+          "other": "Visszavon %lld commitot?"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld sor előkészítése",
+          "other": "%lld sor előkészítése"
         }
       }
     }
@@ -554,6 +770,18 @@
         "forms": {
           "one": "Az ág %lld commitja rebase után bekerül az alapágba.",
           "other": "Az ág %lld commitja rebase után bekerül az alapágba."
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld sor előkészítésének visszavonása",
+          "other": "%lld sor előkészítésének visszavonása"
         }
       }
     }

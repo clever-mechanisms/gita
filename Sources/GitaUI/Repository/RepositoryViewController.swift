@@ -27,7 +27,7 @@ final class RepositoryViewController: NSViewController {
     let strip = WorktreeStripView()
     let historyTable = HistoryTableController()
     lazy var historyControls = HistoryHeaderController(
-        header: historyTable.header, onAllBranches: { [weak self] in self?.showAllBranches() },
+        onAllBranches: { [weak self] in self?.showAllBranches() },
         onStopHighlighting: { [weak self] in self?.model.highlightAuthor(nil) })
     let filePane: FilePaneView
     let codePane = CodePaneView()
@@ -42,6 +42,7 @@ final class RepositoryViewController: NSViewController {
     var amendUnstagedPaths: Set<String> = []
     var renderedAmendStaging = AmendStaging.off
     let providerPage = ProviderPageView()
+    let prWorkspace = PullRequestReviewWorkspaceView()
     let agentsPane = AgentsPaneView()
     let historyMenu = HistoryMenu()
     let historyMenuVercel = HistoryMenuVercel()
@@ -57,6 +58,11 @@ final class RepositoryViewController: NSViewController {
     /// The file pane beside the code pane (hidden while the Commit tab shows).
     let filesSplit = DeckSplitView()
     let content = NSView()
+    let contentBanner = ContentBannerView()
+    lazy var bannerHeight = contentBanner.heightAnchor.constraint(equalToConstant: 0)
+    var focusedPane: FocusPane?
+    let focusRing = PaneFocusRingView()
+    var blameView: BlameView?
     let historyPane = NSView()
     let historyTop = NSView()
     let pagePane = NSView()
@@ -90,6 +96,8 @@ final class RepositoryViewController: NSViewController {
     var lastAutomaticPage: String?
     /// A reopened conflict to select once the refreshed snapshot lists it.
     var pendingConflictPath: String?
+    /// Commit ID navigated to from `BlameView.onSelectCommit` so `showDiff` keeps blame open across that selection.
+    var blameNavigatedCommitID: String?
     lazy var detailLoader: ProviderDetailLoader = { [weak self] item, force in
         guard let self, let target = item.target, let root = self.model.snapshot?.root, let service = self.model.service
         else { return nil }
@@ -115,6 +123,8 @@ final class RepositoryViewController: NSViewController {
         wireSidebar()
         wireFileLists()
         wireDetail()
+        wireHistoryPower()
+        wireHistoryDrag()
         wireMerge()
         wireStrip()
         wireOverview()

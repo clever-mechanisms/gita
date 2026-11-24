@@ -1,6 +1,25 @@
 import Foundation
 import GitaCore
 
+/// How a pull request review is hosted: embedded card inside narrow PR lists (`< 900 pt`), full-height master-detail
+/// workspace (`>= 900 pt`), or detached pop-out window.
+enum ReviewPresentation: Equatable, Sendable {
+    case inline
+    case page
+    case window
+
+    static let inlineFallbackWidth: CGFloat = 900
+    static let sidebarCollapseWidth: CGFloat = 1_100
+
+    static func preferred(forWidth width: CGFloat) -> Self {
+        width < inlineFallbackWidth ? .inline : .page
+    }
+
+    func collapsesSidebar(forWidth width: CGFloat) -> Bool {
+        self != .inline && width < Self.sidebarCollapseWidth
+    }
+}
+
 /// Everything the review window shows and allows, as a value: the loaded pull request, the page picked in the
 /// sidebar, the review being written and the last outcome. Views bind it; tests check it without a window.
 @MainActor
@@ -18,6 +37,7 @@ struct PullRequestReviewState {
         var discussionCount: Int
         /// Line comments in the draft on the file.
         var pendingCount: Int
+        var isViewed = false
     }
 
     struct Notice: Equatable {
@@ -44,6 +64,10 @@ struct PullRequestReviewState {
     var notice: Notice?
     /// The merge method picked in the Merge button's menu; nil until one is picked.
     var pickedMergeMethod: PullRequestMergeMethod?
+    /// Files marked as viewed during this review session.
+    var viewedFiles: Set<String> = []
+    /// Optional pull request heading (e.g. "#214 Checkout v2") for window titles and full-height bars.
+    var windowTitle = ""
 
     var isLoading: Bool { load == .loading }
     var loadProblem: String? {
@@ -101,9 +125,20 @@ struct PullRequestReviewState {
                 SidebarRow(
                     page: .file(file.path), title: file.path, detail: "+\(file.additions) −\(file.deletions)",
                     discussionCount: threads(on: file.path).filter { !$0.isResolved }.count,
-                    pendingCount: pending(on: file.path).count))
+                    pendingCount: pending(on: file.path).count, isViewed: viewedFiles.contains(file.path)))
         }
         return rows
+    }
+
+    var viewedCount: Int { files.count { viewedFiles.contains($0.path) } }
+    func isViewed(_ path: String) -> Bool { viewedFiles.contains(path) }
+
+    mutating func toggleViewed(_ path: String) {
+        if viewedFiles.contains(path) {
+            viewedFiles.remove(path)
+        } else {
+            viewedFiles.insert(path)
+        }
     }
 
     var selectedFile: PullRequestFileDiff? {
@@ -163,6 +198,7 @@ struct PullRequestReviewState {
         load = .idle
         let paths = Set(files.map(\.path))
         draft.comments.removeAll { !paths.contains($0.path) }
+        viewedFiles = viewedFiles.intersection(paths)
         if case .file(let path) = page, !paths.contains(path) { page = .conversation }
         if !isOffered(draft.verdict) { draft.verdict = .comment }
         if let replyingTo,

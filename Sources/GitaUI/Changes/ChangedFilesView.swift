@@ -35,6 +35,15 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
     var onActivate: ((FileChange) -> Void)?
     /// The selection changed in any way (enables the section's Stage / Unstage button).
     var onSelectionChange: (() -> Void)?
+    /// Inline row stage / unstage action (receives the row's files, or the multi-selection when clicked inside one).
+    var onStageAction: (([FileChange]) -> Void)?
+    /// Inline row discard action (unstaged side only).
+    var onDiscardAction: (([FileChange]) -> Void)?
+    /// §6d drop-to-stage / unstage (`paths`, `targetStaged`).
+    var repositoryRoot: () -> String? = { nil }
+    var onDropStageFiles: (([String], Bool) -> Void)?
+    /// File URL lookup for Finder/editor export (`nil` when deleted or unavailable).
+    var fileURLProvider: ((String) -> URL?)?
     /// The context menu for the files under the click (the clicked one joins the selection first, as in Finder).
     var menuProvider: (([FileChange]) -> NSMenu?)?
     /// The list took keyboard focus or a click (the other section lets go of its selection).
@@ -81,6 +90,9 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         outline.rowMenu = { [weak self] rows in self?.menu(for: rows) }
         outline.onReturn = { [weak self] in self?.activateSelection() }
         outline.onFocus = { [weak self] in self?.onFocus?() }
+        outline.registerForDraggedTypes([GitaDragReference.pasteboardType])
+        outline.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        outline.setDraggingSourceOperationMask([.copy], forLocal: false)
     }
 
     /// Shows `next`; keeps open folders, the selection and the scroll position when only some files changed.
@@ -90,6 +102,8 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         rebuild()
     }
     var isTree: Bool { showsTree && files.count <= Self.treeLimit }
+    var hasFiles: Bool { !files.isEmpty }
+    var hasNonConflictFiles: Bool { files.contains { !$0.isConflict } }
     var selectedFiles: [FileChange] {
         outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? ChangedFileNode }.flatMap(\.files)
             .uniqued()
@@ -112,6 +126,7 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         guard row >= 0 else { return }
         outline.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         outline.scrollRowToVisible(row)
+        syncVisibleSelection()
         onSelectionChange?()
     }
     func expandAll() {
@@ -170,6 +185,7 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
             scroll.reflectScrolledClipView(scroll.contentView)
         }
         updating = false
+        syncVisibleSelection()
         updateEmpty()
         onSelectionChange?()
     }
@@ -211,6 +227,44 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
     func outlineView(_: NSOutlineView, isItemExpandable item: Any) -> Bool {
         (item as? ChangedFileNode)?.isFolder ?? false
     }
+    func outlineView(_: NSOutlineView, pasteboardWriterForItem item: Any) -> (any NSPasteboardWriting)? {
+        guard let node = item as? ChangedFileNode, let root = repositoryRoot() else { return nil }
+        let paths = node.files.filter { !$0.isConflict }.map(\.path)
+        let exportURL = fileURLProvider?(node.path)
+        guard !paths.isEmpty || exportURL != nil else { return nil }
+        let payloadPaths = paths.isEmpty ? node.files.map(\.path) : paths
+        return GitaDragReference.files(paths: payloadPaths, staged: side == .staged).pasteboardItem(
+            repositoryRoot: root, fileURL: exportURL)
+    }
+    func outlineView(
+        _ outlineView: NSOutlineView, validateDrop info: any NSDraggingInfo, proposedItem _: Any?,
+        proposedChildIndex _: Int
+    ) -> NSDragOperation {
+        guard canAcceptDrop(from: info.draggingPasteboard.pasteboardItems ?? []) else { return [] }
+        outlineView.setDropRow(-1, dropOperation: .on)
+        return .move
+    }
+    func outlineView(
+        _: NSOutlineView, acceptDrop info: any NSDraggingInfo, item _: Any?, childIndex _: Int
+    ) -> Bool {
+        acceptDrop(from: info.draggingPasteboard.pasteboardItems ?? [])
+    }
+    func canAcceptDrop(from items: [NSPasteboardItem]) -> Bool {
+        guard side != .commit,
+            let dropped = GitaDragReference.mergedFiles(from: items, repositoryRoot: repositoryRoot())
+        else { return false }
+        return dropped.staged != (side == .staged)
+    }
+    @discardableResult
+    func acceptDrop(from items: [NSPasteboardItem]) -> Bool {
+        guard side != .commit,
+            let dropped = GitaDragReference.mergedFiles(from: items, repositoryRoot: repositoryRoot())
+        else { return false }
+        let targetStaged = side == .staged
+        guard dropped.staged != targetStaged else { return false }
+        onDropStageFiles?(dropped.paths, targetStaged)
+        return true
+    }
     func outlineView(_ outlineView: NSOutlineView, rowViewForItem _: Any) -> NSTableRowView? {
         DeckTableRowView.reused(in: outlineView, id: Self.rowID)
     }
@@ -219,8 +273,21 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         let cell =
             outlineView.makeView(withIdentifier: Self.cellID, owner: nil) as? ChangedFileCell ?? ChangedFileCell()
         cell.identifier = Self.cellID
+        let row = outlineView.row(forItem: node)
+        let isSelected = row >= 0 && outlineView.selectedRowIndexes.contains(row)
+        let mode = inlineActionMode(for: node)
+        cell.onStageAction = { [weak self] in
+            guard let self else { return }
+            self.onStageAction?(self.actionTargets(for: node))
+        }
+        cell.onDiscardAction = { [weak self] in
+            guard let self else { return }
+            self.onDiscardAction?(self.actionTargets(for: node))
+        }
         guard let file = node.file else {
-            cell.configure(name: node.name, detail: nil, icon: FileIcons.folder, badge: nil, color: nil)
+            cell.configure(
+                .init(
+                    name: node.name, icon: FileIcons.folder, actionMode: mode, isSelected: isSelected))
             cell.toolTip = node.path
             cell.setAccessibilityLabel(node.name)
             return cell
@@ -228,11 +295,36 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         let status = status(file)
         let folder = RepositoryPathText.folder(file.path)
         cell.configure(
-            name: node.name, detail: isTree || folder.isEmpty ? nil : folder, icon: FileIcons.icon(for: file.path),
-            badge: status.letter, color: status.color)
+            .init(
+                name: node.name, detail: isTree || folder.isEmpty ? nil : folder,
+                icon: FileIcons.icon(for: file.path), letter: status.letter, color: status.color,
+                actionMode: mode, isSelected: isSelected))
         cell.toolTip = file.originalPath.map { $0 + " → " + file.path } ?? file.path
         cell.setAccessibilityLabel([file.path, status.spoken].joined(separator: ", "))
         return cell
+    }
+
+    private func inlineActionMode(for node: ChangedFileNode) -> ChangedFileCell.InlineActionMode {
+        switch side {
+        case .commit: .none
+        case .staged: .staged
+        case .unstaged: node.files.contains { !$0.isConflict } ? .unstaged(canDiscard: true) : .none
+        }
+    }
+
+    private func actionTargets(for node: ChangedFileNode) -> [FileChange] {
+        let row = outline.row(forItem: node)
+        if row >= 0, outline.selectedRowIndexes.contains(row), outline.selectedRowIndexes.count > 1 {
+            return selectedFiles
+        }
+        return node.files
+    }
+
+    private func syncVisibleSelection() {
+        let selected = outline.selectedRowIndexes
+        outline.enumerateAvailableRowViews { rowView, row in
+            (rowView.view(atColumn: 0) as? ChangedFileCell)?.isSelectedRow = selected.contains(row)
+        }
     }
     func outlineViewItemDidCollapse(_ notification: Notification) {
         if !updating, let node = notification.userInfo?["NSObject"] as? ChangedFileNode { collapsed.insert(node.path) }
@@ -241,6 +333,7 @@ final class ChangedFilesView: NSView, NSOutlineViewDataSource, NSOutlineViewDele
         if !updating, let node = notification.userInfo?["NSObject"] as? ChangedFileNode { collapsed.remove(node.path) }
     }
     func outlineViewSelectionDidChange(_: Notification) {
+        syncVisibleSelection()
         guard !updating else { return }
         onSelectionChange?()
         // The row last clicked is the one the diff shows; after a keyboard move, the row moved to.

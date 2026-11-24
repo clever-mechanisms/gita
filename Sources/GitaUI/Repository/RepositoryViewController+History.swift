@@ -6,7 +6,8 @@ extension RepositoryViewController {
     var historyMode: HistoryMode {
         HistoryMode(
             searchQuery: model.searchQuery, field: model.searchField,
-            focusedIdentity: model.focusedReference != nil ? model.focusedHistoryIdentity : nil)
+            focusedIdentity: model.focusedReference != nil ? model.focusedHistoryIdentity : nil,
+            authorFilterIdentity: model.inlineAuthor != nil ? model.inlineAuthorIdentity : nil)
     }
 
     /// The list the model now shows: kept (a working-tree refresh), a page appended, or reloaded.
@@ -19,12 +20,14 @@ extension RepositoryViewController {
         updateHistoryScope()
         let next = nextHistoryList(mode)
         // A squash commit already shown can link to a tip on the new page: its rows were laid out again.
-        let graphCanChange = model.focusedReference == nil && (!model.squashLinks.isEmpty || model.collapsesMerges)
+        let graphCanChange =
+            model.focusedReference == nil && model.inlineAuthor == nil
+            && (!model.squashLinks.isEmpty || model.collapsesMerges)
         let plan = historyTable.plan(next, graphCanChange: graphCanChange)
         historyTable.highlightedAuthor = model.highlightedAuthor
         switch plan {
         case .unchanged:
-            historyTable.select(model.selectedCommit?.id)
+            restoreHistoryTableSelection()
         case .append:
             // Merge counts cut short by the old end of the list may now be longer: recount those.
             let incomplete = mergedCache.dropIncomplete()
@@ -35,6 +38,16 @@ extension RepositoryViewController {
             mergedCache.listReloaded(ancestry: ancestry)
             mergedPopover.close()
             historyTable.apply(.reload, next, index: model.displayedHistoryIndex, origin: origin)
+            restoreHistoryTableSelection()
+        }
+        updateWorkingChangesBanner()
+    }
+
+    private func restoreHistoryTableSelection() {
+        switch model.historySelection {
+        case .pair, .many:
+            historyTable.select(model.historySelection)
+        case .commit, .none:
             historyTable.select(model.selectedCommit?.id)
         }
     }
@@ -43,10 +56,16 @@ extension RepositoryViewController {
         let commits = model.displayedCommits
         let remoteNames = Set((model.snapshot?.references ?? []).filter { $0.kind == .remote }.map(\.name))
         // Search omits ancestors; connecting edges would imply false ancestry.
-        let graphs =
-            mode.isSearch
-            ? commits.map { _ in GraphRow(lane: 0, color: 0, incoming: [], outgoing: []) }
-            : model.focusedReference != nil ? model.focusedGraph : model.graph
+        let graphs: [GraphRow] =
+            if mode.isSearch {
+                commits.map { _ in GraphRow(lane: 0, color: 0, incoming: [], outgoing: []) }
+            } else if model.inlineAuthor != nil {
+                model.inlineAuthorGraph
+            } else if model.focusedReference != nil {
+                model.focusedGraph
+            } else {
+                model.graph
+            }
         return HistoryListState(
             signature: .init(
                 mode: mode, head: model.snapshot?.head, remoteNames: remoteNames, squashRevision: model.squashRevision),
@@ -55,11 +74,16 @@ extension RepositoryViewController {
 
     /// The header names what the list shows; its tooltip names what the graph leaves out.
     func updateHistoryScope() {
+        historyControls.availableBranches = model.snapshot?.references ?? []
+        historyControls.currentBranchName = model.snapshot?.branch
+        historyControls.authorChoices = model.topHistoryAuthors
+        historyControls.meAuthor = model.configuredAuthorMe
         let scope = HistoryScopePresenter(
             .init(
                 focused: model.section == .history ? model.focusedReference : nil, filters: model.branchFilters,
                 references: model.snapshot?.references ?? [], isSearching: model.isSearchingHistory,
                 searchField: model.searchField, searchQuery: model.searchQuery, authorLens: model.authorLens?.name,
+                highlightedAuthor: model.highlightedAuthor, inlineAuthor: model.inlineAuthor,
                 branch: model.snapshot?.localizedBranch))
         historyTable.setTitle(scope.title, toolTip: scope.toolTip)
         historyControls.show(scope)
@@ -67,11 +91,13 @@ extension RepositoryViewController {
 
     /// The zoom, highlighted author and merge labels: every row is drawn again.
     func applyHistoryAppearance() {
+        updateHistoryScope()
         historyControls.showHighlight(model.highlightedAuthor?.name)
         historyTable.highlightedAuthor = model.highlightedAuthor
         historyTable.showsMergeLabel = model.showsMergeLabel
         if !model.showsMergeLabel { mergedPopover.close() }
         historyTable.setZoom(percent: model.historyZoomPercent, selecting: model.selectedCommit?.id)
+        updateWorkingChangesBanner()
         arrangeSectionPanes()
     }
 
@@ -81,6 +107,7 @@ extension RepositoryViewController {
         let rows = historyTable.commits.count
         let loaded =
             model.collapsesMerges && !model.isSearchingHistory && model.focusedReference == nil
+                && model.inlineAuthor == nil
             ? model.snapshot?.commits.count ?? 0 : rows
         let table = historyTable.table
         guard !updating, model.section == .history, !historyPane.isHidden, loaded >= HistoryPaging.automaticMinimum,
@@ -100,6 +127,8 @@ extension RepositoryViewController {
     @objc func moreHistory() {
         if model.isSearchingHistory {
             model.loadMoreSearch()
+        } else if model.inlineAuthor != nil {
+            model.loadMoreInlineAuthor()
         } else if model.focusedReference != nil {
             model.loadMoreFocusedHistory()
         } else {
@@ -110,7 +139,9 @@ extension RepositoryViewController {
     func showAllBranches() {
         sidebarSelection = nil
         // Nothing narrower on screen: the link stops showing branches alone (hidden ones stay hidden).
-        if !model.isSearchingHistory, model.focusedReference == nil, !model.branchFilters.only.isEmpty {
+        if !model.isSearchingHistory, model.focusedReference == nil, model.inlineAuthor == nil,
+            !model.branchFilters.only.isEmpty
+        {
             model.clearBranchFilters(only: true, hidden: false)
             return
         }

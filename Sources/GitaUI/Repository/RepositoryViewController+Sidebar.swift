@@ -5,6 +5,7 @@ import GitaCore
 extension RepositoryViewController {
     func wireSidebar() {
         sidebarView.onOpenCheckout = { [weak self] url in self?.openRepository(url) }
+        sidebarView.onOpenInNewTab = { [weak self] url in self?.commands?.openRepositoryTab(url) }
         sidebarView.onNavigate = { [weak self] id in self?.navigate(id) }
         sidebarView.onReference = { [weak self] reference in
             self?.sidebarSelection = .reference(fullName: reference.fullName)
@@ -66,7 +67,12 @@ extension RepositoryViewController {
         input.currentRoot = model.snapshot?.root
         input.currentName = model.snapshot?.root.lastPathComponent ?? ""
         input.selection = sidebarSelectionID
-        if let snapshot = model.snapshot { fillSidebar(&input, snapshot: snapshot) }
+        if let snapshot = model.snapshot {
+            fillSidebar(&input, snapshot: snapshot)
+            if let service = model.service {
+                sidebarView.loadRecentBranchesIfNeeded(for: snapshot, service: service)
+            }
+        }
         input.repositories = sidebarRepositories()
         sidebarView.update(input)
     }
@@ -103,11 +109,16 @@ extension RepositoryViewController {
 
     private func sidebarRepositories() -> [RepositorySidebarView.Repository] {
         let monitor = WorkspaceMonitor.shared
+        let mru = SidebarState.shared(model.defaults).mruCheckouts
+        let moved = RemoteMonitor.shared.movedKeys { WindowAgents.key($0) }
         return SidebarRepositoryList(
             snapshot: model.snapshot, statuses: workspaceStatuses, status: { monitor.status(for: $0) },
             openRepositories: tabs?.openRepositories ?? [], recent: model.recent, loading: tabs?.loadingCheckouts ?? [],
             key: { WindowAgents.key($0) }, sessionsAt: { WindowAgents.shared.sessions(checkout: $0) },
-            sessionsIn: { WindowAgents.shared.sessions(repository: $0) }
+            sessionsIn: { WindowAgents.shared.sessions(repository: $0) },
+            mruCheckouts: mru,
+            remoteMovedRoots: moved.roots,
+            remoteMovedCheckouts: moved.checkouts
         ).repositories()
     }
 

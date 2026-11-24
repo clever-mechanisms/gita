@@ -147,11 +147,11 @@ struct ActionsReviewLauncherTests {
             ("com.github.wez.wezterm", ["start", "--", "/s"]), ("com.apple.Terminal", []),
         ]
         for (id, arguments) in cases {
-            #expect(ReviewAgentLauncher.commandArguments(terminal: id, script: "/s") == arguments)
+            #expect(TerminalScriptLauncher.commandArguments(terminal: id, script: "/s") == arguments)
         }
-        #expect(ReviewAgentLauncher.opensCommandDocuments("com.apple.Terminal"))
-        #expect(ReviewAgentLauncher.opensCommandDocuments("com.googlecode.iterm2"))
-        #expect(!ReviewAgentLauncher.opensCommandDocuments("dev.warp.Warp-Stable"))
+        #expect(TerminalScriptLauncher.opensCommandDocuments("com.apple.Terminal"))
+        #expect(TerminalScriptLauncher.opensCommandDocuments("com.googlecode.iterm2"))
+        #expect(!TerminalScriptLauncher.opensCommandDocuments("dev.warp.Warp-Stable"))
     }
 
     @Test func theMenuItemReviewsTheScopeInTheRepositoryAndLogsIt() async throws {

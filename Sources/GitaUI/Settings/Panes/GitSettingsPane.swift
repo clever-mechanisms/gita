@@ -2,8 +2,7 @@ import AppKit
 import GitaCore
 
 /// Settings ▸ Git: how Pull and Merge bring in commits (each choice in a card with an illustration of what it does),
-/// and the repository speed-ups. How the history looks lives in Settings ▸ History; GitHub's and Vercel's automatic
-/// refresh in Integrations.
+/// Remote Updates (Tier 1 read-only remote checks and opt-in auto-fetch), and repository speed-ups.
 @MainActor
 final class GitSettingsPane: SettingsPaneContent {
     private(set) lazy var speedUp = toggle(
@@ -17,6 +16,12 @@ final class GitSettingsPane: SettingsPaneContent {
     }
     let pullIllustration = SyncIllustrationView(.pull(.fastForwardOnly))
     let mergeIllustration = SyncIllustrationView(.merge(.automatic))
+    private(set) lazy var remoteUpdates = RemoteUpdatesControls(
+        adapter: RemoteUpdatesSettingsAdapter(
+            defaults: defaults,
+            statusSummary: { [environment] in environment.app.remoteUpdatesStatus() },
+            onChange: { [environment] in environment.app.preferencesDidChange(false) }))
+    private(set) lazy var remoteUpdatesGroup = remoteUpdates.makeGroup()
 
     override init(environment: SettingsEnvironment) {
         super.init(environment: environment)
@@ -24,7 +29,11 @@ final class GitSettingsPane: SettingsPaneContent {
         pullMode.setAccessibilityIdentifier("settings.pullMode")
         mergeMode.addItems(withTitles: GitMergeMode.allCases.map(\.localizedTitle))
         mergeMode.setAccessibilityIdentifier("settings.mergeMode")
-        setGroups([syncCards(), performanceGroup()])
+        setGroups([syncCards(), remoteUpdatesGroup, performanceGroup()])
+    }
+
+    override func view(for anchor: SettingsAnchor) -> NSView? {
+        anchor == .remoteUpdates ? remoteUpdatesGroup : nil
     }
 
     /// The repository speed-ups, explained.
@@ -57,5 +66,6 @@ final class GitSettingsPane: SettingsPaneContent {
     override func refresh() {
         speedUp.setOn(Preference.speedsUpSlowRepositories.bool(defaults))
         refreshSync()
+        refreshRemoteUpdates()
     }
 }

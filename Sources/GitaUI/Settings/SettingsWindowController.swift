@@ -1,9 +1,9 @@
 import AppKit
 
-/// The Settings window: a preference-style toolbar of panes; the window keeps its width and animates its height to
-/// each pane. Every control writes through `Preference` (or LoginItem / AppLanguage) and refreshes from live state.
+/// The Settings window: a resizable macOS sidebar host listing all 10 panes with live search, preserving every
+/// existing `SettingsPaneContent` view and `Preference.settingsPane` persistence.
 @MainActor
-final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let shared = SettingsWindowController()
     /// True once `shared` exists (refreshing a Settings window that was never opened needs no controller).
     private(set) static var isCreated = false
@@ -20,9 +20,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("SettingsWindowController is built in code") }
 
-    static let width: CGFloat = 680
-    private static let initialHeight: CGFloat = 400
-    private static let animationDuration: TimeInterval = 0.2
+    static let width: CGFloat = 860
+    static let initialHeight: CGFloat = 580
+    static let minSize = NSSize(width: 720, height: 420)
+    private static let animationDuration: TimeInterval = 0.16
+
     private let environment: SettingsEnvironment
     private(set) var pane: SettingsPane = .general
     private var contents: [SettingsPane: SettingsPaneContent] = [:]
@@ -31,8 +33,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
     private var gate = SettingsRefreshGate()
     private var defaults: UserDefaults { environment.defaults }
 
-    func show(_ pane: SettingsPane? = nil) {
-        AuxiliaryWindowActivation.show(prepareWindow(pane))
+    let sidebarController = SettingsSidebarController()
+    private let detailController = SettingsDetailViewController()
+    private let splitController = NSSplitViewController()
+    private var searchIndex = SettingsSearchIndex()
+    private(set) var searchResult = SettingsSearchIndex.Result(
+        query: "", matchingPanes: SettingsPane.allCases, matchCounts: [:], highlightedTargets: [:])
+
+    func show(_ pane: SettingsPane? = nil, anchor: SettingsAnchor? = nil) {
+        AuxiliaryWindowActivation.show(prepareWindow(pane, anchor: anchor))
     }
 
     /// Re-reads live state into the visible pane (login item, language restart, settings changed elsewhere).
@@ -46,117 +55,134 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
     }
 
     /// Builds the window and selects the pane without ordering it on screen.
-    @discardableResult func prepareWindow(_ requested: SettingsPane?) -> NSWindow {
+    @discardableResult func prepareWindow(
+        _ requested: SettingsPane?, anchor: SettingsAnchor? = nil
+    ) -> NSWindow {
         Preference.registerDefaults(in: defaults)
         let window = self.window ?? makeWindow()
         let target = requested ?? SettingsPane(rawValue: Preference.settingsPane.string(defaults)) ?? .general
         startObserving()
-        select(target, animated: window.isVisible)
+        select(target, animated: window.isVisible, anchor: anchor)
         return window
     }
 
     private func makeWindow() -> NSWindow {
-        let frame = NSRect(x: 0, y: 0, width: Self.width, height: Self.initialHeight)
-        let window = NSWindow(
-            contentRect: frame, styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: true)
-        window.toolbarStyle = .preference
+        buildAllPanesForIndex()
+        sidebarController.onSelectPane = { [weak self] next in
+            guard let self, next != self.pane else { return }
+            self.select(next, animated: true)
+        }
+        sidebarController.onSearchChange = { [weak self] query in
+            self?.search(query)
+        }
+
+        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarController)
+        sidebarItem.canCollapse = false
+        sidebarItem.minimumThickness = 185
+        sidebarItem.maximumThickness = 270
+        let detailItem = NSSplitViewItem(viewController: detailController)
+        detailItem.minimumThickness = 500
+        splitController.splitView.dividerStyle = .thin
+        splitController.addSplitViewItem(sidebarItem)
+        splitController.addSplitViewItem(detailItem)
+
+        let window = SettingsWindow(
+            contentRect: NSRect(x: 0, y: 0, width: Self.width, height: Self.initialHeight),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: true)
+        window.contentViewController = splitController
+        window.setContentSize(NSSize(width: Self.width, height: Self.initialHeight))
+        window.contentMinSize = Self.minSize
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.contentView = SettingsBackgroundView(frame: frame)
-        let toolbar = NSToolbar(identifier: "GitaSettings")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconAndLabel
-        toolbar.allowsUserCustomization = false
-        window.toolbar = toolbar
+        window.onFindCommand = { [weak self] in self?.sidebarController.focusSearch() }
         window.center()
         self.window = window
+        for content in contents.values { content.window = window }
         return window
     }
 
-    // MARK: Panes
+    // MARK: Panes & Search
+
+    private func buildAllPanesForIndex() {
+        for item in SettingsPane.allCases where contents[item] == nil {
+            _ = content(for: item)
+        }
+    }
 
     private func content(for pane: SettingsPane) -> SettingsPaneContent {
         if let content = contents[pane] { return content }
         let content = pane.makeContent(environment)
         content.window = window
         content.onLayoutChange = { [weak self, weak content] in
-            guard let self, let content, self.contents[self.pane] === content else { return }
-            self.fitWindow(animated: self.window?.isVisible == true)
+            guard let self, let content else { return }
+            self.searchIndex.index(pane: pane, content: content)
+            if self.pane == pane, self.searchResult.isActive {
+                self.search(self.searchResult.query)
+            }
         }
         contents[pane] = content
+        searchIndex.index(pane: pane, content: content)
         return content
     }
 
-    func select(_ next: SettingsPane, animated: Bool) {
-        guard let window, let container = window.contentView else { return }
+    func select(_ next: SettingsPane, animated: Bool, anchor: SettingsAnchor? = nil) {
+        guard let window else { return }
         let incoming = content(for: next)
-        let changed = incoming.view.superview !== container
-        if changed { swapIn(incoming, replacing: contents[pane], in: container) }
+        let previous = contents[pane]
+        let changed = detailController.currentContent !== incoming
+        if changed {
+            previous?.didDisappear()
+            detailController.show(incoming, pane: next)
+        }
         pane = next
         Preference.settingsPane.set(next.rawValue, defaults)
-        window.toolbar?.selectedItemIdentifier = next.itemIdentifier
+        sidebarController.select(next)
         window.title = next.title
         refreshVisiblePane()
         incoming.didAppear()
-        let fade = changed && animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        if fade { incoming.view.alphaValue = 0 }
-        fitWindow(animated: animated)
-        if fade {
-            NSAnimationContext.runAnimationGroup {
-                $0.duration = Self.animationDuration
-                incoming.view.animator().alphaValue = 1
-            }
+        applySearchHighlights(in: incoming, for: next)
+        if let anchor, let target = incoming.view(for: anchor) {
+            detailController.scrollTo(target)
+        } else if changed {
+            detailController.scrollToTop()
         }
-    }
-    private func swapIn(_ incoming: SettingsPaneContent, replacing previous: SettingsPaneContent?, in container: NSView)
-    {
-        previous?.didDisappear()
-        previous?.view.removeFromSuperview()
-        container.addSubview(incoming.view)
-        NSLayoutConstraint.activate([
-            incoming.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            incoming.view.topAnchor.constraint(equalTo: container.topAnchor),
-            incoming.view.widthAnchor.constraint(equalToConstant: Self.width),
-        ])
+        fadeInIfNeeded(incoming.view, changed: changed, animated: animated)
     }
 
-    /// Keeps the top edge where it is and resizes to the pane's fitting height, clamped to the screen.
-    private func fitWindow(animated: Bool) {
-        guard let window, let content = contents[pane] else { return }
-        content.view.layoutSubtreeIfNeeded()
-        let height = ceil(content.view.fittingSize.height)
-        // Titlebar + toolbar height from the live window: `frameRect(forContentRect:)` misses the preference toolbar
-        // until it has been laid out, which cut about 18 pt off the bottom of the first pane shown.
-        window.toolbar?.validateVisibleItems()
-        window.layoutIfNeeded()
-        let chrome = max(
-            window.frame.height - window.contentLayoutRect.height, window.frameRect(forContentRect: .zero).height)
-        let visible = window.isVisible ? (window.screen ?? NSScreen.main)?.visibleFrame : nil
-        let frame = Self.fittedFrame(current: window.frame, height: height + chrome, visible: visible)
-        guard frame != window.frame else { return }
-        if animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = Self.animationDuration
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(frame, display: true)
-            }
-        } else {
-            window.setFrame(frame, display: true)
+    func search(_ query: String) {
+        if sidebarController.searchField.stringValue != query {
+            sidebarController.searchField.stringValue = query
         }
-    }
-    /// The window frame `height` tall with its top edge kept, inside `visible` when the window is on a screen.
-    static func fittedFrame(current: NSRect, height: CGFloat, visible: NSRect?) -> NSRect {
-        var frame = NSRect(x: current.minX, y: current.maxY - height, width: width, height: height)
-        if let visible {
-            frame.origin.y = max(visible.minY, frame.origin.y)
-            frame.origin.x = max(visible.minX, min(frame.origin.x, visible.maxX - frame.width))
+        let result = searchIndex.search(query)
+        searchResult = result
+        sidebarController.applySearchResult(result)
+        if result.isActive, !result.matchingPanes.contains(pane), let first = result.matchingPanes.first {
+            select(first, animated: false)
+            return
         }
-        return frame
+        if let current = contents[pane] {
+            applySearchHighlights(in: current, for: pane)
+        }
     }
 
-    @objc private func selectToolbarPane(_ sender: NSToolbarItem) {
-        guard let next = SettingsPane(itemIdentifier: sender.itemIdentifier), next != pane else { return }
-        select(next, animated: true)
+    private func applySearchHighlights(in content: SettingsPaneContent, for pane: SettingsPane) {
+        let targets = searchResult.isActive ? (searchResult.highlightedTargets[pane] ?? []) : []
+        SettingsSearchIndex.applyHighlights(targets, in: content.view)
+        if let first = targets.first {
+            detailController.scrollTo(first)
+        }
+    }
+
+    private func fadeInIfNeeded(_ view: NSView, changed: Bool, animated: Bool) {
+        guard changed, animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            view.alphaValue = 1
+            return
+        }
+        view.alphaValue = 0
+        NSAnimationContext.runAnimationGroup {
+            $0.duration = Self.animationDuration
+            view.animator().alphaValue = 1
+        }
     }
 
     // MARK: Live state
@@ -211,30 +237,103 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
         stopObserving()
         AuxiliaryWindowActivation.closing(window)
     }
+}
 
-    // MARK: Toolbar
+@MainActor
+private final class SettingsWindow: NSWindow {
+    var onFindCommand: (() -> Void)?
 
-    func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        SettingsPane.allCases.map(\.itemIdentifier)
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+            event.charactersIgnoringModifiers?.lowercased() == "f"
+        {
+            onFindCommand?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
-    func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        SettingsPane.allCases.map(\.itemIdentifier)
+}
+
+@MainActor
+private final class SettingsDetailViewController: NSViewController {
+    private let headerIcon = NSImageView()
+    private let headerTitle = SettingsForm.label("", font: TextLines.system(17, weight: .semibold))
+    private let scrollView = NSScrollView()
+    private let documentView = FlippedView()
+    private(set) weak var currentContent: SettingsPaneContent?
+
+    override func loadView() {
+        let root = SettingsBackgroundView(frame: NSRect(x: 0, y: 0, width: 640, height: 540))
+        view = root
+
+        headerIcon.translatesAutoresizingMaskIntoConstraints = false
+        headerIcon.imageScaling = .scaleProportionallyDown
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        let header = NSStackView(views: [headerIcon, headerTitle])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.spacing = 8
+        header.edgeInsets = NSEdgeInsets(top: 14, left: 22, bottom: 10, right: 22)
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        let separator = Deck.separator()
+        separator.translatesAutoresizingMaskIntoConstraints = false
+
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = documentView
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        root.addSubview(header)
+        root.addSubview(separator)
+        root.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            headerIcon.widthAnchor.constraint(equalToConstant: 18),
+            headerIcon.heightAnchor.constraint(equalToConstant: 18),
+            header.topAnchor.constraint(equalTo: root.topAnchor),
+            header.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            separator.topAnchor.constraint(equalTo: header.bottomAnchor),
+            separator.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: separator.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            documentView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor),
+            documentView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
+            documentView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
+        ])
     }
-    func toolbarSelectableItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        SettingsPane.allCases.map(\.itemIdentifier)
+
+    func show(_ content: SettingsPaneContent, pane: SettingsPane) {
+        _ = view
+        currentContent?.view.removeFromSuperview()
+        currentContent = content
+        headerIcon.image = NSImage(systemSymbolName: pane.symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 15, weight: .semibold))
+        headerIcon.contentTintColor = Theme.secondaryText
+        headerTitle.stringValue = pane.title
+        documentView.addSubview(content.view)
+        NSLayoutConstraint.activate([
+            content.view.leadingAnchor.constraint(equalTo: documentView.leadingAnchor),
+            content.view.trailingAnchor.constraint(equalTo: documentView.trailingAnchor),
+            content.view.topAnchor.constraint(equalTo: documentView.topAnchor),
+            content.view.bottomAnchor.constraint(equalTo: documentView.bottomAnchor),
+        ])
     }
-    func toolbar(
-        _: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
-        willBeInsertedIntoToolbar _: Bool
-    ) -> NSToolbarItem? {
-        guard let pane = SettingsPane(itemIdentifier: identifier) else { return nil }
-        let item = NSToolbarItem(itemIdentifier: identifier)
-        item.label = pane.title
-        item.paletteLabel = pane.title
-        item.toolTip = nil
-        item.image = NSImage(systemSymbolName: pane.symbol, accessibilityDescription: pane.title)
-        item.target = self
-        item.action = #selector(selectToolbarPane(_:))
-        return item
+
+    func scrollToTop() {
+        scrollView.contentView.scroll(to: .zero)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    func scrollTo(_ target: NSView) {
+        view.layoutSubtreeIfNeeded()
+        let rect = documentView.convert(target.bounds, from: target)
+        documentView.scrollToVisible(rect.insetBy(dx: 0, dy: -12))
     }
 }

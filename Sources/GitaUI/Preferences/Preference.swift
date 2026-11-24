@@ -36,6 +36,13 @@ enum Preference: String, CaseIterable {
     case mergeMode // String: `GitMergeMode` raw value — the Merge sheet's strategy when it opens
     // Bool: build a missing commit-graph and refresh a stale index where reads are slow (`AppModel+GitCaches`)
     case speedsUpSlowRepositories
+    // Remote updates (Tier 1 read-only `ls-remote` and opt-in Tier 2 atomic auto-fetch)
+    case remoteCheck // Bool: read-only `ls-remote` check (default ON)
+    case remoteAutoFetch // Bool: opt-in Tier 2 atomic auto-fetch (default OFF)
+    case remoteCheckCadence // Int: `RemoteCheckCadence` minutes (5, 15, 30; default 15)
+    case remoteCheckScope // String: `RemoteCheckScope` raw value ("frontTabOnly" | "allOpenTabs")
+    case remotePauseOnLowData // Bool: pause auto-fetch on Low Data, expensive networks, or Low Power Mode
+    case remoteCheckOnFocus // Bool: check when a window comes forward and last check is older than min(cadence, 5m)
 
     // Integrations: each one off stops its reads and hides what it shows (`Integration`)
     case useGitHub, useVercel // Bool
@@ -96,6 +103,9 @@ enum Preference: String, CaseIterable {
         .historyZoomPercent: HistoryZoom.actual,
         .theme: "system", .codeFont: "system", .interfaceFont: "system",
         .pullMode: GitPullMode.fastForwardOnly.rawValue, .mergeMode: GitMergeMode.automatic.rawValue,
+        .remoteAutoFetch: false,
+        .remoteCheckCadence: RemoteCheckCadence.fifteen.rawValue,
+        .remoteCheckScope: RemoteCheckScope.allOpenTabs.rawValue,
         .mergedCommitsOn: "click", .graphLines: "rounded",
         .commitColor: "automatic", .branchColor: "automatic", .checkedOutColor: "automatic",
         .mergeLabelColor: "automatic",
@@ -118,6 +128,7 @@ enum Preference: String, CaseIterable {
 
     static func registerDefaults(in defaults: UserDefaults = Self.store) {
         defaults.register(defaults: Dictionary(uniqueKeysWithValues: allCases.map { ($0.rawValue, $0.defaultValue) }))
+        DiffPreference.registerDefaults(in: defaults)
     }
 
     /// The stored value, else the default (also before `registerDefaults`).

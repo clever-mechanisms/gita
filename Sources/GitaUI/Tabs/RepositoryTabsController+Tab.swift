@@ -15,6 +15,8 @@ extension RepositoryTabsController {
         var observer: UUID?
         /// Background colour, from the tab's context menu.
         var color: TabColor?
+        /// Whether the Done badge on this tab has already been seen while active.
+        var seenDone = false
         /// Its worktree was matched with its repository's tab once (`groupWithRepository`): a tab taken out of the
         /// group stays out.
         var wasGrouped = false
@@ -40,5 +42,33 @@ extension RepositoryTabsController {
             else { return nil }
             return URL(fileURLWithPath: first.path, isDirectory: true)
         }
+    }
+
+    func selectNextTab() { if count > 1 { select((selectedIndex + 1) % count) } }
+    func selectPreviousTab() { if count > 1 { select((selectedIndex + count - 1) % count) } }
+    /// ⌘1…⌘8 choose that tab, ⌘9 the last one (as in Safari and other tabbed apps); tabs in collapsed groups count.
+    func selectTab(number: Int) {
+        guard number >= 1, !isEmpty else { return }
+        guard let index = list.index(forShortcut: number) else {
+            NSSound.beep()
+            return
+        }
+        select(index)
+    }
+    func refreshSharedPreferences() {
+        guard !isDetached else { return }
+        for tab in tabs { tab.model.emit(.historyAppearance) }
+    }
+    func markSeen(_ tab: Tab) {
+        guard isVisible, let root = tab.root else { return }
+        environment.markSeen(root)
+    }
+    /// Repository roots of the open tabs, in tab order (the sidebar lists these first).
+    var openRepositories: [URL] { tabs.compactMap(\.repositoryRoot) }
+    func setWindowVisible(_ visible: Bool) {
+        isVisible = visible
+        if visible, let tab = selectedTab { markSeen(tab) }
+        updateVisibility()
+        if visible, !isEmpty { selectedModel.becameVisible() }
     }
 }

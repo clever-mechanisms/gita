@@ -12,7 +12,9 @@ final class ContextHistoryTable: NSTableView {
         let point = convert(event.locationInWindow, from: nil)
         let index = row(at: point)
         guard index >= 0 else { return nil }
-        selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        if !selectedRowIndexes.contains(index) {
+            selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        }
         return pillMenu(at: point, row: index) ?? super.menu(for: event)
     }
 

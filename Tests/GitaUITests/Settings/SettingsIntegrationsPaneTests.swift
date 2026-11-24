@@ -136,4 +136,57 @@ struct SettingsIntegrationsPaneTests {
         #expect(!vercel.isEnabled)
         #expect(github.isEnabled)
     }
+
+    @Test func listsEveryGhAccountAssignedRepositoriesAndChangesOrResetsAssignments() async throws {
+        let recorder = SettingsRecorder()
+        defer { recorder.tearDown() }
+        var addedAccounts = 0
+        var env = recorder.environment
+        env.system.addGitHubAccount = { addedAccounts += 1 }
+        let json = """
+            {"hosts":{"github.com":[
+              {"login":"rolottr","active":true,"state":"success"},
+              {"login":"work","active":false,"state":"success"},
+              {"login":"expired","active":false,"state":"error"}
+            ]}}
+            """
+        recorder.runs.answer("gh", with: .success(SettingsRunLog.output(json)))
+
+        let store = GitHubAccountStore(defaults: recorder.defaults)
+        let rolottr = try #require(GitHubLogin("rolottr"))
+        let work = try #require(GitHubLogin("work"))
+        let ghost = try #require(GitHubLogin("ghost"))
+        store.apply(.store(rolottr), sourceID: "github:me/app")
+        store.choose(work, sourceID: "github:SQLI-International/monorepo")
+        store.choose(ghost, sourceID: "github:old/orphan")
+
+        let pane = IntegrationsSettingsPane(environment: env)
+        pane.didAppear()
+        try await SettingsWait.until { !pane.accounts.isChecking }
+
+        // Lists all 3 reported accounts (active, signed-in, expired) and all 3 repository assignments.
+        let accountRows = pane.githubAccountsGroup.rows.map(\.titleLabel.stringValue)
+        #expect(accountRows.contains("rolottr"))
+        #expect(accountRows.contains("work"))
+        #expect(accountRows.contains("expired"))
+        #expect(accountRows.contains("me/app"))
+        #expect(accountRows.contains("SQLI-International/monorepo"))
+        #expect(accountRows.contains("old/orphan"))
+
+        // Changing assignment updates GitHubAccountStore.
+        let monoControls = try #require(pane.accountAssignmentControls["github:SQLI-International/monorepo"])
+        monoControls.popup.settingsChoose(value: "rolottr")
+        let expectedRolottr = GitHubAccountChoice.chosen(try #require(GitHubLogin("rolottr")))
+        #expect(store.choice(for: "github:SQLI-International/monorepo") == expectedRolottr)
+
+        // Resetting clears the assignment back to Automatic (nil in store).
+        let reset = try #require(pane.accountAssignmentControls["github:SQLI-International/monorepo"]?.reset)
+        reset.performClick(nil)
+        #expect(store.choice(for: "github:SQLI-International/monorepo") == nil)
+
+        // Add account button triggers addGitHubAccount hook.
+        pane.addGitHubAccountButton.performClick(nil)
+        #expect(addedAccounts == 1)
+        pane.didDisappear()
+    }
 }

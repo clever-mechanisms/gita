@@ -61,7 +61,7 @@ struct RepositorySheetLauncher {
         coordinator.present(ReviewSheetHandle(controller), service: check.service, on: window)
     }
 
-    func reviewInteractiveRebase(after base: GitCommit) {
+    func reviewInteractiveRebase(after base: GitCommit, prefillActions: [String: GitRebaseAction] = [:]) {
         // Reopening a window can start a snapshot refresh after the menu has accepted this immutable base. The sheet
         // obtains its own fresh review.
         guard model.snapshot?.head != base.id, let check = historyGuard(failure: { CancellationError() }) else {
@@ -69,6 +69,7 @@ struct RepositorySheetLauncher {
         }
         let controller = InteractiveRebaseController(
             base: base,
+            initialActions: prefillActions,
             onLoad: { try await check.run { try await $0.previewInteractiveRebase(after: base.id) } },
             onMessage: { commitID in
                 let details = try await check.run { try await $0.commitDetails(ref: commitID) }

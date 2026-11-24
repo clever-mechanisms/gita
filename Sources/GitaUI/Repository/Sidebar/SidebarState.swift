@@ -18,6 +18,10 @@ final class SidebarState {
 
     let defaults: UserDefaults
 
+    private static let collapsedKey = "sidebarRepositoriesCollapsed"
+    private static let heightKey = "sidebarRepositoriesHeight"
+    private static let mruCheckoutsKey = "sidebarMRUCheckouts"
+
     /// Repository root path → expanded.
     var repositoryExpansion: [String: Bool] {
         didSet { remember(repositoryExpansion, .sidebarRepositories) }
@@ -25,6 +29,18 @@ final class SidebarState {
     /// `SidebarGroupID.persistedKey` → expanded.
     private(set) var groupExpansion: [String: Bool] {
         didSet { remember(groupExpansion, .sidebarGroups) }
+    }
+    /// Whether the pinned Repositories drawer at the top of the sidebar is collapsed to its header.
+    var repositoriesCollapsed: Bool {
+        didSet { defaults.set(repositoriesCollapsed, forKey: Self.collapsedKey) }
+    }
+    /// Remembered height of the Repositories drawer before the 40% cap. Zero means use the default share.
+    var repositoriesHeight: CGFloat {
+        didSet { defaults.set(Double(repositoriesHeight), forKey: Self.heightKey) }
+    }
+    /// Canonical repository root path → most recently opened checkout path.
+    private(set) var mruCheckouts: [String: String] {
+        didSet { defaults.set(mruCheckouts, forKey: Self.mruCheckoutsKey) }
     }
 
     func setExpanded(_ group: SidebarGroupID, _ expanded: Bool) { groupExpansion[group.persistedKey] = expanded }
@@ -35,7 +51,17 @@ final class SidebarState {
         repositoryExpansion = Self.remembered(.sidebarRepositories, in: defaults)
         let opened = [SidebarGroupID.branches.persistedKey: true, SidebarGroupID.worktrees.persistedKey: true]
         groupExpansion = opened.merging(Self.remembered(.sidebarGroups, in: defaults)) { $1 }
+        repositoriesCollapsed = defaults.bool(forKey: Self.collapsedKey)
+        repositoriesHeight = CGFloat(defaults.double(forKey: Self.heightKey))
+        mruCheckouts = defaults.dictionary(forKey: Self.mruCheckoutsKey) as? [String: String] ?? [:]
         repositoryOrder = RepositoryListOrder(rawValue: Preference.sidebarRepositoryOrder.string(defaults)) ?? .name
+    }
+
+    func recordCheckout(_ checkoutURL: URL, for repositoryRoot: URL) {
+        let rootKey = RecentRepositories.canonical(repositoryRoot.path)
+        let checkoutPath = RecentRepositories.canonical(checkoutURL.path)
+        guard mruCheckouts[rootKey] != checkoutPath else { return }
+        mruCheckouts[rootKey] = checkoutPath
     }
 
     private static func remembered(_ key: Preference, in defaults: UserDefaults) -> [String: Bool] {
@@ -57,7 +83,8 @@ final class SidebarState {
     func forgetRepositories(_ paths: [String]) {
         let gone = Set(paths.map(RecentRepositories.canonical))
         let kept = repositoryExpansion.filter { !gone.contains(RecentRepositories.canonical($0.key)) }
-        guard kept.count != repositoryExpansion.count else { return }
-        repositoryExpansion = kept
+        if kept.count != repositoryExpansion.count { repositoryExpansion = kept }
+        let keptMRU = mruCheckouts.filter { !gone.contains($0.key) }
+        if keptMRU.count != mruCheckouts.count { mruCheckouts = keptMRU }
     }
 }

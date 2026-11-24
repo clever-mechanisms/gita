@@ -12,6 +12,8 @@ protocol HistoryTableDelegate: AnyObject {
     func historyChipCandidates() -> Set<String>
     /// The user chose a row.
     func historyDidSelect(_ commit: GitCommit)
+    /// The user changed selection (0, 1, 2, or 3+ rows).
+    func historyDidChangeSelection(_ selection: HistorySelection)
     /// The user cleared the selection (Command-click on the selected row): no commit is reviewed.
     func historyDidDeselect()
     func historyMergeChip(_ event: HistoryMergeChipEvent)

@@ -9,7 +9,8 @@ extension RepositoryViewController {
         buildContent()
         buildHistoryPane()
         buildDetailPane()
-        Style.fill(providerPage, in: pagePane)
+        Style.fill(prWorkspace, in: pagePane)
+        Style.fill(providerPage, in: prWorkspace.listHost)
         Style.fill(welcome, in: historyPane)
         buildWelcome()
     }
@@ -39,19 +40,37 @@ extension RepositoryViewController {
         historyControls.onSearch = { [weak self] query in self?.searchHistory(query) }
         historyControls.onChooseField = { [weak self] field in self?.chooseSearchField(field) }
         operationBar.onReview = { [weak self] in self?.reviewConflicts() }
-        for child in [strip, operationBar, historyPane, pagePane] as [NSView] {
+        wireContentBanner()
+        let banner = contentBanner
+        let focusKey = PaneFocusKeyView { [weak self] event in self?.handlePaneFocusKey(event) ?? false }
+        for child in [banner, strip, operationBar, historyPane, pagePane, focusKey] as [NSView] {
             content.addSubview(child)
             child.translatesAutoresizingMaskIntoConstraints = false
         }
         NSLayoutConstraint.activate(
-            pinnedSides(strip, operationBar, historyPane, pagePane) + [
-                strip.topAnchor.constraint(equalTo: content.topAnchor), stripHeight,
+            pinnedSides(banner, strip, operationBar, historyPane, pagePane) + [
+                banner.topAnchor.constraint(equalTo: content.topAnchor), bannerHeight,
+                strip.topAnchor.constraint(equalTo: banner.bottomAnchor), stripHeight,
                 operationBar.topAnchor.constraint(equalTo: strip.bottomAnchor), operationHeight,
                 historyPane.topAnchor.constraint(equalTo: operationBar.bottomAnchor),
                 historyPane.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-                pagePane.topAnchor.constraint(equalTo: content.topAnchor),
+                pagePane.topAnchor.constraint(equalTo: banner.bottomAnchor),
                 pagePane.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+                focusKey.widthAnchor.constraint(equalToConstant: 0),
+                focusKey.heightAnchor.constraint(equalToConstant: 0),
             ])
+        syncContentBanner()
+    }
+
+    private func wireContentBanner() {
+        let banner = contentBanner
+        banner.setAccessibilityIdentifier("content.banner")
+        banner.onRetry = { [weak self] in self?.model.retryBanner() }
+        banner.onDismiss = { [weak self] in self?.model.dismissBanner() }
+        banner.onDetails = { [weak self] in
+            guard let self else { return }
+            ActivityWindowController.shared.show(model: self.model)
+        }
     }
 
     /// Leading and trailing edges of `views` on the content's.
@@ -67,25 +86,41 @@ extension RepositoryViewController {
     private func buildHistoryPane() {
         verticalSplit.isVertical = false
         verticalSplit.dividerStyle = .thin
+        verticalSplit.delegate = self
         historyTable.onNeedsLayout = { [weak self] in self?.view.needsLayout = true }
         let scroll = historyTable.scroll
-        historyTop.addSubview(scroll)
-        historyTop.addSubview(loadMore)
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        loadMore.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            scroll.leadingAnchor.constraint(equalTo: historyTop.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: historyTop.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: historyTop.topAnchor),
-            scroll.bottomAnchor.constraint(equalTo: loadMore.topAnchor),
-            loadMore.centerXAnchor.constraint(equalTo: historyTop.centerXAnchor),
-            loadMore.bottomAnchor.constraint(equalTo: historyTop.bottomAnchor), historyFooterHeight,
-        ])
+        let header = historyTable.headerClip
+        let filters = historyControls.filterBar
+        let working = historyTable.workingChangesRow
+        for row in [header, filters, working, scroll, loadMore] as [NSView] {
+            historyTop.addSubview(row)
+            row.translatesAutoresizingMaskIntoConstraints = false
+        }
+        let fullWidth = [header, filters, working, scroll].flatMap { row in
+            [
+                row.leadingAnchor.constraint(equalTo: historyTop.leadingAnchor),
+                row.trailingAnchor.constraint(equalTo: historyTop.trailingAnchor),
+            ]
+        }
+        let historyMinHeight = historyTop.heightAnchor.constraint(
+            greaterThanOrEqualToConstant: RepositoryLayout.historyTopMinimum)
+        historyMinHeight.identifier = RepositoryLayout.historyTopMinimumID
+        NSLayoutConstraint.activate(
+            fullWidth + [
+                filters.topAnchor.constraint(equalTo: historyTop.topAnchor),
+                filters.heightAnchor.constraint(equalToConstant: 26),
+                header.topAnchor.constraint(equalTo: filters.bottomAnchor),
+                header.heightAnchor.constraint(equalToConstant: historyTable.header.frame.height),
+                working.topAnchor.constraint(equalTo: header.bottomAnchor), historyTable.workingRowHeight,
+                scroll.topAnchor.constraint(equalTo: working.bottomAnchor),
+                scroll.bottomAnchor.constraint(equalTo: loadMore.topAnchor),
+                loadMore.centerXAnchor.constraint(equalTo: historyTop.centerXAnchor),
+                loadMore.bottomAnchor.constraint(equalTo: historyTop.bottomAnchor), historyFooterHeight,
+                historyMinHeight,
+            ])
         verticalSplit.addArrangedSubview(historyTop)
         verticalSplit.addArrangedSubview(bottom)
         Style.fill(verticalSplit, in: historyPane)
-        historyTop.heightAnchor.constraint(greaterThanOrEqualToConstant: RepositoryLayout.historyTopMinimum)
-            .isActive = true
         bottom.heightAnchor.constraint(greaterThanOrEqualToConstant: RepositoryLayout.detailMinimum).isActive = true
         bottom.color = Theme.inset
     }
@@ -93,43 +128,105 @@ extension RepositoryViewController {
     private func buildDetailPane() {
         filesSplit.isVertical = true
         filesSplit.dividerStyle = .thin
-        filesSplit.addArrangedSubview(filePane)
+        filesSplit.delegate = self
+        let fileColumn = Deck.vstack([filePane, commitFooter], spacing: 0)
+        fileColumn.alignment = .leading
+        filePane.widthAnchor.constraint(equalTo: fileColumn.widthAnchor).isActive = true
+        commitFooter.widthAnchor.constraint(equalTo: fileColumn.widthAnchor).isActive = true
+        filePane.setContentHuggingPriority(.init(1), for: .vertical)
+        filePane.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        commitFooter.setContentHuggingPriority(.required, for: .vertical)
+        commitFooter.setContentCompressionResistancePriority(.required, for: .vertical)
+
+        filesSplit.addArrangedSubview(fileColumn)
         filesSplit.addArrangedSubview(codePane)
-        filePane.widthAnchor.constraint(greaterThanOrEqualToConstant: RepositoryLayout.filePaneMinimum).isActive = true
+        let fileMinWidth = fileColumn.widthAnchor.constraint(
+            greaterThanOrEqualToConstant: RepositoryLayout.filePaneMinimum)
+        fileMinWidth.identifier = RepositoryLayout.fileColumnMinimumID
+        fileMinWidth.isActive = true
         codePane.widthAnchor.constraint(greaterThanOrEqualToConstant: RepositoryLayout.codePaneMinimum).isActive = true
         filesSplit.setHoldingPriority(.init(260), forSubviewAt: 0)
         Style.fill(filesSplit, in: detailBody)
         Style.fill(commitDetail, in: detailBody)
-        let lower = Style.stack([detailBar, detailBody, commitFooter], vertical: true, spacing: 0)
+        let lower = Style.stack([detailBar, detailBody], vertical: true, spacing: 0)
         lower.alignment = .leading
         Style.fill(lower, in: bottom)
         NSLayoutConstraint.activate([
             detailBar.widthAnchor.constraint(equalTo: lower.widthAnchor),
             detailBar.heightAnchor.constraint(equalToConstant: DetailBarView.height),
             detailBody.widthAnchor.constraint(equalTo: lower.widthAnchor),
-            commitFooter.widthAnchor.constraint(equalTo: lower.widthAnchor),
         ])
         detailBody.setContentHuggingPriority(.init(1), for: .vertical)
         detailBar.setContentHuggingPriority(.required, for: .vertical)
     }
 
     private func buildWelcome() {
-        let buttons = [
-            (String(localized: "Open repository…"), "folder", #selector(AppDelegate.openRepository)),
-            (String(localized: "Clone repository…"), "arrow.down", #selector(AppDelegate.cloneRepository)),
-            (String(localized: "New repository…"), "plus", #selector(AppDelegate.initializeRepository)),
-            (String(localized: "Open recent"), "clock", #selector(AppDelegate.openRecent)),
-        ].map { Style.button($0.0, symbol: $0.1, target: nil, action: $0.2) }
-        let title = Style.label(
-            "Gitā", size: RepositoryLayout.welcomeTitleSize, weight: .semibold, color: Theme.text)
-        let stack = Style.stack([title] + buttons, vertical: true, spacing: RepositoryLayout.welcomeSpacing)
-        stack.alignment = .centerX
-        welcome.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: welcome.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: welcome.centerYAnchor),
-        ])
+        let welcomeView = WelcomeView()
+        welcomeView.defaults = model.defaults
+        welcomeView.onOpen = { NSApp.sendAction(#selector(AppDelegate.openRepository), to: nil, from: nil) }
+        welcomeView.onClone = { NSApp.sendAction(#selector(AppDelegate.cloneRepository), to: nil, from: nil) }
+        welcomeView.onInitialize = {
+            NSApp.sendAction(#selector(AppDelegate.initializeRepository), to: nil, from: nil)
+        }
+        welcomeView.onOpenRepository = { [weak self] url in self?.openWelcomeRepository(url) }
+        welcomeView.onRemoveRecent = { [weak self] path in self?.removeRecentRepository(path, in: welcomeView) }
+        welcomeView.onOfferInitialize = { [weak self] url in self?.confirmInitializeDroppedFolder(url) }
+        Style.fill(welcomeView, in: welcome)
+        welcomeView.reload(paths: model.recent)
+        notificationObservations.append(
+            NotificationCenter.default.addObserver(
+                forName: .gitaPreferenceChanged, object: nil, queue: .main
+            ) { [weak self, weak welcomeView] note in
+                guard Preference(changed: note) == .recentRepositories else { return }
+                MainActor.assumeIsolated {
+                    if let self { welcomeView?.reload(paths: self.model.recent) }
+                }
+            })
+    }
+
+    private func openWelcomeRepository(_ url: URL) {
+        if let commands {
+            commands.openRepositoryTab(url)
+        } else {
+            model.open(url)
+        }
+    }
+
+    private func removeRecentRepository(_ path: String, in welcomeView: WelcomeView) {
+        if let commands {
+            commands.removeFromRepositoryList([path])
+        } else {
+            let updated = RecentRepositories.removing([path], from: model.recent)
+            model.defaults.set(updated, forKey: model.recentKey)
+        }
+        welcomeView.reload(paths: model.recent)
+    }
+
+    private func confirmInitializeDroppedFolder(_ folder: URL) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Initialize a repository here…")
+        alert.informativeText = String(
+            localized: "Create a new Git repository in “\(folder.lastPathComponent)” (\(folder.path))?")
+        alert.addButton(withTitle: String(localized: "Initialize Repository"))
+        alert.addButton(withTitle: String(localized: "Cancel")).keyEquivalent = "\u{1b}"
+        AlertPresenter.shared.confirm(alert, on: view.window) { [weak self] in
+            self?.initializeDroppedFolder(folder)
+        }
+    }
+
+    private func initializeDroppedFolder(_ folder: URL) {
+        Task { [weak self] in
+            do {
+                let root = try await GitService.initialize(existing: folder)
+                self?.openWelcomeRepository(root)
+            } catch {
+                let retry = ContentBanner.RetryAction(title: String(localized: "Retry")) { [weak self] in
+                    self?.initializeDroppedFolder(folder)
+                }
+                self?.model.showNonDestructiveError(
+                    String(localized: "Initialize repository"), error.localizedDescription, retry: retry)
+            }
+        }
     }
 
     /// The history table's menu and its zoom; the table itself is `HistoryTableController`'s.
@@ -164,5 +261,146 @@ extension RepositoryViewController {
                 self.commands?.openAuthorTab(author, in: root)
             })
         return builder.item(for: commit)
+    }
+
+    // MARK: Inline Error Banner (§10.2)
+
+    func syncContentBanner() {
+        contentBanner.apply(model.contentBanner)
+        bannerHeight.constant = model.contentBanner.isHidden ? 0 : ContentBannerView.height
+    }
+
+    // MARK: Keyboard Pane Focus (§10.4)
+
+    enum FocusPane: Int, CaseIterable {
+        case sidebar, history, files, diff
+    }
+
+    func focusPane(_ pane: FocusPane) {
+        ensurePaneVisible(pane)
+        guard let responder = paneResponder(for: pane), let host = paneHost(for: pane) else { return }
+        view.window?.makeFirstResponder(responder)
+        focusedPane = pane
+        focusRing.removeFromSuperview()
+        Style.fill(focusRing, in: host)
+    }
+
+    func cyclePaneFocus(forward: Bool = true) {
+        let available = FocusPane.allCases.filter { paneHost(for: $0)?.isHidden == false }
+        guard !available.isEmpty else { return }
+        let current = currentFocusedPane() ?? focusedPane
+        if let current, let index = available.firstIndex(of: current) {
+            let offset = forward ? 1 : available.count - 1
+            focusPane(available[(index + offset) % available.count])
+        } else if let first = forward ? available.first : available.last {
+            focusPane(first)
+        }
+    }
+
+    private func handlePaneFocusKey(_ event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        if let command = ShortcutStore.focusCommand(using: event, model.defaults) {
+            switch command {
+            case .focusSidebar: focusPane(.sidebar)
+            case .focusHistory: focusPane(.history)
+            case .focusFiles: focusPane(.files)
+            case .focusDiff: focusPane(.diff)
+            case .cyclePaneFocus: cyclePaneFocus()
+            default: return false
+            }
+            return true
+        }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if event.keyCode == 48, flags == [.control, .option] || flags == [.control, .option, .shift] {
+            cyclePaneFocus(forward: !flags.contains(.shift))
+            return true
+        }
+        return false
+    }
+
+    private func ensurePaneVisible(_ pane: FocusPane) {
+        switch pane {
+        case .sidebar:
+            if sidebarView.isHidden { toggleSidebar() }
+        case .history:
+            if !SectionPanes(model.section).showsHistoryPane { model.section = .history }
+        case .files, .diff:
+            if !SectionPanes(model.section).showsHistoryPane { model.section = .history }
+            if model.section == .history, !model.showsHistoryDetails {
+                model.defaults.set(true, forKey: Preference.showsHistoryDetails.rawValue)
+                arrangeSectionPanes()
+            }
+            if detailTab == .commit { selectDetailTab(.changes) }
+        }
+    }
+
+    private func paneHost(for pane: FocusPane) -> NSView? {
+        switch pane {
+        case .sidebar: sidebarView
+        case .history: historyTop
+        case .files: filePane
+        case .diff: codePane
+        }
+    }
+
+    private func paneResponder(for pane: FocusPane) -> NSResponder? {
+        switch pane {
+        case .sidebar: sidebarView.repositoryPane.list.table
+        case .history: historyTable.table
+        case .files:
+            switch filePane.content {
+            case .commitFiles: filePane.commitFiles.outline
+            case .localChanges: filePane.unstaged.list.outline
+            case .tree: filePane.tree
+            }
+        case .diff: codePane.diffView.table
+        }
+    }
+
+    private func currentFocusedPane() -> FocusPane? {
+        guard let responder = view.window?.firstResponder as? NSView else { return nil }
+        return FocusPane.allCases.first { pane in
+            paneHost(for: pane).map { responder === $0 || responder.isDescendant(of: $0) } ?? false
+        }
+    }
+}
+
+@MainActor
+final class PaneFocusRingView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.borderColor = Theme.accent.cgColor
+        layer?.borderWidth = 2
+        layer?.cornerRadius = 4
+        setAccessibilityElement(false)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) { fatalError("PaneFocusRingView is built in code") }
+
+    override func hitTest(_: NSPoint) -> NSView? { nil }
+
+    override func updateLayer() {
+        layer?.borderColor = Theme.accent.cgColor
+    }
+    override var wantsUpdateLayer: Bool { true }
+}
+
+@MainActor
+private final class PaneFocusKeyView: NSView {
+    private let onKey: (NSEvent) -> Bool
+
+    init(onKey: @escaping (NSEvent) -> Bool) {
+        self.onKey = onKey
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) { fatalError("PaneFocusKeyView is built in code") }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if onKey(event) { return true }
+        return super.performKeyEquivalent(with: event)
     }
 }

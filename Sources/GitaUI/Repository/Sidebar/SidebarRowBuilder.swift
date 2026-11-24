@@ -1,9 +1,8 @@
 import Foundation
 import GitaCore
 
-/// The sidebar's rows: the open repository's own items on top (Local Changes, All Commits, Worktrees, Branches,
-/// Remotes, Tags, Stashes, the provider pages), then every repository with its checkouts. A filter query keeps the
-/// matching rows and opens every group.
+/// Builds the rows for both sidebar panes: `repositoryRows(query:)` for the pinned Repositories drawer and
+/// `currentRepositoryRows()` for the open repository's pages, recent branches, refs, and stashes.
 @MainActor
 struct SidebarRowBuilder {
     typealias Row = RepositorySidebarView.Row
@@ -12,7 +11,7 @@ struct SidebarRowBuilder {
     typealias Nav = RepositorySidebarView.Nav
 
     var input: RepositorySidebarView.Input
-    /// The filter, trimmed.
+    /// The scoped current-repository filter, trimmed.
     var query: String
     var repositoryExpansion: [String: Bool]
     /// `SidebarGroupID.persistedKey` → expanded, as the user left the groups.
@@ -24,42 +23,32 @@ struct SidebarRowBuilder {
     private var filtering: Bool { !query.isEmpty }
     private func matches(_ value: String) -> Bool { query.isEmpty || value.localizedStandardContains(query) }
 
-    func rows() -> [Row] {
-        let repositories = repositoryRows()
-        var next: [Row] = []
-        if input.currentRoot != nil {
-            next = currentRepositoryRows()
-            next.append(.divider)
-        }
-        if !filtering || repositories.count > 1 {
-            next += repositories
-        } else if next.last == .divider {
-            next.removeLast()
-        }
-        return next
-    }
+    // MARK: Repositories pane
 
-    // MARK: Repositories
-
-    private func repositoryRows() -> [Row] {
-        let count = input.repositories.count > 1 && !filtering ? "\(input.repositories.count)" : ""
-        var rows: [Row] = [.header(String(localized: "Repositories"), count, sortable: true)]
+    func repositoryRows(query repoQuery: String = "") -> [Row] {
+        let trimmed = repoQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        var rows: [Row] = []
         for repository in order.sorted(input.repositories, name: \.name, rank: Self.statusRank) {
-            rows += self.rows(for: repository)
+            rows += self.rows(for: repository, query: trimmed)
+        }
+        if !trimmed.isEmpty, rows.isEmpty {
+            rows.append(.empty(String(localized: "No matching repositories")))
         }
         return rows
     }
 
     /// While filtering: repositories whose name matches (all their checkouts), or the checkouts whose branch does.
-    private func rows(for repository: Repository) -> [Row] {
-        let nameMatches = matches(repository.name)
-        let matchingCheckouts = repository.checkouts.filter { nameMatches || matches($0.branch) }
-        if filtering && matchingCheckouts.isEmpty && !nameMatches { return [] }
-        // What the user last chose; otherwise open.
-        let expanded = filtering ? !matchingCheckouts.isEmpty : repositoryExpansion[repository.root.path] ?? true
+    private func rows(for repository: Repository, query repoQuery: String) -> [Row] {
+        let isFiltering = !repoQuery.isEmpty
+        let nameMatches = !isFiltering || repository.name.localizedStandardContains(repoQuery)
+        let matchingCheckouts = repository.checkouts.filter {
+            nameMatches || $0.branch.localizedStandardContains(repoQuery)
+        }
+        if isFiltering && matchingCheckouts.isEmpty && !nameMatches { return [] }
+        let expanded = isFiltering ? !matchingCheckouts.isEmpty : repositoryExpansion[repository.root.path] ?? true
         var rows: [Row] = [.repository(repository, expanded: expanded)]
         guard expanded else { return rows }
-        for checkout in filtering ? matchingCheckouts : repository.checkouts {
+        for checkout in isFiltering ? matchingCheckouts : repository.checkouts {
             let checkoutKey = key(URL(fileURLWithPath: checkout.path))
             let selected =
                 repository.isCurrent && checkoutKey == key(input.currentRoot) && input.selection == .history
@@ -68,7 +57,7 @@ struct SidebarRowBuilder {
         return rows
     }
 
-    /// Status order: an agent waiting for input, a working agent, local changes or commits ahead, the rest.
+    /// Status order: an agent waiting for input, a working agent, local changes or commits ahead/behind, the rest.
     static func statusRank(_ repository: Repository) -> Int {
         let states = repository.checkouts.flatMap(\.sessions).map(\.state)
         return RepositoryListOrder.statusRank(
@@ -76,9 +65,10 @@ struct SidebarRowBuilder {
             hasChanges: !repository.badge.isEmpty)
     }
 
-    // MARK: The open repository
+    // MARK: Current repository pane
 
-    private func currentRepositoryRows() -> [Row] {
+    func currentRepositoryRows() -> [Row] {
+        guard input.currentRoot != nil else { return [] }
         var rows: [Row] = [.header(input.currentName, "")]
         rows.append(
             page(.changes, String(localized: "Local Changes"), symbol: "square.and.pencil", count: input.changes))
@@ -181,14 +171,24 @@ struct SidebarRowBuilder {
         let make = { (ref: GitReference, depth: Int, label: String?) in
             referenceRow(ref, kind: kind, group: id, depth: depth, label: label)
         }
-        // Branches fold into folders; worktrees (a few, named by their folder) and tags stay a plain list.
         if id == .branches {
+            if !filtering { rows += recentBranchRows() }
             rows += SidebarFolders(selection: input.selection, query: query, expansion: groupExpansion)
                 .rows(refs, group: id, nested: false, name: \.name, row: make)
         } else {
             rows += refs.map { make($0, 0, nil) }
         }
         return rows
+    }
+
+    private func recentBranchRows() -> [Row] {
+        let byName = Dictionary(
+            input.references.filter { $0.kind == .branch }.map { ($0.name, $0) },
+            uniquingKeysWith: { first, _ in first })
+        let recentRefs = Array(input.recentBranches.compactMap { byName[$0] }.prefix(5))
+        guard !recentRefs.isEmpty else { return [] }
+        return [.subheader(String(localized: "Recent"), "star.fill")]
+            + recentRefs.map { referenceRow($0, kind: .branch, group: .branches, depth: 0, label: $0.name) }
     }
 
     private func referenceRow(
@@ -286,63 +286,5 @@ struct SidebarRowBuilder {
             if stashes.isEmpty { rows.append(.empty(String(localized: "No stashes"))) }
         }
         return rows
-    }
-}
-
-/// Branch names with slashes sit in folders, as in Fork (build/a and build/b under "build"): a level's branches
-/// first, in the list's order (pinned first), then its folders by name. A folder is open while filtering, as last
-/// left, or, never touched, when it holds the current or selected branch.
-@MainActor
-struct SidebarFolders {
-    typealias Row = RepositorySidebarView.Row
-    private typealias Item = (ref: GitReference, parts: ArraySlice<String>)
-
-    var selection: SidebarSelection
-    var query: String
-    /// `SidebarGroupID.persistedKey` → expanded.
-    var expansion: [String: Bool]
-
-    func rows(
-        _ refs: [GitReference], group: SidebarGroupID, nested: Bool, name: (GitReference) -> String,
-        row: @escaping (GitReference, Int, String?) -> Row
-    ) -> [Row] {
-        var rows: [Row] = []
-        let items = refs.map {
-            ($0, ArraySlice(name($0).split(separator: "/", omittingEmptySubsequences: false).map(String.init)))
-        }
-        walk(items, prefix: "", depth: 0, in: Place(group: group, nested: nested, row: row), into: &rows)
-        return rows
-    }
-
-    /// The group the folders belong to and how its references become rows.
-    private struct Place {
-        var group: SidebarGroupID
-        var nested: Bool
-        var row: (GitReference, Int, String?) -> Row
-    }
-
-    private func walk(_ items: [Item], prefix: String, depth: Int, in place: Place, into rows: inout [Row]) {
-        var folders: [String: [Item]] = [:]
-        for item in items {
-            if item.parts.count > 1, let head = item.parts.first {
-                folders[head, default: []].append((item.ref, item.parts.dropFirst()))
-            } else {
-                rows.append(place.row(item.ref, depth, depth == 0 ? nil : item.parts.last))
-            }
-        }
-        for (folder, children) in folders.sorted(by: { $0.key.localizedStandardCompare($1.key) == .orderedAscending }) {
-            let path = prefix.isEmpty ? folder : prefix + "/" + folder
-            let id = SidebarGroupID.folder(in: place.group, path: path)
-            let holdsCurrent = children.contains {
-                $0.ref.isCurrent || selection == .reference(fullName: $0.ref.fullName)
-            }
-            let open = !query.isEmpty || (expansion[id.persistedKey] ?? holdsCurrent)
-            rows.append(
-                .folder(
-                    .init(
-                        id: id, name: folder, depth: depth, nested: place.nested, count: children.count,
-                        expanded: open)))
-            if open { walk(children, prefix: path, depth: depth + 1, in: place, into: &rows) }
-        }
     }
 }

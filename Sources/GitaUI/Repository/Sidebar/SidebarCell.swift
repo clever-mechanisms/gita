@@ -35,22 +35,7 @@ final class SidebarCell: NSTableCellView {
     private let pin = SidebarCell.filterButton()
     private let only = SidebarCell.filterButton()
     private let hide = SidebarCell.filterButton()
-    /// The Repositories header's sort button (Name · Recently Opened · Status).
-    lazy var sort: PartsButton = {
-        let button = PartsButton(
-            [.symbol("arrow.up.arrow.down", color: Theme.secondaryText, size: 10.5)], background: .hover,
-            accessibility: String(localized: "Sort Repositories"))
-        button.fixedHeight = 20
-        button.horizontalPadding = 4
-        button.cornerRadius = 5
-        button.toolTip = String(localized: "Sort Repositories")
-        button.setAccessibilityIdentifier("sidebar.repositoriesSort")
-        button.menuProvider = { [weak self] in self?.sortMenu?() }
-        button.isHidden = true
-        return button
-    }()
-    var sortMenu: (() -> NSMenu?)?
-    private lazy var filterButtons = NSStackView(views: [pin, only, hide, sort])
+    private lazy var filterButtons = NSStackView(views: [pin, only, hide])
     var marks: RepositorySidebarView.Marks?
     private(set) var hovering = false
     var onFilter: ((BranchFilters.Kind) -> Void)?
@@ -168,7 +153,7 @@ final class SidebarCell: NSTableCellView {
     func updateFilterButtons() {
         guard let marks, marks.filterable else {
             for button in [pin, only, hide] { button.isHidden = true }
-            trailingToButtons.constant = sort.isHidden ? 0 : -2
+            trailingToButtons.constant = 0
             return
         }
         show(
@@ -201,6 +186,13 @@ final class SidebarCell: NSTableCellView {
     }
 
     // MARK: Reuse
+
+    func isChevronHit(at pointInCell: NSPoint) -> Bool {
+        guard !chevron.isHidden, bounds.contains(pointInCell) else { return false }
+        let hitMinX = max(0, chevron.frame.minX - 6)
+        let hitMaxX = chevron.frame.maxX + 4
+        return pointInCell.x >= hitMinX && pointInCell.x <= hitMaxX
+    }
 
     func setChevron(_ expansion: RepositorySidebarView.Expansion) {
         let symbol: String? =
@@ -244,7 +236,6 @@ final class SidebarCell: NSTableCellView {
         title.attributedStringValue = NSAttributedString(string: "")
         setAccessibilityLabel(nil)
         marks = nil
-        sort.isHidden = true
         // A recycled cell under a still pointer gets no enter event: read where the pointer is.
         if let window { hovering = bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) }
     }

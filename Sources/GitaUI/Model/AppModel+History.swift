@@ -150,16 +150,22 @@ extension AppModel {
     /// `HistoryMode` puts the search first should both be set.
     var historyMode: HistoryMode {
         HistoryMode(
-            searchQuery: search.query, field: search.field, focusedIdentity: focus.isActive ? focus.identity : nil)
+            searchQuery: search.query, field: search.field,
+            focusedIdentity: focus.isActive ? focus.identity : nil,
+            authorFilterIdentity: graphState.inlineAuthor.isActive ? graphState.inlineAuthor.identity : nil)
     }
 
     /// The full loaded history merge lists walk: the shown rows leave a collapsed merge's commits out.
     var mergeHistory: (index: HistoryIndex, commits: [GitCommit]) {
-        focus.isActive ? (focus.index, focus.commits) : (historyIndex, snapshot?.commits ?? [])
+        if graphState.inlineAuthor.isActive {
+            return (graphState.inlineAuthor.index, graphState.inlineAuthor.commits)
+        }
+        return focus.isActive ? (focus.index, focus.commits) : (historyIndex, snapshot?.commits ?? [])
     }
     var displayedCommits: [GitCommit] {
         switch historyMode {
         case .search: search.results
+        case .authorFilter: graphState.inlineAuthor.commits
         case .focused: focus.commits
         case .all: graphState.layout.isCollapsed ? graphState.layout.shown : snapshot?.commits ?? []
         }
@@ -167,6 +173,7 @@ extension AppModel {
     var displayedHistoryHasMore: Bool {
         switch historyMode {
         case .search: search.hasMore
+        case .authorFilter: graphState.inlineAuthor.hasMore
         case .focused: focus.hasMore
         case .all: snapshot?.hasMoreHistory == true
         }
@@ -175,6 +182,7 @@ extension AppModel {
     var displayedHistoryIndex: HistoryIndex? {
         switch historyMode {
         case .search: nil
+        case .authorFilter: graphState.inlineAuthor.index
         case .focused: focus.index
         case .all: graphState.layout.isCollapsed ? graphState.layout.shownIndex : historyIndex
         }
@@ -182,6 +190,7 @@ extension AppModel {
     var displayedHistoryIsLoading: Bool {
         switch historyMode {
         case .search: search.isSearching
+        case .authorFilter: graphState.inlineAuthor.isLoading
         case .focused: focus.isLoading
         case .all: isLoading
         }
@@ -191,8 +200,129 @@ extension AppModel {
     var historyPageFailed: Bool {
         switch historyMode {
         case .search: search.read.hasFailed
+        case .authorFilter: graphState.inlineAuthor.read.hasFailed
         case .focused: focus.read.hasFailed
         case .all: allHistoryPageFailed
+        }
+    }
+
+    // MARK: §6b History Selection, Working Changes & Two-Commit Compare
+
+    var historySelection: HistorySelection { graphState.historySelection }
+    var isReviewingWorkingChanges: Bool { graphState.isReviewingWorkingChanges }
+    var compareState: CompareState? { graphState.compare }
+
+    func selectHistory(_ next: HistorySelection) {
+        graphState.isReviewingWorkingChanges = false
+        switch next {
+        case .none:
+            graphState.historySelection = .none
+            clearCompareState()
+            deselectCommit()
+        case .commit(let id):
+            graphState.historySelection = .commit(id)
+            clearCompareState()
+            if let commit = displayedCommits.first(where: { $0.id == id })
+                ?? snapshot?.commits.first(where: { $0.id == id })
+            {
+                select(commit)
+            }
+        case .pair(let base, let head):
+            graphState.historySelection = .pair(base, head)
+            selection.task?.cancel()
+            selection.clear()
+            loadCompare(base: base, head: head)
+            emit(.selection)
+        case .many(let ids):
+            graphState.historySelection = .many(ids)
+            clearCompareState()
+            selection.task?.cancel()
+            selection.clear()
+            emit(.selection)
+            emit(.diff)
+        }
+    }
+
+    func selectWorkingChanges() {
+        graphState.historySelection = .none
+        clearCompareState()
+        graphState.isReviewingWorkingChanges = true
+        selection.task?.cancel()
+        selection.clear()
+        showChanges()
+        emit(.selection)
+    }
+
+    func swapCompareCommits() {
+        let next = graphState.historySelection.swapped()
+        guard case .pair = next else { return }
+        selectHistory(next)
+    }
+
+    func selectCompareFile(_ file: FileChange) {
+        guard let service, let current = graphState.compare else { return }
+        graphState.compareGeneration += 1
+        let token = graphState.compareGeneration
+        let base = current.base
+        let head = current.head
+        graphState.compare?.selectedFile = file
+        graphState.compare?.diff = ""
+        graphState.compare?.isLoadingDiff = true
+        emit(.selection)
+        graphState.compareTask?.cancel()
+        graphState.compareTask = Task { [weak self] in
+            do {
+                let text = try await service.compareDiff(base: base, head: head, path: file.path)
+                guard let self, !Task.isCancelled, self.graphState.compareGeneration == token else { return }
+                self.graphState.compare?.diff = text
+                self.graphState.compare?.isLoadingDiff = false
+                self.emit(.selection)
+            } catch {
+                guard let self, !Task.isCancelled, self.graphState.compareGeneration == token else { return }
+                self.graphState.compare?.diff = error.localizedDescription
+                self.graphState.compare?.isLoadingDiff = false
+                self.emit(.selection)
+            }
+        }
+    }
+
+    private func clearCompareState() {
+        graphState.compareGeneration += 1
+        graphState.compareTask?.cancel()
+        graphState.compareTask = nil
+        graphState.compare = nil
+    }
+
+    private func loadCompare(base: String, head: String) {
+        guard let service else { return }
+        graphState.compareGeneration += 1
+        let token = graphState.compareGeneration
+        graphState.compareTask?.cancel()
+        graphState.compare = CompareState(base: base, head: head, isLoadingFiles: true, isLoadingDiff: true)
+        graphState.compareTask = Task { [weak self] in
+            do {
+                async let files = service.compareFiles(base: base, head: head)
+                async let distance = service.commitDistance(from: base, to: head)
+                let loadedFiles = try await files
+                let loadedDistance = await distance
+                guard let self, !Task.isCancelled, self.graphState.compareGeneration == token else { return }
+                self.graphState.compare?.files = loadedFiles
+                self.graphState.compare?.distance = loadedDistance
+                self.graphState.compare?.isLoadingFiles = false
+                if let first = loadedFiles.first {
+                    self.selectCompareFile(first)
+                } else {
+                    self.graphState.compare?.isLoadingDiff = false
+                    self.emit(.selection)
+                }
+            } catch {
+                guard let self, !Task.isCancelled, self.graphState.compareGeneration == token else { return }
+                self.graphState.compare?.isLoadingFiles = false
+                self.graphState.compare?.isLoadingDiff = false
+                self.graphState.compare?.diff = error.localizedDescription
+                self.log(String(localized: "Compare failed"), error.localizedDescription, failed: true)
+                self.emit(.selection)
+            }
         }
     }
 

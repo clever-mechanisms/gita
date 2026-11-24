@@ -13,6 +13,8 @@ final class HistoryMenu: NSObject, NSMenuDelegate {
     var referenceItems: (() -> [NSMenuItem])?
     /// New Branch, Check Out Detached, Review Commit with … (after the fixed commit actions).
     var commitItems: (() -> [NSMenuItem])?
+    /// Multi-commit items when 2+ commits are selected (replaces single-commit items).
+    var multiCommitItems: (() -> [NSMenuItem])?
 
     /// The fixed items, sent to `target` (nil: the selected tab's commands, through the responder chain).
     static func menu(target: AnyObject?) -> NSMenu {
@@ -50,6 +52,13 @@ final class HistoryMenu: NSObject, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         for item in menu.items where item.tag == Self.tag { menu.removeItem(item) }
+        let multi = multiCommitItems?() ?? []
+        if !multi.isEmpty {
+            for item in menu.items { item.isHidden = true }
+            _ = Self.insert(multi, in: menu, at: 0)
+            return
+        }
+        for item in menu.items { item.isHidden = false }
         var top: [NSMenuItem] = []
         let references = referenceItems?() ?? []
         if !references.isEmpty { top += references + [Self.separator()] }

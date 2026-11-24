@@ -74,15 +74,25 @@ enum ReviewConversationPage {
 @MainActor
 final class ReviewFilePage: NSView {
     let diff = ReviewDiffView()
+    let viewedButton = PartsButton.quiet(String(localized: "Viewed"), symbol: "square") {}
+    var onToggleViewed: ((String) -> Void)?
     private let path = Deck.label("", font: Theme.mono, color: Theme.text)
     private let counts = Deck.caption("")
     private let hint = Deck.caption("")
+    private var currentPath: String?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         path.lineBreakMode = .byTruncatingMiddle
         path.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let bar = Deck.hstack([path, counts, Deck.spacer(), hint], spacing: 10)
+        viewedButton.fixedHeight = 22
+        viewedButton.horizontalPadding = 8
+        viewedButton.cornerRadius = 5
+        viewedButton.setAccessibilityIdentifier("review.file.viewed")
+        viewedButton.onClick = { [weak self] in
+            if let currentPath = self?.currentPath { self?.onToggleViewed?(currentPath) }
+        }
+        let bar = Deck.hstack([path, counts, Deck.spacer(), hint, viewedButton], spacing: 10)
         bar.edgeInsets = NSEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
         bar.heightAnchor.constraint(equalToConstant: 34).isActive = true
         let column = Deck.vstack([bar, Deck.separator(), diff], spacing: 0)
@@ -95,11 +105,22 @@ final class ReviewFilePage: NSView {
     required init?(coder _: NSCoder) { fatalError("ReviewFilePage is built in code") }
 
     func show(_ file: PullRequestFileDiff, state: PullRequestReviewState, actions: ReviewActions) {
+        currentPath = file.path
         path.stringValue = file.oldPath.map { "\($0) → \(file.path)" } ?? file.path
         path.toolTip = path.stringValue
         counts.stringValue = "+\(file.additions) −\(file.deletions)"
         hint.stringValue = state.canWrite ? String(localized: "Point at a line and click + to comment") : ""
         hint.isHidden = !state.canWrite
+        let viewed = state.isViewed(file.path)
+        viewedButton.parts = [
+            .symbol(
+                viewed ? "checkmark.square.fill" : "square",
+                color: viewed ? Theme.success : Theme.secondaryText, size: 11),
+            .text(
+                String(localized: "Viewed"), font: Theme.captionEmphasis,
+                color: viewed ? Theme.success : Theme.secondaryText),
+        ]
+        viewedButton.setAccessibilityValue(viewed ? String(localized: "Viewed") : String(localized: "Not viewed"))
         diff.actions = actions
         diff.show(
             ReviewDiffView.Content(

@@ -1,4 +1,4 @@
-public struct DiffLine: Sendable {
+public struct DiffLine: Sendable, Equatable {
     public var text: String
     public var old: String
     public var new: String
@@ -46,7 +46,7 @@ public enum UnifiedDiff {
         return parser.parse()
     }
 
-    private struct HunkRange {
+    struct HunkRange {
         let oldStart: Int
         let oldCount: Int
         let newStart: Int
@@ -64,6 +64,10 @@ public enum UnifiedDiff {
             guard oldAnchor >= previous.oldEnd, newAnchor >= previous.newEnd else { return false }
             return oldAnchor - previous.oldEnd == newAnchor - previous.newEnd
         }
+    }
+
+    static func parseHunkHeader(_ line: String) -> HunkRange? {
+        Parser.parseRange(line)
     }
 
     private struct HunkState {

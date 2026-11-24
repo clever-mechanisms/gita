@@ -1,4 +1,16 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld depo",
+          "other": "%3$lld depo"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -7,6 +19,18 @@
         "forms": {
           "one": "%2$lld izlenen değişiklik",
           "other": "%2$lld izlenen değişiklik"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "24 saatte %1$lld ajan çalıştırması",
+          "other": "24 saatte %1$lld ajan çalıştırması"
         }
       }
     }
@@ -23,90 +47,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld değişen dosya",
-          "other": "%1$lld değişen dosya"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld commit çıkarılacak.",
-          "other": "%1$lld commit çıkarılacak."
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld alt ajan",
-          "other": "%lld alt ajan"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Tek commit (%1$lld) çıkarılacak.",
-          "other": "%1$lld commitin tümü çıkarılacak."
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "İkili dosya · %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld bayt",
-          "other": "%1$lld bayt"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld izlenmeyen dosya",
-          "other": "%2$lld izlenmeyen dosya"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%3$lld depo",
-          "other": "%3$lld depo"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -115,6 +55,54 @@
         "forms": {
           "one": "%lld ajan çalışıyor",
           "other": "%lld ajan çalışıyor"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld atanmış depo",
+          "other": "%lld atanmış depo"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld geride",
+          "other": "%1$lld geride"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%2$@ dalından %1$#@count@ geride",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit",
+          "other": "%1$lld commit"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld dal",
+          "other": "%lld dal"
         }
       }
     }
@@ -131,6 +119,30 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld değişen dosya",
+          "other": "%1$lld değişen dosya"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld yorum",
+          "other": "%1$lld yorum"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -143,6 +155,30 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "İzlenen dalın %lld commit gerisinde",
+          "other": "İzlenen dalın %lld commit gerisinde"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "İzlenen dalın %lld commit gerisinde; uzak depoda getirilmemiş commitler var",
+          "other": "İzlenen dalın %lld commit gerisinde; uzak depoda getirilmemiş commitler var"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -151,6 +187,42 @@
         "forms": {
           "one": "%lld commit gönderilmedi",
           "other": "%lld commit gönderilmedi"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit seçildi",
+          "other": "%lld commit seçildi"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit çıkarılacak.",
+          "other": "%1$lld commit çıkarılacak."
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld çakışma",
+          "other": "%lld çakışma"
         }
       }
     }
@@ -179,6 +251,18 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld dosya",
+          "other": "%1$lld dosya"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -187,6 +271,30 @@
         "forms": {
           "one": "%lld boşta",
           "other": "%lld boşta"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Bu incelemede %1$lld satır yorumu",
+          "other": "Bu incelemede %1$lld satır yorumu"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld günlüğe kaydedilmiş hata",
+          "other": "%1$lld günlüğe kaydedilmiş hata"
         }
       }
     }
@@ -227,6 +335,18 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld açık PR",
+          "other": "%lld açık PR"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -251,6 +371,66 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld sunucu hatası",
+          "other": "%1$lld sunucu hatası"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld birleştirilmiş commit",
+          "other": "%1$lld birleştirilmiş commit"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld hazırlandı",
+          "other": "%lld hazırlandı"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld alt ajan",
+          "other": "%lld alt ajan"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld inceleme bekliyor",
+          "other": "%lld inceleme bekliyor"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -263,81 +443,14 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld çalışıyor",
-          "other": "%lld çalışıyor"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "Ajanlar, %1$#@working@, %2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld çalışıyor",
-          "other": "%1$lld çalışıyor"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld yanıt bekliyor",
-          "other": "%2$lld yanıt bekliyor"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld commit gönder",
-          "other": "%lld commit gönder"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld geride",
-          "other": "%1$lld geride"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "%2$@ dalından %1$#@count@ geride",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld commit",
-          "other": "%1$lld commit"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld yorum",
-          "other": "%1$lld yorum"
+          "one": "%1$lld çözülmemiş",
+          "other": "%1$lld çözülmemiş"
         }
       }
     }
@@ -366,62 +479,14 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld Yorumu Aç ↗",
-          "other": "%1$lld Yorumu Aç ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%lld açık PR",
-          "other": "%lld açık PR"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld inceleme bekliyor",
-          "other": "%lld inceleme bekliyor"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld dal",
-          "other": "%lld dal"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "%1$@ grubu, %2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld sekme",
-          "other": "%2$lld sekme"
+          "one": "%lld hazırlanmamış",
+          "other": "%lld hazırlanmamış"
         }
       }
     }
@@ -438,62 +503,165 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld sunucu hatası",
-          "other": "%1$lld sunucu hatası"
+          "one": "%lld çalışıyor",
+          "other": "%lld çalışıyor"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld günlüğe kaydedilmiş hata",
-          "other": "%1$lld günlüğe kaydedilmiş hata"
+          "one": "(%lld commit fark)",
+          "other": "(%lld commit fark)"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "(−%1$lld / +%2$#@count@)",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld birleştirilmiş commit",
-          "other": "%1$lld birleştirilmiş commit"
+          "one": "%2$lld commit",
+          "other": "%2$lld commit"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "Ajanlar, %1$#@working@, %2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "one": "24 saatte %1$lld ajan çalıştırması",
-          "other": "24 saatte %1$lld ajan çalıştırması"
+          "one": "%1$lld çalışıyor",
+          "other": "%1$lld çalışıyor"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld yanıt bekliyor",
+          "other": "%2$lld yanıt bekliyor"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld çözülmemiş",
-          "other": "%1$lld çözülmemiş"
+          "one": "Tek commit (%1$lld) çıkarılacak.",
+          "other": "%1$lld commitin tümü çıkarılacak."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "İkili dosya · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld bayt",
+          "other": "%1$lld bayt"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "%1$#@count@ %2$@ dalına uygulansın mı?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit",
+          "other": "%1$lld commit"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit uygulansın mı?",
+          "other": "%lld commit uygulansın mı?"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "%2$@ içindeki %1$#@count@ atılsın mı?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld değişen satır",
+          "other": "%1$lld değişen satır"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld satırı at…",
+          "other": "%lld satırı at…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Getir, %lld dal taşındı",
+          "other": "Getir, %lld dal taşındı"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "%1$@ grubu, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld sekme",
+          "other": "%2$lld sekme"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld izlenmeyen dosya",
+          "other": "%2$lld izlenmeyen dosya"
         }
       }
     }
@@ -510,26 +678,74 @@
       }
     }
   },
-  "%lld files": {
+  "Open %lld Comments ↗": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld dosya",
-          "other": "%1$lld dosya"
+          "one": "%1$lld Yorumu Aç ↗",
+          "other": "%1$lld Yorumu Aç ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
-    "format": "%1$#@count@",
+  "Production is %lld commits behind, open deployment": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "Bu incelemede %1$lld satır yorumu",
-          "other": "Bu incelemede %1$lld satır yorumu"
+          "one": "Canlı ortam %lld commit geride, dağıtımı aç",
+          "other": "Canlı ortam %lld commit geride, dağıtımı aç"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commiti çek",
+          "other": "%lld commiti çek"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit gönder",
+          "other": "%lld commit gönder"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit geri alınsın mı?",
+          "other": "%lld commit geri alınsın mı?"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld satırı hazırla",
+          "other": "%lld satırı hazırla"
         }
       }
     }
@@ -554,6 +770,18 @@
         "forms": {
           "one": "Bu daldaki %lld commit rebase edilip temel dala eklenecek.",
           "other": "Bu daldaki %lld commit rebase edilip temel dala eklenecek."
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld satır için hazırlamayı geri al",
+          "other": "%lld satır için hazırlamayı geri al"
         }
       }
     }

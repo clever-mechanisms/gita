@@ -39,10 +39,23 @@ final class RepositoryPill: NSControl {
     /// What follows the name: the activity, else the branch.
     private var detail: String { activity?.text ?? branchDetail }
     private var pressed = false
+    private var isDropTarget = false {
+        didSet { if isDropTarget != oldValue { needsDisplay = true } }
+    }
     var menuProvider: (() -> NSMenu?)?
+    var canAcceptDrop: ((NSPasteboard) -> NSDragOperation)?
+    var onAcceptDrop: ((NSPasteboard, NSView) -> Bool)?
     private var resizeObserver: NSObjectProtocol?
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([GitaDragReference.pasteboardType])
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) { fatalError("RepositoryPill is built in code") }
 
     private static var nameFont: NSFont { TextLines.system(14, weight: .semibold) }
     private static var detailFont: NSFont { TextLines.system(13) }
@@ -137,8 +150,8 @@ final class RepositoryPill: NSControl {
             roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: Metrics.cornerRadius, yRadius: Metrics.cornerRadius)
         (pressed ? Theme.control : Theme.window).setFill()
         path.fill()
-        Theme.separator.setStroke()
-        path.lineWidth = 1
+        (isDropTarget ? Theme.accent : Theme.separator).setStroke()
+        path.lineWidth = isDropTarget ? 2 : 1
         path.stroke()
         let alpha: CGFloat = isEnabled ? 1 : 0.5
         let inner = bounds.insetBy(dx: Metrics.horizontalInset, dy: 0)
@@ -271,5 +284,28 @@ final class RepositoryPill: NSControl {
     override func accessibilityPerformPress() -> Bool {
         if let menu = menuProvider?() { popUp(menu) }
         return true
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        updateDropOperation(sender.draggingPasteboard)
+    }
+
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        updateDropOperation(sender.draggingPasteboard)
+    }
+
+    override func draggingExited(_: (any NSDraggingInfo)?) {
+        isDropTarget = false
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        isDropTarget = false
+        return onAcceptDrop?(sender.draggingPasteboard, self) ?? false
+    }
+
+    private func updateDropOperation(_ pasteboard: NSPasteboard) -> NSDragOperation {
+        let operation = canAcceptDrop?(pasteboard) ?? []
+        isDropTarget = !operation.isEmpty
+        return operation
     }
 }

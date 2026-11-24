@@ -1,4 +1,17 @@
 {
+  "%@ · %@ · %lld repositories": {
+    "format": "%1$@ · %2$@ · %3$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%3$lld repository",
+          "many": "%3$lld repository",
+          "other": "%3$lld repository"
+        }
+      }
+    }
+  },
   "%@ · %lld tracked changes": {
     "format": "%1$@ · %2$#@count@",
     "variables": {
@@ -8,6 +21,19 @@
           "one": "%2$lld modifica tracciata",
           "many": "%2$lld modifiche tracciate",
           "other": "%2$lld modifiche tracciate"
+        }
+      }
+    }
+  },
+  "%lld agent runs in 24 hours": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld esecuzione di agente in 24 ore",
+          "many": "%1$lld esecuzioni di agenti in 24 ore",
+          "other": "%1$lld esecuzioni di agenti in 24 ore"
         }
       }
     }
@@ -25,97 +51,6 @@
       }
     }
   },
-  "%lld changed files": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld file modificato",
-          "many": "%1$lld file modificati",
-          "other": "%1$lld file modificati"
-        }
-      }
-    }
-  },
-  "%lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Verrà eliminato %1$lld commit.",
-          "many": "Verranno eliminati %1$lld commit.",
-          "other": "Verranno eliminati %1$lld commit."
-        }
-      }
-    }
-  },
-  "%lld subagents": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld subagente",
-          "many": "%lld subagenti",
-          "other": "%lld subagenti"
-        }
-      }
-    }
-  },
-  "All %lld commits will be dropped.": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Verrà eliminato %1$lld commit.",
-          "many": "Verranno eliminati tutti i %1$lld commit.",
-          "other": "Verranno eliminati tutti i %1$lld commit."
-        }
-      }
-    }
-  },
-  "Binary file · %lld bytes": {
-    "format": "File binario · %1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld byte",
-          "many": "%1$lld byte",
-          "other": "%1$lld byte"
-        }
-      }
-    }
-  },
-  "HEAD: %@\n%lld untracked files": {
-    "format": "HEAD: %1$@\n%2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld file non tracciato",
-          "many": "%2$lld file non tracciati",
-          "other": "%2$lld file non tracciati"
-        }
-      }
-    }
-  },
-  "%@ · %@ · %lld repositories": {
-    "format": "%1$@ · %2$@ · %3$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%3$lld repository",
-          "many": "%3$lld repository",
-          "other": "%3$lld repository"
-        }
-      }
-    }
-  },
   "%lld agents working": {
     "format": "%#@count@",
     "variables": {
@@ -125,6 +60,58 @@
           "one": "%lld agente al lavoro",
           "many": "%lld agenti al lavoro",
           "other": "%lld agenti al lavoro"
+        }
+      }
+    }
+  },
+  "%lld assigned repositories": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld repository assegnato",
+          "many": "%lld repository assegnati",
+          "other": "%lld repository assegnati"
+        }
+      }
+    }
+  },
+  "%lld behind": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld indietro",
+          "many": "%1$lld indietro",
+          "other": "%1$lld indietro"
+        }
+      }
+    }
+  },
+  "%lld behind %@": {
+    "format": "%1$#@count@ %2$@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld indietro rispetto a",
+          "many": "%1$lld indietro rispetto a",
+          "other": "%1$lld indietro rispetto a"
+        }
+      }
+    }
+  },
+  "%lld branches": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld ramo",
+          "many": "%lld rami",
+          "other": "%lld rami"
         }
       }
     }
@@ -142,6 +129,32 @@
       }
     }
   },
+  "%lld changed files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld file modificato",
+          "many": "%1$lld file modificati",
+          "other": "%1$lld file modificati"
+        }
+      }
+    }
+  },
+  "%lld comments": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commento",
+          "many": "%1$lld commenti",
+          "other": "%1$lld commenti"
+        }
+      }
+    }
+  },
   "%lld commits": {
     "format": "%#@count@",
     "variables": {
@@ -155,6 +168,32 @@
       }
     }
   },
+  "%lld commits behind upstream": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit indietro rispetto all’upstream",
+          "many": "%lld commit indietro rispetto all’upstream",
+          "other": "%lld commit indietro rispetto all’upstream"
+        }
+      }
+    }
+  },
+  "%lld commits behind upstream; remote has un-fetched commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit indietro rispetto all’upstream; il remoto ha commit non recuperati",
+          "many": "%lld commit indietro rispetto all’upstream; il remoto ha commit non recuperati",
+          "other": "%lld commit indietro rispetto all’upstream; il remoto ha commit non recuperati"
+        }
+      }
+    }
+  },
   "%lld commits not pushed": {
     "format": "%#@count@",
     "variables": {
@@ -164,6 +203,45 @@
           "one": "%lld commit non pushato",
           "many": "%lld commit non pushati",
           "other": "%lld commit non pushati"
+        }
+      }
+    }
+  },
+  "%lld commits selected": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld commit selezionato",
+          "many": "%lld commit selezionati",
+          "other": "%lld commit selezionati"
+        }
+      }
+    }
+  },
+  "%lld commits will be dropped.": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Verrà eliminato %1$lld commit.",
+          "many": "Verranno eliminati %1$lld commit.",
+          "other": "Verranno eliminati %1$lld commit."
+        }
+      }
+    }
+  },
+  "%lld conflicts": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld conflitto",
+          "many": "%lld conflitti",
+          "other": "%lld conflitti"
         }
       }
     }
@@ -194,6 +272,19 @@
       }
     }
   },
+  "%lld files": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld file",
+          "many": "%1$lld file",
+          "other": "%1$lld file"
+        }
+      }
+    }
+  },
   "%lld idle": {
     "format": "%#@count@",
     "variables": {
@@ -203,6 +294,32 @@
           "one": "%lld inattivo",
           "many": "%lld inattivi",
           "other": "%lld inattivi"
+        }
+      }
+    }
+  },
+  "%lld line comments in this review": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commento di riga in questa revisione",
+          "many": "%1$lld commenti di riga in questa revisione",
+          "other": "%1$lld commenti di riga in questa revisione"
+        }
+      }
+    }
+  },
+  "%lld logged errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld errore registrato",
+          "many": "%1$lld errori registrati",
+          "other": "%1$lld errori registrati"
         }
       }
     }
@@ -246,6 +363,19 @@
       }
     }
   },
+  "%lld open PRs": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld PR aperta",
+          "many": "%lld PR aperte",
+          "other": "%lld PR aperte"
+        }
+      }
+    }
+  },
   "%lld passed": {
     "format": "%#@count@",
     "variables": {
@@ -272,6 +402,71 @@
       }
     }
   },
+  "%lld server errors": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld errore del server",
+          "many": "%1$lld errori del server",
+          "other": "%1$lld errori del server"
+        }
+      }
+    }
+  },
+  "%lld squashed commits": {
+    "format": "%1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld commit combinato",
+          "many": "%1$lld commit combinati",
+          "other": "%1$lld commit combinati"
+        }
+      }
+    }
+  },
+  "%lld staged": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld preparato",
+          "many": "%lld preparati",
+          "other": "%lld preparati"
+        }
+      }
+    }
+  },
+  "%lld subagents": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld subagente",
+          "many": "%lld subagenti",
+          "other": "%lld subagenti"
+        }
+      }
+    }
+  },
+  "%lld to review": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%lld da rivedere",
+          "many": "%lld da rivedere",
+          "other": "%lld da rivedere"
+        }
+      }
+    }
+  },
   "%lld total": {
     "format": "%#@count@",
     "variables": {
@@ -285,88 +480,15 @@
       }
     }
   },
-  "%lld working": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld al lavoro",
-          "many": "%lld al lavoro",
-          "other": "%lld al lavoro"
-        }
-      }
-    }
-  },
-  "Agents, %lld working, %lld need input": {
-    "format": "Agenti, %1$#@working@, %2$#@input@",
-    "variables": {
-      "working": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld al lavoro",
-          "many": "%1$lld al lavoro",
-          "other": "%1$lld al lavoro"
-        }
-      },
-      "input": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld richiede input",
-          "many": "%2$lld richiedono input",
-          "other": "%2$lld richiedono input"
-        }
-      }
-    }
-  },
-  "Push %lld commits": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Push di %lld commit",
-          "many": "Push di %lld commit",
-          "other": "Push di %lld commit"
-        }
-      }
-    }
-  },
-  "%lld behind": {
+  "%lld unresolved": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld indietro",
-          "many": "%1$lld indietro",
-          "other": "%1$lld indietro"
-        }
-      }
-    }
-  },
-  "%lld behind %@": {
-    "format": "%1$#@count@ %2$@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld indietro rispetto a",
-          "many": "%1$lld indietro rispetto a",
-          "other": "%1$lld indietro rispetto a"
-        }
-      }
-    }
-  },
-  "%lld comments": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%1$lld commento",
-          "many": "%1$lld commenti",
-          "other": "%1$lld commenti"
+          "one": "%1$lld non risolto",
+          "many": "%1$lld non risolti",
+          "other": "%1$lld non risolti"
         }
       }
     }
@@ -397,67 +519,15 @@
       }
     }
   },
-  "Open %lld Comments ↗": {
-    "format": "%1$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "Apri %1$lld commento ↗",
-          "many": "Apri %1$lld commenti ↗",
-          "other": "Apri %1$lld commenti ↗"
-        }
-      }
-    }
-  },
-  "%lld open PRs": {
+  "%lld unstaged": {
     "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%lld PR aperta",
-          "many": "%lld PR aperte",
-          "other": "%lld PR aperte"
-        }
-      }
-    }
-  },
-  "%lld to review": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld da rivedere",
-          "many": "%lld da rivedere",
-          "other": "%lld da rivedere"
-        }
-      }
-    }
-  },
-  "%lld branches": {
-    "format": "%#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%lld ramo",
-          "many": "%lld rami",
-          "other": "%lld rami"
-        }
-      }
-    }
-  },
-  "Group %@, %lld tabs": {
-    "format": "Gruppo %1$@, %2$#@count@",
-    "variables": {
-      "count": {
-        "type": "lld",
-        "forms": {
-          "one": "%2$lld pannello",
-          "many": "%2$lld pannelli",
-          "other": "%2$lld pannelli"
+          "one": "%lld non preparato",
+          "many": "%lld non preparati",
+          "other": "%lld non preparati"
         }
       }
     }
@@ -475,67 +545,179 @@
       }
     }
   },
-  "%lld server errors": {
-    "format": "%1$#@count@",
+  "%lld working": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld errore del server",
-          "many": "%1$lld errori del server",
-          "other": "%1$lld errori del server"
+          "one": "%lld al lavoro",
+          "many": "%lld al lavoro",
+          "other": "%lld al lavoro"
         }
       }
     }
   },
-  "%lld logged errors": {
-    "format": "%1$#@count@",
+  "(%lld commits apart)": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld errore registrato",
-          "many": "%1$lld errori registrati",
-          "other": "%1$lld errori registrati"
+          "one": "(%lld commit di distanza)",
+          "many": "(%lld commit di distanza)",
+          "other": "(%lld commit di distanza)"
         }
       }
     }
   },
-  "%lld squashed commits": {
-    "format": "%1$#@count@",
+  "(−%lld / +%lld commits)": {
+    "format": "(−%1$lld / +%2$#@count@)",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld commit combinato",
-          "many": "%1$lld commit combinati",
-          "other": "%1$lld commit combinati"
+          "one": "%2$lld commit",
+          "many": "%2$lld commit",
+          "other": "%2$lld commit"
         }
       }
     }
   },
-  "%lld agent runs in 24 hours": {
-    "format": "%1$#@count@",
+  "Agents, %lld working, %lld need input": {
+    "format": "Agenti, %1$#@working@, %2$#@input@",
     "variables": {
-      "count": {
+      "working": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld esecuzione di agente in 24 ore",
-          "many": "%1$lld esecuzioni di agenti in 24 ore",
-          "other": "%1$lld esecuzioni di agenti in 24 ore"
+          "one": "%1$lld al lavoro",
+          "many": "%1$lld al lavoro",
+          "other": "%1$lld al lavoro"
+        }
+      },
+      "input": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld richiede input",
+          "many": "%2$lld richiedono input",
+          "other": "%2$lld richiedono input"
         }
       }
     }
   },
-  "%lld unresolved": {
+  "All %lld commits will be dropped.": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld non risolto",
-          "many": "%1$lld non risolti",
-          "other": "%1$lld non risolti"
+          "one": "Verrà eliminato %1$lld commit.",
+          "many": "Verranno eliminati tutti i %1$lld commit.",
+          "other": "Verranno eliminati tutti i %1$lld commit."
+        }
+      }
+    }
+  },
+  "Binary file · %lld bytes": {
+    "format": "File binario · %1$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%1$lld byte",
+          "many": "%1$lld byte",
+          "other": "%1$lld byte"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits onto %@?": {
+    "format": "%1$#@count@ su %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Eseguire il cherry-pick di %1$lld commit",
+          "many": "Eseguire il cherry-pick di %1$lld commit",
+          "other": "Eseguire il cherry-pick di %1$lld commit"
+        }
+      }
+    }
+  },
+  "Cherry-pick %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Eseguire il cherry-pick di %lld commit?",
+          "many": "Eseguire il cherry-pick di %lld commit?",
+          "other": "Eseguire il cherry-pick di %lld commit?"
+        }
+      }
+    }
+  },
+  "Discard %lld changed lines in %@?": {
+    "format": "%1$#@count@ in %2$@?",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Scartare %1$lld riga modificata",
+          "many": "Scartare %1$lld righe modificate",
+          "other": "Scartare %1$lld righe modificate"
+        }
+      }
+    }
+  },
+  "Discard %lld lines…": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Scarta %lld riga…",
+          "many": "Scarta %lld righe…",
+          "other": "Scarta %lld righe…"
+        }
+      }
+    }
+  },
+  "Fetch, %lld branches moved": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Recupero, %lld ramo spostato",
+          "many": "Recupero, %lld rami spostati",
+          "other": "Recupero, %lld rami spostati"
+        }
+      }
+    }
+  },
+  "Group %@, %lld tabs": {
+    "format": "Gruppo %1$@, %2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld pannello",
+          "many": "%2$lld pannelli",
+          "other": "%2$lld pannelli"
+        }
+      }
+    }
+  },
+  "HEAD: %@\n%lld untracked files": {
+    "format": "HEAD: %1$@\n%2$#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "%2$lld file non tracciato",
+          "many": "%2$lld file non tracciati",
+          "other": "%2$lld file non tracciati"
         }
       }
     }
@@ -553,28 +735,80 @@
       }
     }
   },
-  "%lld files": {
+  "Open %lld Comments ↗": {
     "format": "%1$#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld file",
-          "many": "%1$lld file",
-          "other": "%1$lld file"
+          "one": "Apri %1$lld commento ↗",
+          "many": "Apri %1$lld commenti ↗",
+          "other": "Apri %1$lld commenti ↗"
         }
       }
     }
   },
-  "%lld line comments in this review": {
-    "format": "%1$#@count@",
+  "Production is %lld commits behind, open deployment": {
+    "format": "%#@count@",
     "variables": {
       "count": {
         "type": "lld",
         "forms": {
-          "one": "%1$lld commento di riga in questa revisione",
-          "many": "%1$lld commenti di riga in questa revisione",
-          "other": "%1$lld commenti di riga in questa revisione"
+          "one": "La produzione è indietro di %lld commit, apri distribuzione",
+          "many": "La produzione è indietro di %lld commit, apri distribuzione",
+          "other": "La produzione è indietro di %lld commit, apri distribuzione"
+        }
+      }
+    }
+  },
+  "Pull %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Pull di %lld commit",
+          "many": "Pull di %lld commit",
+          "other": "Pull di %lld commit"
+        }
+      }
+    }
+  },
+  "Push %lld commits": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Push di %lld commit",
+          "many": "Push di %lld commit",
+          "other": "Push di %lld commit"
+        }
+      }
+    }
+  },
+  "Revert %lld commits?": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Eseguire il revert di %lld commit?",
+          "many": "Eseguire il revert di %lld commit?",
+          "other": "Eseguire il revert di %lld commit?"
+        }
+      }
+    }
+  },
+  "Stage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Prepara %lld riga",
+          "many": "Prepara %lld righe",
+          "other": "Prepara %lld righe"
         }
       }
     }
@@ -601,6 +835,19 @@
           "one": "Il %lld commit di questo branch verrà ribasato e aggiunto al branch base.",
           "many": "I %lld commit di questo branch verranno ribasati e aggiunti al branch base.",
           "other": "I %lld commit di questo branch verranno ribasati e aggiunti al branch base."
+        }
+      }
+    }
+  },
+  "Unstage %lld lines": {
+    "format": "%#@count@",
+    "variables": {
+      "count": {
+        "type": "lld",
+        "forms": {
+          "one": "Rimuovi %lld riga dall’indice",
+          "many": "Rimuovi %lld righe dall’indice",
+          "other": "Rimuovi %lld righe dall’indice"
         }
       }
     }

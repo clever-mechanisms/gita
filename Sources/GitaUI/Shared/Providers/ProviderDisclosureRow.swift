@@ -16,6 +16,21 @@ final class ProviderDisclosureRow: RowView {
     private let body = Deck.vstack([], spacing: 0)
     var loader: ProviderDetailLoader?
     var onToggle: (() -> Void)?
+    var isSplitDetail = false {
+        didSet {
+            guard isSplitDetail != oldValue else { return }
+            applyRowModeLayout()
+        }
+    }
+    var isCompact = false {
+        didSet {
+            guard isCompact != oldValue else { return }
+            applyRowModeLayout()
+        }
+    }
+    private var headerBar: NSStackView?
+    private var splitHiddenViews: [NSView] = []
+    private var compactHiddenViews: [NSView] = []
     private static let headerHeight: CGFloat = 30
 
     init(item: ProviderItem, openURL: URL? = nil) {
@@ -28,6 +43,7 @@ final class ProviderDisclosureRow: RowView {
         let header = Deck.hstack(headerViews(statusText: statusText), spacing: 10)
         header.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
         header.heightAnchor.constraint(equalToConstant: Self.headerHeight).isActive = true
+        headerBar = header
         body.edgeInsets = NSEdgeInsets(top: 2, left: 58, bottom: 12, right: 18)
         let column = Deck.vstack([header, body], spacing: 0)
         Deck.pin(column, in: self)
@@ -78,13 +94,28 @@ final class ProviderDisclosureRow: RowView {
         let time = Deck.label(
             item.date.map { DeckFormat.relative($0) } ?? "", font: Theme.caption, color: Theme.secondaryText)
         let actions = Deck.hstack(actionViews(), spacing: 6)
+        let branchBox = PullRequestColumns.fixed(branch, PullRequestColumns.branch)
+        let statusBox = PullRequestColumns.fixed(status, PullRequestColumns.status)
+        let authorBox = PullRequestColumns.author(pr.author)
+        let updatedBox = PullRequestColumns.fixed(time, PullRequestColumns.updated)
+        let actionsBox = PullRequestColumns.fixed(actions, PullRequestColumns.actions)
+        let spacer = Deck.spacer()
+        splitHiddenViews = [chevron, branchBox, statusBox, authorBox, updatedBox, actionsBox]
+        compactHiddenViews = [title, spacer]
         return [
-            chevron, icon, PullRequestColumns.fixed(number, PullRequestColumns.number), title, Deck.spacer(),
-            PullRequestColumns.fixed(branch, PullRequestColumns.branch),
-            PullRequestColumns.fixed(status, PullRequestColumns.status), PullRequestColumns.author(pr.author),
-            PullRequestColumns.fixed(time, PullRequestColumns.updated),
-            PullRequestColumns.fixed(actions, PullRequestColumns.actions),
+            chevron, icon, PullRequestColumns.fixed(number, PullRequestColumns.number), title, spacer,
+            branchBox, statusBox, authorBox, updatedBox, actionsBox,
         ]
+    }
+
+    private func applyRowModeLayout() {
+        for view in splitHiddenViews { view.isHidden = isSplitDetail || isCompact }
+        for view in compactHiddenViews { view.isHidden = isCompact }
+        headerBar?.spacing = isCompact ? 4 : 10
+        headerBar?.edgeInsets =
+            isCompact
+            ? NSEdgeInsets(top: 0, left: 6, bottom: 0, right: 6)
+            : NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
     }
     /// Open ↗ on GitHub or the deployment, and Copy for a deployment's URL.
     private func actionViews() -> [NSView] {
@@ -105,12 +136,13 @@ final class ProviderDisclosureRow: RowView {
     override func acceptsClick(at point: NSPoint) -> Bool { point.y < Self.headerHeight }
 
     func setExpanded(_ value: Bool) {
+        let expandInline = value && !isSplitDetail
         chevron.setSymbol(
-            value ? "chevron.down" : "chevron.right", size: 9, weight: .semibold, color: Theme.tertiaryText)
-        isSelected = false
-        fill = value ? Theme.inset : nil
-        setAccessibilityExpanded(value)
-        guard value else {
+            expandInline ? "chevron.down" : "chevron.right", size: 9, weight: .semibold, color: Theme.tertiaryText)
+        isSelected = value && isSplitDetail
+        fill = expandInline ? Theme.inset : nil
+        setAccessibilityExpanded(expandInline)
+        guard expandInline else {
             body.isHidden = true
             detail?.removeFromSuperview()
             detail = nil

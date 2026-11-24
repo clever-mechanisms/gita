@@ -16,6 +16,8 @@ final class CommitDraftController {
     private(set) var draft: CommitMessageDraft?
     /// The draft belongs to the snapshot shown (Commit is disabled until it does).
     private(set) var isCurrent = false
+    /// Most recent non-empty unsent draft text for this worktree (kept until committed or replaced by user typing).
+    private(set) var lastUnsentDraft: String?
     private var isEditing = false
     /// A refresh found a new identity while the message was being edited.
     private(set) var pendingIdentity = false
@@ -39,6 +41,7 @@ final class CommitDraftController {
     func reset() {
         detach()
         reportedLoadError = nil
+        lastUnsentDraft = nil
         isCurrent = false
         isEditing = false
         pendingIdentity = false
@@ -70,7 +73,18 @@ final class CommitDraftController {
         return true
     }
 
-    func setText(_ text: String) { draft?.setText(text) }
+    func setText(_ text: String, preservingUnsentDraft: Bool = false) {
+        draft?.setText(text)
+        if !preservingUnsentDraft, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lastUnsentDraft = text
+        }
+    }
+
+    func clearCommittedDraft() {
+        lastUnsentDraft = nil
+        draft?.setText("")
+        _ = flush()
+    }
     func beginEditing() { isEditing = true }
     /// Ends editing; true when a refresh should now pick up the waiting identity.
     func endEditing() -> Bool {
@@ -97,6 +111,7 @@ final class CommitDraftController {
         draft = opened
         reportedLoadError = nil
         isCurrent = true
+        lastUnsentDraft = opened.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : opened.text
         observer = opened.observe { [weak self] change in
             guard let self else { return }
             switch change {

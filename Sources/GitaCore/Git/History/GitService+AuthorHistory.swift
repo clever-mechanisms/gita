@@ -56,6 +56,69 @@ extension GitService {
         }
         return (structure, authored)
     }
+
+    /// The repository's configured `user.name` and `user.email`, when either is set.
+    public func configuredAuthor() async -> (name: String, email: String)? {
+        async let name = readGitConfigValue("user.name")
+        async let email = readGitConfigValue("user.email")
+        let (resolvedName, resolvedEmail) = await (name, email)
+        let finalName = resolvedName ?? ""
+        let finalEmail = resolvedEmail ?? ""
+        guard !finalName.isEmpty || !finalEmail.isEmpty else { return nil }
+        return (finalName.isEmpty ? finalEmail : finalName, finalEmail)
+    }
+
+    /// Top authors across the repository's recent history (read-only), ordered by commit count descending.
+    public func topAuthors(limit: Int = 12, scope: HistoryScope = .all) async throws -> [AuthorSummary] {
+        guard limit > 0, (try? await headCommit()) != nil else { return [] }
+        let revisions = try await walkRevisions(scope)
+        let result = try await execute(
+            ["log", "--no-show-signature", "--max-count=2000", "-z", "--format=%an%x00%ae"] + revisions + ["--"],
+            timeout: 15, outputLimit: 4 * 1_024 * 1_024)
+        return Self.aggregateAuthors(result.stdout, limit: limit)
+    }
+
+    private func readGitConfigValue(_ key: String) async -> String? {
+        guard let result = try? await execute(["config", "--null", "--get", key], allowFailure: true),
+            result.exitCode == 0
+        else { return nil }
+        let fields = result.stdout.split(separator: GitOutput.nul, omittingEmptySubsequences: false)
+        guard let first = fields.first, !first.isEmpty else { return nil }
+        let value = String(decoding: first, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    static func aggregateAuthors(_ data: Data, limit: Int) -> [AuthorSummary] {
+        let fields = GitOutput.nulFields(data)
+        var counts: [String: AuthorSummary] = [:]
+        var index = 0
+        while index + 1 < fields.count {
+            let name = fields[index].trimmingCharacters(in: .newlines)
+            let email = fields[index + 1].trimmingCharacters(in: .newlines)
+            index += 2
+            guard !name.isEmpty || !email.isEmpty else { continue }
+            let key = email.isEmpty ? "name:" + name : "mail:" + email.lowercased()
+            var entry = counts[key] ?? AuthorSummary(name: name.isEmpty ? email : name, email: email, commitCount: 0)
+            entry.commitCount += 1
+            counts[key] = entry
+        }
+        return counts.values.sorted {
+            if $0.commitCount != $1.commitCount { return $0.commitCount > $1.commitCount }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }.prefix(limit).map { $0 }
+    }
+}
+
+public struct AuthorSummary: Equatable, Hashable, Sendable {
+    public var name: String
+    public var email: String
+    public var commitCount: Int
+
+    public init(name: String, email: String, commitCount: Int) {
+        self.name = name
+        self.email = email
+        self.commitCount = commitCount
+    }
 }
 
 /// One author's identity: the email (case-insensitive) when both sides have one, else the exact name.

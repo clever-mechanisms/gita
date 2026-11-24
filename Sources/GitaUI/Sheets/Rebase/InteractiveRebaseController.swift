@@ -25,6 +25,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
     static let dragType = NSPasteboard.PasteboardType("dev.clevermechanisms.Gita.rebase-commit")
     let dragIdentity = UUID().uuidString
     let base: GitCommit
+    private let initialActions: [String: GitRebaseAction]
     private let onLoad: @MainActor () async throws -> GitInteractiveRebasePlan
     private let onMessage: @MainActor (String) async throws -> String
     private let onApply: @MainActor (GitInteractiveRebasePlan, [GitRebaseStep]) async throws -> Void
@@ -54,11 +55,13 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
 
     init(
         base: GitCommit,
+        initialActions: [String: GitRebaseAction] = [:],
         onLoad: @escaping @MainActor () async throws -> GitInteractiveRebasePlan,
         onMessage: @escaping @MainActor (String) async throws -> String,
         onApply: @escaping @MainActor (GitInteractiveRebasePlan, [GitRebaseStep]) async throws -> Void
     ) {
         self.base = base
+        self.initialActions = initialActions
         self.onLoad = onLoad
         self.onMessage = onMessage
         self.onApply = onApply
@@ -129,6 +132,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
         case .success(let next) where RebasePlanEditor.accepts(next, baseID: baseID):
             review = .current
             plan.load(next)
+            for (id, action) in initialActions { _ = plan.setAction(action, for: id) }
             editorPositions = editorPositions.filter { plan.commits[$0.key] != nil }
             if selectedID.flatMap({ plan.commits[$0] }) == nil { selectedID = next.commits.first?.id }
             editor.undoManager?.removeAllActions()

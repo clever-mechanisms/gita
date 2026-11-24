@@ -32,7 +32,7 @@ struct RepositoryWindowChangesTests {
         controller.update(.diff)
         let state = controller.codePaneState
         #expect(state.showsHunk)
-        #expect(state.hunkTitle == "Stage hunk")
+        #expect(!state.isStaged)
         #expect(controller.sidebarSelectionID == .changes)
         UITestSupport.render(controller.view)
     }
@@ -50,7 +50,7 @@ struct RepositoryWindowChangesTests {
         controller.chooseChange(staged, staged: true)
         try await fixture.wait("the staged side") { model.staged }
         controller.update(.selection)
-        #expect(controller.codePaneState.hunkTitle == "Unstage hunk")
+        #expect(controller.codePaneState.isStaged)
 
         controller.setStaged([staged], false)
         try await fixture.settle()
@@ -82,18 +82,20 @@ struct RepositoryWindowChangesTests {
         let before = fixture.model.snapshot?.commits.count
         controller.commitFooter.field.stringValue = "Next commit"
         controller.commitFooter.onChange?("Next commit")
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("the last commit's message") {
             controller.commitFooter.field.stringValue == "Fix the answer"
-                && controller.commitFooter.commitButton.title == "Amend"
+                && controller.commitFooter.lastActionsState.commitTitle.hasPrefix("Amend ")
                 && controller.commitFooter.commitButton.isEnabled
         }
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         #expect(controller.commitFooter.field.stringValue == "Next commit")
-        #expect(controller.commitFooter.amendButton.state == .off)
+        #expect(controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.state == .off)
 
-        controller.commitFooter.amendButton.performClick(nil)
-        try await fixture.wait("Amend armed again") { controller.commitFooter.commitButton.title == "Amend" }
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
+        try await fixture.wait("Amend armed again") {
+            controller.commitFooter.lastActionsState.commitTitle.hasPrefix("Amend ")
+        }
         controller.commitFooter.field.stringValue = "Fix the answer again"
         controller.commitFooter.onChange?("Fix the answer again")
         controller.commitChanges()
@@ -103,7 +105,7 @@ struct RepositoryWindowChangesTests {
         }
         #expect(fixture.model.snapshot?.commits.count == before)
         #expect(controller.commitFooter.field.stringValue == "Next commit")
-        #expect(controller.commitFooter.amendButton.state == .off)
+        #expect(controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.state == .off)
         #expect(fixture.model.snapshot?.changes.isEmpty == false)
     }
 
@@ -121,7 +123,7 @@ struct RepositoryWindowChangesTests {
         controller.setStaged([edited], true)
         try await fixture.settle()
         try await fixture.wait("the file staged") { fixture.model.hasStagedChanges }
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("the subject") { controller.commitFooter.field.stringValue == "Fix the answer" }
         controller.commitChanges()
         try await fixture.settle()
@@ -145,13 +147,13 @@ struct RepositoryWindowChangesTests {
         let controller = fixture.controller
         fixture.model.section = .changes
         #expect(fixture.model.snapshot?.changes.isEmpty == true)
-        #expect(controller.commitFooter.amendButton.isEnabled)
+        #expect(controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.isEnabled == true)
         #expect(controller.commitFooter.countLabel.stringValue == "50")
 
         // Arming Amend in a clean working tree loads the commit's message and files into Staged.
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("staged commit files") {
-            controller.commitFooter.commitButton.title == "Amend"
+            controller.commitFooter.lastActionsState.commitTitle.hasPrefix("Amend ")
                 && fixture.model.amendStaging.files.count == 2
                 && fixture.model.staged
                 && !fixture.model.isDiffLoading
@@ -169,14 +171,15 @@ struct RepositoryWindowChangesTests {
             fixture.model.amendStaging.files.map(\.path) == ["Sources/app.swift"]
                 && fixture.model.snapshot?.changes.contains { $0.path == "Notes.txt" && $0.isUnstaged } == true
         }
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.settle()
         try await fixture.wait("index restored on cancel") {
-            fixture.model.snapshot?.changes.isEmpty == true && controller.commitFooter.amendButton.state == .off
+            fixture.model.snapshot?.changes.isEmpty == true
+                && controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.state == .off
         }
 
         // Re-arm Amend, unstage Notes.txt, edit title + multi-line body, and commit the amend.
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("Amend re-armed") { fixture.model.amendStaging.files.count == 2 }
         let notesAgain = try #require(fixture.model.amendStaging.files.first { $0.path == "Notes.txt" })
         controller.setStaged([notesAgain], false)
@@ -219,7 +222,7 @@ struct RepositoryWindowChangesTests {
         defer { fixture.close() }
         let controller = fixture.controller
         fixture.model.section = .changes
-        controller.commitFooter.amendButton.performClick(nil)
+        controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("staged diff loaded") {
             fixture.model.amendStaging.files.map(\.path) == ["lines.txt"]
                 && fixture.model.staged
@@ -227,11 +230,9 @@ struct RepositoryWindowChangesTests {
                 && controller.codePane.diffView.document?.hunks.count == 2
         }
         controller.update(.diff)
-        let hunkRow = try #require(controller.codePane.diffView.document?.lines.firstIndex { $0.hunkIndex == 0 })
-        controller.codePane.diffView.table.selectRowIndexes(IndexSet(integer: hunkRow), byExtendingSelection: false)
-        try await fixture.wait("hunk button enabled") { controller.codePane.hunkButton.isEnabled }
-        #expect(controller.codePaneState.hunkTitle == "Unstage hunk")
-        controller.applyHunk()
+        try await fixture.wait("document hunks enabled") { controller.codePaneState.canApplyDocumentHunks }
+        #expect(controller.codePaneState.isStaged)
+        controller.applyHunk(at: 0)
         try await fixture.settle()
         try await fixture.wait("first hunk unstaged") {
             fixture.model.snapshot?.changes.contains { $0.path == "lines.txt" && $0.isUnstaged } == true
@@ -261,9 +262,9 @@ struct RepositoryWindowChangesTests {
         try fixture.repository.git("push", "-q", "--set-upstream", "origin", "HEAD")
         try await fixture.refresh()
         let head = fixture.model.snapshot?.head
-        fixture.controller.commitFooter.amendButton.performClick(nil)
+        fixture.controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.perform()
         try await fixture.wait("Amend of the published commit") {
-            fixture.controller.commitFooter.commitButton.title == "Amend"
+            fixture.controller.commitFooter.lastActionsState.commitTitle.hasPrefix("Amend ")
         }
         RepositoryWindowFixture.alerts.removeAll()
         fixture.controller.commitChanges()
@@ -271,7 +272,7 @@ struct RepositoryWindowChangesTests {
             RepositoryWindowFixture.alerts.contains("Amend a commit that is already on the upstream?")
         }
         #expect(fixture.model.snapshot?.head == head)
-        #expect(fixture.controller.commitFooter.amendButton.state == .on)
+        #expect(fixture.controller.commitFooter.commitOptionsMenu().item(titled: "Amend Last Commit")?.state == .on)
 
         RepositoryWindowFixture.alertResponse = .alertFirstButtonReturn
         fixture.controller.commitFooter.field.stringValue = "Rewritten after confirmation"

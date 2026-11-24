@@ -1,16 +1,23 @@
 import Foundation
 import GitaCore
 
-/// What the history list shows: every branch, one focused reference, or search results.
+/// What the history list shows: every branch, one focused reference, inline author filter, or search results.
 enum HistoryMode: Hashable {
     case all
     /// A reference's own history; the identity changes whenever its list is read again.
     case focused(UUID)
+    /// An inline `⏷` author filter; the identity changes whenever its list is read again.
+    case authorFilter(UUID)
     case search(HistorySearchField, String)
 
-    init(searchQuery: String, field: HistorySearchField, focusedIdentity: UUID?) {
+    init(
+        searchQuery: String, field: HistorySearchField, focusedIdentity: UUID?,
+        authorFilterIdentity: UUID? = nil
+    ) {
         if !searchQuery.isEmpty {
             self = .search(field, searchQuery)
+        } else if let authorFilterIdentity {
+            self = .authorFilter(authorFilterIdentity)
         } else if let focusedIdentity {
             self = .focused(focusedIdentity)
         } else {

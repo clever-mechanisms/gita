@@ -38,7 +38,7 @@ enum TabStripLayout {
     private static let chipTop: CGFloat = 8
     private static let chipInset: CGFloat = 12
     private static let tabTop: CGFloat = 4
-    static let lineHeight: CGFloat = 2
+    static let lineHeight: CGFloat = 2.5
 
     /// Where each entry belongs in a strip `available` wide and `height` high.
     static func slots(_ entries: [Entry], available: CGFloat, height: CGFloat) -> Slots {

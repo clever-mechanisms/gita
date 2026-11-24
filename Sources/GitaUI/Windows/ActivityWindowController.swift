@@ -1,6 +1,86 @@
 import AppKit
 import GitaCore
 
+/// Formats argv arrays as POSIX shell-quoted commands for display and clipboard copy on failed Activity rows.
+enum ActivityCommandFormatter {
+    private static let safeScalarSet: Set<Unicode.Scalar> = Set(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/:@%+=,-".unicodeScalars)
+
+    static func shellQuoted(_ arguments: [String]) -> String {
+        arguments.map(quoteArgument).joined(separator: " ")
+    }
+
+    private static func quoteArgument(_ arg: String) -> String {
+        guard !arg.isEmpty else { return "''" }
+        if arg.unicodeScalars.allSatisfy({ safeScalarSet.contains($0) }) { return arg }
+        return "'" + arg.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    static func command(
+        for entry: ActivityEntry, repositoryRoot: URL? = nil, recordedArguments: [String] = []
+    ) -> String? {
+        guard entry.failed else { return nil }
+        if !recordedArguments.isEmpty {
+            return shellQuoted(recordedArguments)
+        }
+        if let embedded = embeddedCommandLine(in: entry.detail) {
+            return embedded
+        }
+        let arguments = inferredArguments(for: entry, repositoryRoot: repositoryRoot)
+        guard !arguments.isEmpty else { return nil }
+        return shellQuoted(arguments)
+    }
+
+    private static func embeddedCommandLine(in detail: String) -> String? {
+        for rawLine in detail.split(whereSeparator: \.isNewline) {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("Command: ") {
+                let command = String(trimmed.dropFirst("Command: ".count)).trimmingCharacters(in: .whitespaces)
+                if !command.isEmpty { return command }
+            }
+        }
+        return nil
+    }
+
+    private static func inferredArguments(for entry: ActivityEntry, repositoryRoot: URL?) -> [String] {
+        let prefix = repositoryRoot.map { ["-C", $0.path] } ?? []
+        switch entry.source {
+        case .git:
+            let subcommand = gitSubcommand(for: entry.event)
+            guard !subcommand.isEmpty else { return [] }
+            return ["git"] + prefix + subcommand
+        case .github:
+            return ["gh", "pr", "list"]
+        case .vercel:
+            return ["vercel", "ls"]
+        case .orca, .app:
+            return []
+        }
+    }
+
+    private static func gitSubcommand(for event: String) -> [String] {
+        let lower = event.lowercased()
+        let mappings: [(String, [String])] = [
+            ("fetch", ["fetch", "--prune", "--all"]),
+            ("pull", ["pull"]),
+            ("push", ["push"]),
+            ("commit-graph", ["commit-graph", "write", "--reachable", "--changed-paths"]),
+            ("index", ["update-index", "--refresh"]),
+            ("refresh", ["status", "--porcelain=v2", "--branch"]),
+            ("history", ["log", "--topo-order", "-n", "200"]),
+            ("search", ["log", "--all", "--grep="]),
+            ("tree", ["ls-tree", "-r", "HEAD"]),
+            ("rebase", ["rebase"]),
+            ("merge", ["merge"]),
+            ("cherry-pick", ["cherry-pick"]),
+            ("revert", ["revert"]),
+            ("reset", ["reset"]),
+            ("commit", ["commit"]),
+        ]
+        return mappings.first { lower.contains($0.0) }?.1 ?? []
+    }
+}
+
 /// Window ▸ Activity (⌘⇧A): the active repository's activity log — time, source, event, result — filterable,
 /// live while visible, exportable as sanitized JSON.
 @MainActor
@@ -28,7 +108,9 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
     private let emptyLabel = NSTextField(labelWithString: "")
     private let detailField = NSTextField(wrappingLabelWithString: "")
     private let detailContainer = NSView()
+    private let copyCommandButton = PartsButton.quiet(String(localized: "Copy command"), symbol: "doc.on.doc") {}
     private var exportItem: NSToolbarItem?
+    var copyToPasteboard: (String) -> Void = { Deck.copy($0) }
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("jmmss")
@@ -147,6 +229,9 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
         table.delegate = self
         table.allowsEmptySelection = true
         table.setAccessibilityLabel(String(localized: "Activity"))
+        let menu = NSMenu()
+        menu.delegate = self
+        table.menu = menu
         let scroll = NSScrollView()
         scroll.documentView = table
         scroll.hasVerticalScroller = true
@@ -162,9 +247,17 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
         detailField.isSelectable = true
         detailField.maximumNumberOfLines = 6
         detailField.lineBreakMode = .byWordWrapping
+        copyCommandButton.fixedHeight = 22
+        copyCommandButton.horizontalPadding = 8
+        copyCommandButton.cornerRadius = 5
+        copyCommandButton.setAccessibilityIdentifier("activity.copyCommand")
+        copyCommandButton.isHidden = true
+        copyCommandButton.onClick = { [weak self] in self?.copySelectedCommand() }
         let divider = NSBox()
         divider.boxType = .separator
-        for view in [divider, detailField] as [NSView] {
+        let row = Deck.hstack([detailField, Deck.spacer(), copyCommandButton], spacing: 10)
+        row.alignment = .top
+        for view in [divider, row] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             detailContainer.addSubview(view)
         }
@@ -172,12 +265,13 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
             divider.topAnchor.constraint(equalTo: detailContainer.topAnchor),
             divider.leadingAnchor.constraint(equalTo: detailContainer.leadingAnchor),
             divider.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor),
-            detailField.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 10),
-            detailField.leadingAnchor.constraint(equalTo: detailContainer.leadingAnchor, constant: 14),
-            detailField.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor, constant: -14),
-            detailField.bottomAnchor.constraint(equalTo: detailContainer.bottomAnchor, constant: -16),
+            row.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 10),
+            row.leadingAnchor.constraint(equalTo: detailContainer.leadingAnchor, constant: 14),
+            row.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor, constant: -14),
+            row.bottomAnchor.constraint(equalTo: detailContainer.bottomAnchor, constant: -16),
         ])
         detailField.setContentCompressionResistancePriority(.required, for: .vertical)
+        detailField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         detailContainer.isHidden = true
         let collapsed = detailContainer.heightAnchor.constraint(equalToConstant: 0)
         collapsed.priority = .defaultLow
@@ -244,10 +338,23 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
 
     private func updateDetail() {
         let row = table.selectedRow
-        let detail = shown.indices.contains(row) ? shown[row].extraDetail : nil
+        let entry = shown.indices.contains(row) ? shown[row] : nil
+        let detail = entry?.extraDetail
+        let command = entry.flatMap { copiedCommand(for: $0) }
         detailField.stringValue = detail ?? ""
-        detailField.textColor = shown.indices.contains(row) && shown[row].failed ? Theme.failure : Theme.text
-        detailContainer.isHidden = detail == nil
+        detailField.textColor = entry?.failed == true ? Theme.failure : Theme.text
+        copyCommandButton.isHidden = command == nil
+        detailContainer.isHidden = detail == nil && command == nil
+    }
+
+    func copiedCommand(for entry: ActivityEntry) -> String? {
+        ActivityCommandFormatter.command(for: entry, repositoryRoot: model?.snapshot?.root)
+    }
+
+    @objc private func copySelectedCommand() {
+        let row = table.selectedRow
+        guard shown.indices.contains(row), let command = copiedCommand(for: shown[row]) else { return }
+        copyToPasteboard(command)
     }
 
     func numberOfRows(in _: NSTableView) -> Int { shown.count }
@@ -324,5 +431,18 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
             return item
         default: return nil
         }
+    }
+}
+
+extension ActivityWindowController: NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let clicked = table.clickedRow
+        let targetRow = clicked >= 0 ? clicked : table.selectedRow
+        guard shown.indices.contains(targetRow), let command = copiedCommand(for: shown[targetRow]) else { return }
+        let item = MenuAction(String(localized: "Copy command")) { [weak self] in
+            self?.copyToPasteboard(command)
+        }
+        menu.addItem(item)
     }
 }

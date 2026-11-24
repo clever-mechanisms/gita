@@ -1,4 +1,5 @@
 import Foundation
+import GitaCore
 
 /// What a click on a panel row, chip, pill or footer button asks for.
 enum PanelAction: Hashable {
@@ -6,6 +7,8 @@ enum PanelAction: Hashable {
     case copy(String)
     case toggle(String)
     case showRepository(URL)
+    /// Opens a repository's tab and switches to the provider's page (Pull Requests or Deployments).
+    case showProviderPage(URL, ProviderKind)
     /// A repository's tab in the window of the workspace it is a tab of.
     case showTab(URL, workspace: String)
     case push(URL)

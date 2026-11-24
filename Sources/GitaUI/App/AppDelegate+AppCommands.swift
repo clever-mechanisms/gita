@@ -23,18 +23,20 @@ extension AppDelegate {
         }
     }
 
-    func openRepositoryTab(_ url: URL) {
+    func openRepositoryTab(_ url: URL) { _ = showRepositoryTab(url) }
+
+    func showRepositoryTab(_ url: URL) -> Bool {
         if isLanguageRestarting {
             application(NSApp, open: [url])
-            return
+            return true
         }
         guard didFinishLaunching, setupGuide == nil else {
             router.enqueue([url])
-            return
+            return true
         }
         focusWindow(showing: url)
         showWindow()
-        tabsController?.open(url)
+        return tabsController?.open(url) == true
     }
 
     /// Commit menu › author › Filter: that author's commits in a tab of their own.
@@ -122,6 +124,7 @@ extension AppDelegate {
         model.refresh()
         model.requestVercelContext()
         model.refreshProviders()
+        model.checkRemotesNow()
     }
 
     @objc func settings() {
@@ -160,6 +163,36 @@ extension AppDelegate {
         if !model.showsHistoryDetails { toggleHistoryDetails() }
         if model.section != .history { model.section = .history }
         controller.selectDetailTab(tab)
+    }
+
+    @objc func focusSidebar() {
+        showWindow()
+        repositoryController?.focusPane(.sidebar)
+    }
+
+    @objc func focusHistory() {
+        showWindow()
+        repositoryController?.focusPane(.history)
+    }
+
+    @objc func focusFiles() {
+        showWindow()
+        repositoryController?.focusPane(.files)
+    }
+
+    @objc func focusDiff() {
+        showWindow()
+        repositoryController?.focusPane(.diff)
+    }
+
+    @objc func cyclePaneFocus() {
+        showWindow()
+        repositoryController?.cyclePaneFocus()
+    }
+
+    @objc func blameSelectedFile() {
+        showWindow()
+        repositoryController?.blameSelectedFile()
     }
 
     /// File › Close Tab (⌘W): the setup guide or a sheet first, then the selected tab.

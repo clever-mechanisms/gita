@@ -8,7 +8,8 @@ struct MenuPanelActions {
     var settings: @MainActor () -> Void = {}
     var quit: @MainActor () -> Void = {}
     var openRepository: @MainActor () -> Void = {}
-    var showRepository: @MainActor (URL) -> Void = { _ in }
+    var showRepository: @MainActor (URL) -> Bool = { _ in false }
+    var showProviderPage: @MainActor (URL, ProviderKind) -> Void = { _, _ in }
     /// A repository's tab, in the window of the workspace with this id.
     var showTab: @MainActor (URL, String) -> Void = { _, _ in }
     var push: @MainActor (URL) -> Void = { _ in }

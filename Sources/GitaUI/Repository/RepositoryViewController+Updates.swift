@@ -8,7 +8,12 @@ extension RepositoryViewController {
         updating = true
         defer { updating = false }
         switch change {
-        case .repository: repositoryChanged()
+        case .banner:
+            syncContentBanner()
+            return
+        case .repository:
+            repositoryChanged()
+            scheduleHistoryDetailOverlay()
         case .history:
             filterHistory()
             rebuildSidebar()
@@ -16,6 +21,7 @@ extension RepositoryViewController {
         case .historyAppearance: applyHistoryAppearance()
         case .section:
             guard sectionChanged() else { return }
+            scheduleHistoryDetailOverlay()
         case .selection:
             rebuildSelection()
             rebuildSidebar()
@@ -28,10 +34,15 @@ extension RepositoryViewController {
             refreshOverview()
             refreshStrip()
         }
-        updateBars()
+        updateBars(after: change)
     }
 
     private func repositoryChanged() {
+        model.loadTopAuthorsIfNeeded()
+        if model.isReviewingWorkingChanges, model.snapshot?.changes.isEmpty != false, amend.source == nil {
+            model.graphState.isReviewingWorkingChanges = false
+            commitFooter.isHidden = true
+        }
         reconcileAmend()
         showCommitField()
         sheets.repositoryChanged(to: model.service)
@@ -58,6 +69,7 @@ extension RepositoryViewController {
     /// The section changed: false when it opened a window or the Agents pane instead (the page stays as it was).
     private func sectionChanged() -> Bool {
         let requested = model.section
+        if requested != .changes && requested != .history { closeBlame() }
         switch SectionRoute(requested) {
         case .window(let section):
             // Settings, Connections, Activity and About are windows now: open it and keep showing the current page.
@@ -103,6 +115,7 @@ extension RepositoryViewController {
         rebuildSidebar()
         rebuildSelection()
         refreshPage()
+        syncPullRequestWorkspaceMode()
         refreshStrip()
     }
 
@@ -116,9 +129,10 @@ extension RepositoryViewController {
     }
 
     /// The bars and buttons that follow the model's state after any change.
-    private func updateBars() {
+    private func updateBars(after change: AppModel.Change) {
         updateRetryFooter()
         filePane.updateStageButtons()
+        if model.section == .changes || model.isReviewingWorkingChanges { updateCleanTreeContext() }
         applyOperationBar()
         updateCodePane()
         syncMergeEditor()
@@ -128,6 +142,10 @@ extension RepositoryViewController {
         let showsStrip = model.snapshot != nil && SectionPanes(model.section).showsHistoryPane
         strip.isHidden = !showsStrip
         stripHeight.constant = showsStrip ? RepositoryLayout.stripHeight : 0
+        if change == .selection || change == .diff {
+            updateWorkingChangesBanner()
+            syncHistoryDetailOverlay()
+        }
     }
 
     /// The operation bar for the model's operation and conflicts, with Resolve Simple when the scan found files for it.

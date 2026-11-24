@@ -81,25 +81,78 @@ final class ProviderActivity {
         return ProviderFeed.newest(events, now: now)
     }
 
-    /// One compact line when GitHub or Vercel is actually broken for an open repository; nil otherwise.
-    func problem(names: [String: String]) -> String? {
-        var broken: [(provider: ProviderKind, status: ProviderStatus, name: String)] = []
-        for entry in entries.values.sorted(by: { $0.root.path < $1.root.path }) {
-            for provider in [ProviderKind.github, .vercel] {
-                guard let report = entry.reports[provider], report.status.isBroken else { continue }
-                broken.append((provider, report.status, names[Self.key(entry.root)] ?? entry.root.lastPathComponent))
-            }
-        }
+    /// The broken provider line with its full diagnostic tooltip and primary repository to open when clicked.
+    /// Multiple checkouts or worktrees of the same GitHub repository count once.
+    func problemDetail(names: [String: String]) -> MenuPanelState.Problem? {
+        let broken = brokenEntries(names: names)
         guard let first = broken.first else {
             // Vercel's own incident, once, while any open repository deploys there.
             let platform = entries.values.lazy.compactMap { $0.reports[.vercel]?.vercelSignals?.platform }.first {
                 $0.isDegraded
             }
-            return platform.map { "Vercel · " + VercelSignalText.platform($0) }
+            guard let platform else { return nil }
+            let text = "Vercel · " + VercelSignalText.platform(platform)
+            let summary = platform.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            return MenuPanelState.Problem(
+                text: text, toolTip: summary.isEmpty ? text : summary, repository: nil, provider: nil)
         }
         let provider = first.provider == .github ? "GitHub" : "Vercel"
         let status = first.status.localizedTitle
-        if broken.count == 1 { return String(localized: "\(provider) · \(status) · \(first.name)") }
-        return String(localized: "\(provider) · \(status) · \(broken.count) repositories")
+        let text =
+            broken.count == 1
+            ? String(localized: "\(provider) · \(status) · \(first.name)")
+            : String(localized: "\(provider) · \(status) · \(broken.count) repositories")
+        let toolTip = Self.problemToolTip(broken: broken, fallback: text)
+        return MenuPanelState.Problem(
+            text: text, toolTip: toolTip, repository: first.root, provider: first.provider)
+    }
+
+    private struct BrokenEntry {
+        var provider: ProviderKind
+        var status: ProviderStatus
+        var name: String
+        var root: URL
+        var diagnostic: String?
+    }
+
+    private func brokenEntries(names: [String: String]) -> [BrokenEntry] {
+        let ordered = entries.values.sorted { lhs, rhs in
+            let lhsMain = Self.key(lhs.commonGitDirectory) == Self.key(lhs.root.appendingPathComponent(".git"))
+            let rhsMain = Self.key(rhs.commonGitDirectory) == Self.key(rhs.root.appendingPathComponent(".git"))
+            if lhsMain != rhsMain { return lhsMain }
+            return lhs.root.path < rhs.root.path
+        }
+        var seenGitHubSourceIDs = Set<String>()
+        var seenGitHubCommonDirs = Set<String>()
+        var broken: [BrokenEntry] = []
+        for entry in ordered {
+            let name = names[Self.key(entry.root)] ?? entry.root.lastPathComponent
+            let commonKey = Self.key(entry.commonGitDirectory)
+            for provider in [ProviderKind.github, .vercel] {
+                guard let report = entry.reports[provider], report.status.isBroken else { continue }
+                if provider == .github {
+                    if let sourceID = report.sourceID, !seenGitHubSourceIDs.insert(sourceID).inserted { continue }
+                    if !seenGitHubCommonDirs.insert(commonKey).inserted { continue }
+                }
+                broken.append(
+                    BrokenEntry(
+                        provider: provider, status: report.status, name: name, root: entry.root,
+                        diagnostic: report.diagnostic))
+            }
+        }
+        return broken
+    }
+
+    private static func problemToolTip(broken: [BrokenEntry], fallback: String) -> String {
+        if broken.count == 1 {
+            let diagnostic = broken[0].diagnostic?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return diagnostic.isEmpty ? fallback : diagnostic
+        }
+        let lines = broken.map { item in
+            let diagnostic = item.diagnostic?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let detail = diagnostic.isEmpty ? item.status.localizedTitle : diagnostic
+            return "\(item.name): \(detail)"
+        }
+        return lines.joined(separator: "\n")
     }
 }

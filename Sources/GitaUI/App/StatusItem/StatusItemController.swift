@@ -37,14 +37,15 @@ final class StatusItemController {
     private var session: PanelSession?
     private var look: StatusItemLook?
     private var pushQueue = PanelPushQueue()
+    private var pendingProviderPage: (key: String, section: Section)?
     private var activityObserver: UUID?
     private var agentObserver: UUID?
     private var workspaceObserver: UUID?
     private var preferenceObserver: NSObjectProtocol?
     private let defaults: UserDefaults
 
-    init(statusBar: NSStatusBar, host: StatusItemHost, defaults: UserDefaults) {
-        statusItem = statusBar.statusItem(withLength: NSStatusItem.variableLength)
+    init(statusItem: NSStatusItem, host: StatusItemHost, defaults: UserDefaults) {
+        self.statusItem = statusItem
         self.host = host
         self.defaults = defaults
         let button = statusItem.button
@@ -82,6 +83,7 @@ final class StatusItemController {
     func refresh() {
         guard let host else { return }
         let model = host.model
+        applyPendingProviderPage(to: model)
         if pushQueue.shouldPush(
             activeRoot: model.snapshot?.root, isBusy: model.isLoading || model.isMutating, now: Date())
         {
@@ -122,6 +124,7 @@ final class StatusItemController {
 
     /// The active repository changed: the panel follows it.
     func activeModelChanged(_ model: AppModel) {
+        applyPendingProviderPage(to: model)
         guard isPanelShown else { return }
         session?.model = model
         model.setMenuVisible(true)
@@ -168,7 +171,11 @@ final class StatusItemController {
             return
         }
         guard let host, let button = statusItem.button else { return }
-        let controller = MenuPanelController(actions: host.panelActions)
+        var actions = host.panelActions
+        actions.showProviderPage = { [weak self] url, provider in
+            self?.openProviderPage(url, provider: provider)
+        }
+        let controller = MenuPanelController(actions: actions)
         let panel = MenuPanelWindow(controller: controller)
         panel.onClose = { [weak self] in self?.panelDidClose() }
         session = PanelSession(panel: panel, controller: controller, model: host.model)
@@ -177,6 +184,25 @@ final class StatusItemController {
         refresh()
         panel.show(below: button, size: controller.preferredContentSize)
         controller.makeListFirstResponder()
+    }
+
+    func openProviderPage(_ url: URL, provider: ProviderKind) {
+        guard let host else { return }
+        let section: Section = provider == .vercel ? .deployments : .pullRequests
+        pendingProviderPage = nil
+        closePanel()
+        guard host.panelActions.showRepository(url) else { return }
+        pendingProviderPage = (ProviderActivity.key(url), section)
+        applyPendingProviderPage(to: host.model)
+    }
+
+    private func applyPendingProviderPage(to model: AppModel) {
+        guard let pending = pendingProviderPage else { return }
+        let activeRoot = model.snapshot?.root ?? model.root
+        guard let activeRoot, ProviderActivity.key(activeRoot) == pending.key else { return }
+        if model.snapshot == nil, model.isLoading { return }
+        pendingProviderPage = nil
+        if model.snapshot != nil || !model.statusIsFailure { model.section = pending.section }
     }
 
     private func panelDidClose() {

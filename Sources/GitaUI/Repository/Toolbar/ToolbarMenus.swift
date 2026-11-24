@@ -22,10 +22,12 @@ enum ToolbarMenus {
         for ref in snapshot.references where ref.kind == .branch {
             menu.addItem(switchItem(ref, model: model))
         }
-        menu.addItem(
-            MenuAction(String(localized: "New Branch…"), symbol: "plus") {
-                NSApp.sendAction(#selector(RepositoryCommandResponder.newBranch), to: nil, from: nil)
-            })
+        let newBranch = MenuAction(String(localized: "New Branch…"), symbol: "plus") {
+            NSApp.sendAction(#selector(RepositoryCommandResponder.newBranch), to: nil, from: nil)
+        }
+        newBranch.keyEquivalent = "B"
+        newBranch.keyEquivalentModifierMask = [.command] // shown only; the Repository menu owns ⇧⌘B
+        menu.addItem(newBranch)
         menu.addItem(.separator())
         menu.addItem(heading(String(localized: "Worktrees")))
         for tree in snapshot.worktrees where !tree.isBare && tree.path != snapshot.root.path {

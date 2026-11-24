@@ -63,7 +63,9 @@ enum PullRequestColumns {
 
     static func fixed(_ view: NSView, _ width: CGFloat) -> NSView {
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.widthAnchor.constraint(equalToConstant: width).isActive = true
+        let constraint = view.widthAnchor.constraint(equalToConstant: width)
+        constraint.priority = NSLayoutConstraint.Priority(450)
+        constraint.isActive = true
         return view
     }
 }

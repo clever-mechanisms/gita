@@ -40,7 +40,11 @@ final class AgentMarkView: NSView {
         }
     }
     private let mark = CALayer()
-    private var moving = false
+    private(set) var moving = false
+    var reduceMotion: () -> Bool = { Deck.reduceMotion }
+    var isWindowVisible: (NSWindow?) -> Bool = {
+        $0.map { $0.occlusionState.contains(.visible) && $0.isVisible } ?? false
+    }
     private var occlusionObserver: NSObjectProtocol?
     private var motionObserver: NSObjectProtocol?
 
@@ -128,10 +132,17 @@ final class AgentMarkView: NSView {
         moving = false
         updateMotion()
     }
-    private func updateMotion() {
-        let visible = window.map { $0.occlusionState.contains(.visible) && $0.isVisible } ?? false
-        let shouldMove =
-            tool != nil && state == .working && visible && !isHiddenOrHasHiddenAncestor && !Deck.reduceMotion
+    static func shouldAnimate(
+        hasTool: Bool, state: AgentState?, visible: Bool, hidden: Bool, reduceMotion: Bool
+    ) -> Bool {
+        hasTool && state == .working && visible && !hidden && !reduceMotion
+    }
+
+    func updateMotion() {
+        let visible = isWindowVisible(window)
+        let shouldMove = Self.shouldAnimate(
+            hasTool: tool != nil, state: state, visible: visible, hidden: isHiddenOrHasHiddenAncestor,
+            reduceMotion: reduceMotion())
         guard shouldMove != moving else { return }
         moving = shouldMove
         guard shouldMove, let tool else {

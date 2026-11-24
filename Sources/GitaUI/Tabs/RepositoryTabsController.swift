@@ -25,7 +25,7 @@ final class RepositoryTabsController: NSViewController {
     private let body = NSView()
     private let observations = NotificationObservations()
     private var reportedSession: RepositoryTabSession?
-    private var isVisible = false
+    var isVisible = false
     private(set) var isDetached = false
     var onSelectionChange: ((AppModel) -> Void)?
     var onOpenRepository: (() -> Void)?
@@ -300,8 +300,8 @@ final class RepositoryTabsController: NSViewController {
         refreshTabs()
         onSelectionChange?(tab.model)
         view.layoutSubtreeIfNeeded()
-        tab.controller.settleLayout(
-            sidebarScroll: geometry?.sidebarScroll, openedFromRepositories: geometry?.openedFromRepositories == true)
+        tab.controller.settleLayout()
+        terminalPanel.applyRememberedHeight()
         updateLoading()
         strip.scrollToVisible(tab.button.frame)
         restoreFirstResponder(of: tab)
@@ -323,40 +323,12 @@ final class RepositoryTabsController: NSViewController {
             window.selectNextKeyView(nil)
         }
     }
-    private func updateVisibility() {
+    func updateVisibility() {
         for (position, tab) in tabs.enumerated() {
             tab.model.isActiveRepository = position == selectedIndex
             tab.model.isWindowVisible = position == selectedIndex && isVisible
         }
     }
-    func selectNextTab() { if count > 1 { select((selectedIndex + 1) % count) } }
-    func selectPreviousTab() { if count > 1 { select((selectedIndex + count - 1) % count) } }
-    /// ⌘1…⌘8 choose that tab, ⌘9 the last one (as in Safari and other tabbed apps); tabs in collapsed groups count.
-    func selectTab(number: Int) {
-        guard number >= 1, !isEmpty else { return }
-        guard let index = list.index(forShortcut: number) else {
-            NSSound.beep()
-            return
-        }
-        select(index)
-    }
-    func refreshSharedPreferences() {
-        guard !isDetached else { return }
-        for tab in tabs { tab.model.emit(.historyAppearance) }
-    }
-    func markSeen(_ tab: Tab) {
-        guard isVisible, let root = tab.root else { return }
-        environment.markSeen(root)
-    }
-    /// Repository roots of the open tabs, in tab order (the sidebar lists these first).
-    var openRepositories: [URL] { tabs.compactMap(\.repositoryRoot) }
-    func setWindowVisible(_ visible: Bool) {
-        isVisible = visible
-        if visible, let tab = selectedTab { markSeen(tab) }
-        updateVisibility()
-        if visible, !isEmpty { selectedModel.becameVisible() }
-    }
-
     // MARK: Showing
 
     func refreshTabs() {
@@ -366,12 +338,18 @@ final class RepositoryTabsController: NSViewController {
             let crowd = tab.root.flatMap { WindowAgents.crowd(WindowAgents.shared.sessions(checkout: $0)) }
             var name = titles.name(at: index, isLoading: tab.model.isLoading, selected: index == selectedIndex)
             if let author = tab.author { name = String(localized: "\(name) [\(author.name)]") }
+            if crowd?.state == .done {
+                if index == selectedIndex && isVisible { tab.seenDone = true }
+            } else {
+                tab.seenDone = false
+            }
             tab.button.update(
                 RepositoryTabState(
                     name: name, branch: tab.model.snapshot?.localizedBranch ?? "", path: tab.root?.path,
                     isWorktree: tab.mainCheckout != nil, silenced: tab.root.map(environment.isSilenced) ?? false,
                     agent: crowd?.state, tool: crowd?.lead.tool, selected: index == selectedIndex,
-                    busy: tab.model.isMutating, color: tab.color, shortcut: list.shortcut(at: index)))
+                    busy: tab.model.isMutating, doneSeen: tab.seenDone, color: tab.color,
+                    shortcut: list.shortcut(at: index)))
         }
         layoutStrip()
         if let model = selectedTab?.model {

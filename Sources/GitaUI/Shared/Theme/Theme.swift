@@ -167,7 +167,7 @@ enum Theme {
     // Accent and states (states are the same in every theme so they stay recognisable)
     static let accent = themed(.accent) // filled buttons, toggles
     static let working = themed(.working) // working accents (icons, links)
-    static let needsInput = dynamic(0xC96A00, 0xFF9F0A)
+    static let needsInput = dynamic(0xB35000, 0xBA5400)
     static let needsInputText = dynamic(0x9A5200, 0xFFB340)
     static let success = dynamic(0x1D7A35, 0x30D158)
     static let failure = dynamic(0xC4001A, 0xFF6961)

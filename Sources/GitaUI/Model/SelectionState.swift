@@ -25,6 +25,8 @@ struct SelectionState {
     /// Changes whenever `files` is assigned, so views rebuild their rows only for a new list.
     private(set) var filesRevision = 0
     var diff = ""
+    /// Exact byte size when the selected tree blob is binary.
+    var binaryBlobByteCount: Int64?
     /// The path whose diff is shown; a refresh of the same path keeps the reader's place.
     var diffPath: String?
     /// The commit's files tree is shown instead of its changes (kept across selections).
@@ -74,6 +76,7 @@ struct SelectionState {
         details = nil
         files = []
         diff = ""
+        binaryBlobByteCount = nil
         diffPath = nil
         isDiffLoading = false
     }

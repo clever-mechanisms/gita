@@ -61,7 +61,7 @@ struct RepositoryEdgeCaseTests {
         controller.moreHistory()
     }
 
-    @Test func agentChipsAndTheStripsAgentCell() {
+    @Test func agentChipsAndTheStripsAgentCell() throws {
         UITestSupport.bootstrap()
         let checkout = URL(fileURLWithPath: "/tmp/fixture")
         let lead = Self.session("lead", state: .needsInput, at: checkout)
@@ -74,30 +74,30 @@ struct RepositoryEdgeCaseTests {
         #expect(HistoryChips.agents([sub])?.label.hasPrefix("Subagent") == true)
 
         var input = WorktreeStripView.Input()
-        #expect(WorktreeStripCells.agent(input).click == .agent(nil))
+        #expect(WorktreeStripCells.agent(input) == nil)
         input.session = lead
-        let alone = WorktreeStripCells.agent(input, now: Date(timeIntervalSince1970: 1_700_003_600))
+        let alone = try #require(WorktreeStripCells.agent(input, now: Date(timeIntervalSince1970: 1_700_003_600)))
         #expect(alone.click == .agent(lead))
         input.otherAgents = 1
         input.subagents = 2
-        let crowd = WorktreeStripCells.agent(input)
+        let crowd = try #require(WorktreeStripCells.agent(input))
         #expect(crowd.click == .agent(nil))
         #expect(crowd.detail.contains("2 agents"))
 
-        let strip = WorktreeStripView(frame: NSRect(x: 0, y: 0, width: 900, height: 66))
+        let strip = WorktreeStripView(frame: NSRect(x: 0, y: 0, width: 900, height: 34))
         var events: [String] = []
         strip.onAgent = { events.append("agent \($0?.id ?? "-")") }
-        strip.onBranch = { _ in events.append("branch") }
+        strip.onFetch = { events.append("fetch") }
         strip.onCreatePullRequest = { events.append("pr") }
         strip.onChecks = { events.append("checks") }
         strip.open = { events.append("open \($0.host ?? "")") }
         for click in [
-            StripCellContent.Click.none, .agent(lead), .branch, .createPullRequest, .checks,
+            StripCellContent.Click.none, .agent(lead), .fetch, .createPullRequest, .checks,
             .open(ProviderSamples.web("https://example.com")),
         ] {
             strip.perform(click, from: strip)
         }
-        #expect(events == ["agent lead", "branch", "pr", "checks", "open example.com"])
+        #expect(events == ["agent lead", "fetch", "pr", "checks", "open example.com"])
         strip.update(input)
         UITestSupport.render(strip)
     }
@@ -153,8 +153,10 @@ struct RepositoryEdgeCaseTests {
         sidebar.secondClick(repository)
         sidebar.secondClick(0)
         sidebar.click(-1)
-        for row in sidebar.rows.indices { _ = sidebar.tableView(sidebar.table, viewFor: nil, row: row) }
-        sidebar.filter.stringValue = "upstream"
+        for row in sidebar.rows.indices {
+            _ = sidebar.tableView(sidebar.repositoryPane.list.table, viewFor: nil, row: row)
+        }
+        sidebar.repositoryPane.filter.stringValue = "upstream"
         sidebar.filterChanged()
         #expect(index { if case .remote(let name, _, _, _) = $0 { name == "upstream" } else { false } } != nil)
     }

@@ -55,10 +55,11 @@ struct MenuPanelStateBuilder {
         let (repositories, names) = repositories(shell)
         let sessions = agents.sessions
         let checked = ([activity.checkedAt] + shell.statuses.map(\.checkedAt)).compactMap { $0 }.max()
+        let problem = activity.problemDetail(names: names)
         return MenuPanelState(
             repositories: repositories, workspaces: MenuPanelState.Workspace.ordered(shell.workspaces),
             attention: attention(shell, repositories: repositories, names: names), sessions: sessions, names: names,
-            feed: activity.feed(sessions: sessions, names: names), problem: activity.problem(names: names),
+            feed: activity.feed(sessions: sessions, names: names), problem: problem?.text, problemDetail: problem,
             checkedAt: checked, isRefreshing: shell.isRefreshing)
     }
 

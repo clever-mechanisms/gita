@@ -41,9 +41,10 @@ extension RepositoryViewController {
         cancelAmend(restoreIndex: false)
     }
 
-    func amendArmedCommit() {
+    func amendArmedCommit(andPush: Bool = false) {
         noteCommitField(commitFooter.message)
         guard case .armed(let source, let message) = amend else { return }
+        if andPush, source.isPublished { return }
         let subject = message.subject.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !subject.isEmpty else {
             model.showError(String(localized: "Could not amend"), String(localized: "Enter a commit message."))
@@ -57,9 +58,9 @@ extension RepositoryViewController {
         }
         let full = CommitMessageText.preparedForCommit(message.full)
         if source.isPublished {
-            confirmPublishedAmend { [weak self] in self?.performAmend(source, message: full) }
+            confirmPublishedAmend { [weak self] in self?.performAmend(source, message: full, andPush: false) }
         } else {
-            performAmend(source, message: full)
+            performAmend(source, message: full, andPush: andPush)
         }
     }
 
@@ -128,7 +129,8 @@ extension RepositoryViewController {
         updateCodePane()
     }
 
-    private func performAmend(_ source: GitService.AmendCommit, message: String) {
+    private func performAmend(_ source: GitService.AmendCommit, message: String, andPush: Bool = false) {
+        let expectedService = model.service
         model.perform(
             String(localized: "Amend"),
             onSuccess: { [weak self] in
@@ -139,6 +141,9 @@ extension RepositoryViewController {
                 self.model.clearAmendStaging()
                 self.commitFooter.show(message: self.model.commitMessage)
                 self.updateCommitActions()
+                if andPush, let expectedService {
+                    DispatchQueue.main.async { [weak self] in self?.pushAfterCommit(using: expectedService) }
+                }
             }, operation: { try await $0.commit(message: message, amending: source.id) })
     }
 

@@ -20,6 +20,8 @@ protocol SettingsShell: AnyObject {
     /// The active repository's model.
     var model: AppModel { get }
     var isLanguageRestarting: Bool { get }
+    var defaults: UserDefaults { get }
+    var openRepositoryRoots: [URL] { get }
     func preferencesDidChange(refreshProviders: Bool)
     func restartForLanguage()
 }
@@ -33,6 +35,9 @@ struct SettingsAppHooks {
     /// Settings that the open windows read on their own schedule changed; `true` also refreshes GitHub and Vercel.
     var preferencesDidChange: (Bool) -> Void = { _ in }
     var restartForLanguage: () -> Void = {}
+    var remoteUpdatesStatus: () -> String = {
+        String(localized: "Checks remotes while repositories are open.")
+    }
 }
 
 extension SettingsAppHooks {
@@ -41,6 +46,19 @@ extension SettingsAppHooks {
         isLanguageRestarting = { [weak shell] in shell?.isLanguageRestarting == true }
         preferencesDidChange = { [weak shell] in shell?.preferencesDidChange(refreshProviders: $0) }
         restartForLanguage = { [weak shell] in shell?.restartForLanguage() }
+        remoteUpdatesStatus = { [weak shell] in
+            guard let shell else { return String(localized: "Checks remotes while repositories are open.") }
+            return Self.remoteUpdatesStatusText(roots: shell.openRepositoryRoots, defaults: shell.defaults)
+        }
+    }
+
+    static func remoteUpdatesStatusText(
+        roots: [URL], defaults: UserDefaults, monitor: RemoteMonitor = .shared
+    ) -> String {
+        if !Preference.remoteCheck.bool(defaults) { return RemoteCheckState().statusSummary() }
+        let line = monitor.statusLine(for: roots)
+        if !line.isEmpty { return line }
+        return String(localized: "Checks remotes while repositories are open.")
     }
 }
 
@@ -68,6 +86,7 @@ struct SettingsSystemHooks {
     var authorizeNotifications: () async -> Bool = { await NotificationService.shared.authorize() }
     var sendTestNotification: () async -> Bool = { await NotificationService.shared.sendTest() }
     var bundleIdentifier: String? = Bundle.main.bundleIdentifier
+    var addGitHubAccount: () -> Void = { GitHubAccountLogin.openTerminal() }
 }
 
 /// Open at Login through `LoginItem`.

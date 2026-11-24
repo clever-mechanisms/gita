@@ -70,7 +70,7 @@ struct TerminalSessionTests {
     @Test func onlyGitasOwnReviewScriptsAreRemoved() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("GitaUITests-scripts-\(UUID())")
         defer { try? FileManager.default.removeItem(at: folder) }
-        let own = try ReviewAgentLauncher.writeScript("#!/bin/sh\n", in: folder)
+        let own = try TerminalScriptLauncher.writeScript("#!/bin/sh\n", in: folder)
         let other = folder.appendingPathComponent("notes.command")
         try Data().write(to: other)
         let outside = FileManager.default.temporaryDirectory.appendingPathComponent("review-\(UUID()).command")

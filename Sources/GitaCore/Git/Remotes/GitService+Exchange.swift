@@ -67,12 +67,18 @@ extension GitService {
     /// Fetches one remote, or every remote when `remote` is nil, pruning branches deleted there.
     public func fetch(remote: String?) async throws {
         try await mutate { service in
+            let options =
+                GitArguments.transportAllowList + GitArguments.noHooks + [
+                    "fetch", "--prune", "--no-recurse-submodules", "--no-auto-maintenance",
+                    "--no-write-commit-graph",
+                ]
             guard let remote else {
-                _ = try await service.execute(["fetch", "--prune", "--all"], timeout: .untilIdle, mutation: true)
+                _ = try await service.execute(options + ["--all"], timeout: .untilIdle, mutation: true)
                 return
             }
             try await service.requireRemote(remote)
-            _ = try await service.execute(["fetch", "--prune", "--", remote], timeout: .untilIdle, mutation: true)
+            _ = try await service.execute(
+                options + ["--atomic", "--", remote], timeout: .untilIdle, mutation: true)
         }
     }
 

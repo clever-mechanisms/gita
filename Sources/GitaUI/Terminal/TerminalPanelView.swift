@@ -17,10 +17,16 @@ final class TerminalPanelView: NSView {
 
     private(set) var entries: [Entry] = []
     private(set) var selectedID: UUID?
+    /// Remembered panel shares per terminal tab and per repository tab key.
+    private var heightSharesByTerminalID: [UUID: Double] = [:]
     /// The panel wants to be shown (true) or hidden (false); the window's split view does it.
     var onVisibilityChange: ((Bool) -> Void)?
     /// The folder "+" starts a shell in: the selected repository.
     var currentDirectory: () -> URL? = { nil }
+    /// Key identifying the active repository tab so panel height is remembered per tab.
+    lazy var heightContextKey: () -> String? = { [weak self] in
+        self?.currentDirectory()?.standardizedFileURL.path
+    }
     /// Where the height the user drags the panel to is remembered.
     var defaults = Preference.store
     /// True while the app itself shows, hides or places the panel: those resizes are not the user's.
@@ -93,6 +99,7 @@ final class TerminalPanelView: NSView {
         selectedID = id
         for entry in entries { entry.terminal.isHidden = entry.id != id }
         rebuildTabs()
+        applyRememberedHeight()
         selected?.terminal.focus()
     }
 
@@ -100,6 +107,7 @@ final class TerminalPanelView: NSView {
     func close(_ id: UUID) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
         let entry = entries.remove(at: index)
+        heightSharesByTerminalID[id] = nil
         entry.terminal.session.terminate()
         entry.terminal.removeFromSuperview()
         if entries.isEmpty {
@@ -157,14 +165,48 @@ final class TerminalPanelView: NSView {
 }
 
 /// The split view the panel sits in tells it when the user drags the divider: that height, as a share of the
-/// window's, is the one it opens at next time.
+/// window's, is remembered per terminal tab and repository tab for next time.
 extension TerminalPanelView: NSSplitViewDelegate {
+    private static let tabSharesDefaultsKey = "terminalPanelSharesByTab"
+
+    func rememberedShare(forKey key: String? = nil, terminalID: UUID? = nil) -> Double {
+        let activeTerminalID = terminalID ?? selectedID
+        if let activeTerminalID, let terminalShare = heightSharesByTerminalID[activeTerminalID] {
+            return terminalShare
+        }
+        let context = key ?? heightContextKey()
+        if let context, !context.isEmpty,
+            let stored = defaults.dictionary(forKey: Self.tabSharesDefaultsKey) as? [String: Double],
+            let tabShare = stored[context]
+        {
+            return tabShare
+        }
+        return Preference.terminalPanelShare.double(defaults)
+    }
+
+    func applyRememberedHeight() {
+        guard !isHidden, let split = superview as? NSSplitView, split.bounds.height > 0 else { return }
+        isPlacing = true
+        defer { isPlacing = false }
+        let height = TerminalPanelHeight.height(share: rememberedShare(), in: split.bounds.height)
+        split.setPosition(split.bounds.height - height - split.dividerThickness, ofDividerAt: 0)
+    }
+
     func splitViewDidResizeSubviews(_ notification: Notification) {
         // AppKit names the divider when it moved (a window resize names none); the app's own moves are skipped.
         guard notification.userInfo?["NSSplitViewDividerIndex"] != nil, !isHidden, !isPlacing,
             let split = notification.object as? NSSplitView, split.bounds.height > 0
         else { return }
-        Preference.terminalPanelShare.set(Double(frame.height / split.bounds.height), defaults)
+        let share = TerminalPanelHeight.clampedShare(Double(frame.height / split.bounds.height))
+        Preference.terminalPanelShare.set(share, defaults)
+        if let selectedID {
+            heightSharesByTerminalID[selectedID] = share
+        }
+        if let context = heightContextKey(), !context.isEmpty {
+            var stored = defaults.dictionary(forKey: Self.tabSharesDefaultsKey) as? [String: Double] ?? [:]
+            stored[context] = share
+            defaults.set(stored, forKey: Self.tabSharesDefaultsKey)
+        }
     }
 }
 
@@ -174,10 +216,14 @@ enum TerminalPanelHeight {
     /// The repository keeps at least this much above the panel.
     static let repositoryMinimum: CGFloat = 200
 
+    static func clampedShare(_ share: Double) -> Double {
+        share.isFinite ? min(max(share, 0.1), 0.9) : defaultShare
+    }
+
     /// The panel's height in `total` points for a remembered `share` (kept between 10% and 90%), never below the
     /// panel's minimum nor above what leaves the repository its own.
     static func height(share: Double, in total: CGFloat) -> CGFloat {
-        let fraction = share.isFinite ? min(max(share, 0.1), 0.9) : defaultShare
+        let fraction = clampedShare(share)
         let minimum = TerminalPanelView.minimumHeight
         return min(max(total * CGFloat(fraction), minimum), max(total - repositoryMinimum, minimum))
     }

@@ -18,7 +18,8 @@ extension SidebarCell {
     func configure(_ row: RepositorySidebarView.Row) {
         reset()
         switch row {
-        case .header(let text, let count, let sortable): configureHeader(text, count: count, sortable: sortable)
+        case .header(let text, let count): configureHeader(text, count: count)
+        case .subheader(let text, let symbol): configureSubheader(text, symbol: symbol)
         case .repository(let repository, let expanded): configureRepository(repository, expanded: expanded)
         case .checkout(let checkout, _, let selected): configureCheckout(checkout, selected: selected)
         case .divider: configureDivider()
@@ -42,11 +43,10 @@ extension SidebarCell {
         expanded ? String(localized: "expanded") : String(localized: "collapsed")
     }
 
-    private func configureHeader(_ text: String, count: String, sortable: Bool) {
+    private func configureHeader(_ text: String, count: String) {
         setChevron(.none)
         icon.isHidden = true
         leading.constant = Indent.header
-        sort.isHidden = !sortable
         title.attributedStringValue = NSAttributedString(
             string: text.localizedUppercase,
             attributes: [
@@ -56,6 +56,19 @@ extension SidebarCell {
         trailing.stringValue = count
         trailing.textColor = Theme.tertiaryText
         icon.image = nil
+        setAccessibilityLabel(text)
+    }
+
+    private func configureSubheader(_ text: String, symbol: String) {
+        leading.constant = Indent.item
+        setChevron(.none)
+        chevron.isHidden = true
+        icon.setSymbol(symbol, size: 9.5, color: Theme.secondaryText)
+        title.stringValue = text
+        title.font = Theme.captionEmphasis
+        title.textColor = Theme.secondaryText
+        trailing.stringValue = ""
+        toolTip = nil
         setAccessibilityLabel(text)
     }
 
@@ -70,10 +83,14 @@ extension SidebarCell {
         trailing.textColor =
             repository.error != nil
             ? Theme.failure : repository.badgeIsChange ? Theme.needsInputText : Theme.accentText
-        toolTip = repository.root.path
+        let remoteNote: String? =
+            repository.remoteMoved
+            ? String(localized: "Remote has un-fetched commits")
+            : repository.behind > 0 ? String(localized: "\(repository.behind) commits behind upstream") : nil
+        toolTip = [repository.root.path, remoteNote].compactMap { $0 }.joined(separator: "\n")
         setAccessibilityLabel(
             [
-                repository.name, repository.badge, Self.expansionWord(expanded),
+                repository.name, repository.badge, remoteNote ?? "", Self.expansionWord(expanded),
             ].filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
@@ -110,14 +127,17 @@ extension SidebarCell {
         }
         showCheckoutTrailing(checkout)
         if checkout.isLoading { showSpinner() }
-        toolTip = ([checkout.path] + Self.agentLines(checkout, crowd: crowd)).joined(separator: "\n")
+        let toolTipLines =
+            [checkout.path] + Self.agentLines(checkout, crowd: crowd)
+            + [checkout.remoteUpdateToolTip].compactMap { $0 }
+        toolTip = toolTipLines.joined(separator: "\n")
         let spoken =
             crowd.map { WindowAgents.crowdLine($0) }
             ?? (checkout.isMain ? String(localized: "Main checkout") : String(localized: "Worktree"))
         setAccessibilityLabel(
             [
                 checkout.branch, spoken, checkout.isLoading ? String(localized: "Loading Repository") : checkout.meta,
-                selected ? String(localized: "current") : "",
+                checkout.remoteUpdateToolTip ?? "", selected ? String(localized: "current") : "",
             ].filter { !$0.isEmpty }.joined(separator: ", "))
     }
 

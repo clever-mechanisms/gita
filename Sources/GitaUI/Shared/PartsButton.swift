@@ -62,7 +62,10 @@ final class PartsButton: NSControl {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("PartsButton is built in code") }
 
-    private var contentAlpha: CGFloat { isEnabled ? 1 : Self.disabledAlpha }
+    private var contentAlpha: CGFloat {
+        if isEnabled { return 1 }
+        return background == .accent ? 0.75 : Self.disabledAlpha
+    }
 
     private func rebuildMarks() {
         let agents = parts.compactMap {
@@ -150,7 +153,9 @@ final class PartsButton: NSControl {
         case .none: break
         case .hover: if isHovering || isPressed { fill(path, Deck.hoverFill) }
         case .quiet: fill(path, Deck.quietFill, stroke: Theme.separator)
-        case .accent: fill(path, isPressed ? Theme.accentText : Theme.accent)
+        case .accent:
+            let accent = isPressed ? Theme.accentText : Theme.accent
+            fill(path, isEnabled ? accent : accent.withAlphaComponent(0.35))
         case .tinted: fill(path, tintFill, stroke: tintBorder)
         case .selected: fill(path, Deck.segmentFill)
         }

@@ -65,6 +65,12 @@ struct MenuPanelState: Equatable {
             }.map(\.element)
         }
     }
+    struct Problem: Hashable {
+        var text: String
+        var toolTip: String
+        var repository: URL?
+        var provider: ProviderKind?
+    }
     /// The repositories in some workspace's tabs.
     var repositories: [Repository] = []
     var workspaces: [Workspace] = []
@@ -76,6 +82,8 @@ struct MenuPanelState: Equatable {
     var feed: [FeedEvent] = []
     /// A single compact line, only when a provider is actually broken ("GitHub · Sign in required").
     var problem: String?
+    /// Full diagnostic tooltip and target repository for `problem`, when produced from `ProviderActivity`.
+    var problemDetail: Problem?
     var checkedAt: Date?
     var isRefreshing = false
 }

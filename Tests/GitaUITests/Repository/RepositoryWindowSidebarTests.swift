@@ -41,9 +41,9 @@ struct RepositoryWindowSidebarTests {
         #expect(names.contains(fixture.repository.url.lastPathComponent))
         // Every row draws.
         for index in sidebar.rows.indices {
-            #expect(sidebar.tableView(sidebar.table, viewFor: nil, row: index) != nil)
-            _ = sidebar.tableView(sidebar.table, heightOfRow: index)
-            _ = sidebar.tableView(sidebar.table, shouldSelectRow: index)
+            #expect(sidebar.tableView(sidebar.repositoryPane.list.table, viewFor: nil, row: index) != nil)
+            _ = sidebar.tableView(sidebar.repositoryPane.list.table, heightOfRow: index)
+            _ = sidebar.tableView(sidebar.repositoryPane.list.table, shouldSelectRow: index)
         }
         UITestSupport.render(sidebar)
     }
@@ -136,7 +136,7 @@ struct RepositoryWindowSidebarTests {
         let fixture = try await RepositoryWindowFixture(prepare: RepositoryWindowFixture.mergedFeature)
         defer { fixture.close() }
         let sidebar = fixture.controller.sidebarView
-        let table = sidebar.table
+        let table = sidebar.repositoryPane.list.table
         let tagsRow = { try self.row(fixture, self.nav(SidebarGroupID.tags)) }
         let tagsOpen = {
             if case .nav(let nav) = sidebar.rows[try tagsRow()] { nav.expansion == .expanded } else { false }
@@ -197,7 +197,7 @@ struct RepositoryWindowSidebarTests {
         let fixture = try await RepositoryWindowFixture(prepare: RepositoryWindowFixture.mergedFeature)
         defer { fixture.close() }
         let sidebar = fixture.controller.sidebarView
-        sidebar.filter.stringValue = "login"
+        sidebar.repositoryPane.filter.stringValue = "login"
         sidebar.filterChanged()
         #expect(
             sidebar.rows.contains {
@@ -205,10 +205,10 @@ struct RepositoryWindowSidebarTests {
             })
         #expect(
             !sidebar.rows.contains { if case .reference(let ref) = $0 { ref.reference.name == "main" } else { false } })
-        sidebar.filter.stringValue = "nothing matches this"
+        sidebar.repositoryPane.filter.stringValue = "nothing matches this"
         sidebar.filterChanged()
         #expect(sidebar.rows.contains { if case .empty = $0 { true } else { false } })
-        sidebar.filter.stringValue = ""
+        sidebar.repositoryPane.filter.stringValue = ""
         sidebar.filterChanged()
 
         let main = try row(fixture) { if case .reference(let ref) = $0 { ref.reference.name == "main" } else { false } }
@@ -244,7 +244,7 @@ struct RepositoryWindowSidebarTests {
         fixture.controller.rebuildSidebar()
     }
 
-    @Test func repositoriesStartOpenAndOnlyADoubleClickedCheckoutOpens() async throws {
+    @Test func repositoriesStartOpenAndSingleClickOpensAnyCheckout() async throws {
         let fixture = try await RepositoryWindowFixture()
         defer { fixture.close() }
         let sidebar = fixture.controller.sidebarView
@@ -263,39 +263,34 @@ struct RepositoryWindowSidebarTests {
         var opened: [URL] = []
         sidebar.onOpenCheckout = { opened.append($0) }
         sidebar.click(try checkoutRow())
-        #expect(opened.isEmpty, "a single click only selects the checkout")
+        #expect(opened.map(\.path) == [path], "single click opens the checkout immediately")
         sidebar.secondClick(try checkoutRow())
-        #expect(opened.map(\.path) == [path])
+        #expect(opened.map(\.path) == [path, path], "double click matches single click")
         sidebar.activate(try checkoutRow(), fromKeyboard: true)
-        #expect(opened.count == 1, "arrowing onto a checkout never opens it")
-        // One checkout: the repository row opens it. A click, Return, or the selection landing on it all do.
+        #expect(opened.count == 2, "arrowing onto a checkout never opens it")
+        sidebar.activate(try checkoutRow(), fromKeyboard: false)
+        #expect(opened.count == 3, "Return opens the selected checkout")
+        // Single-checkout repository row: opens on click and Return, never on arrow-key selection.
         sidebar.click(try repositoryRow())
         #expect(try isExpanded())
-        #expect(opened.map(\.path) == [path, path])
-        sidebar.secondClick(try repositoryRow())
-        #expect(opened.count == 2, "the first click already opened the only checkout")
-        sidebar.activate(try repositoryRow(), fromKeyboard: false)
-        #expect(opened.count == 3)
-        sidebar.activate(try repositoryRow(), fromKeyboard: true)
         #expect(opened.count == 4)
-        #expect(try isExpanded())
-        // Closed, it opens onto that checkout instead of staying shut. The list rebuilds only when its rows are asked
-        // for again (a filter change here; a click does it in the app).
+        sidebar.secondClick(try repositoryRow())
+        #expect(opened.count == 5)
+        sidebar.activate(try repositoryRow(), fromKeyboard: true)
+        #expect(opened.count == 5)
+        // Closed, clicking the repository row opens it and expands the row.
         SidebarState.shared(fixture.defaults).repositoryExpansion[path] = false
-        sidebar.filter.stringValue = "."
-        sidebar.filterChanged()
-        sidebar.filter.stringValue = ""
-        sidebar.filterChanged()
+        sidebar.repositoriesPane.rebuild()
         #expect(try !isExpanded())
         sidebar.click(try repositoryRow())
         #expect(try isExpanded())
-        #expect(opened.map(\.path) == [path, path, path, path, path])
+        #expect(opened.count == 6)
         let cell = try #require(
-            sidebar.tableView(sidebar.table, viewFor: nil, row: try checkoutRow()) as? SidebarCell)
+            sidebar.tableView(sidebar.repositoryPane.list.table, viewFor: nil, row: try checkoutRow()) as? SidebarCell)
         #expect(cell.accessibilityLabel()?.contains(String(localized: "Main checkout")) == true)
     }
 
-    @Test func aRepositoryWithSeveralCheckoutsOnlyExpands() async throws {
+    @Test func aRepositoryWithSeveralCheckoutsOpensPrimaryAndExpandsOnClick() async throws {
         let fixture = try await RepositoryWindowFixture { repository in
             try RepositoryWindowFixture.threeCommits(repository)
             let tree = repository.url.deletingLastPathComponent()
@@ -310,6 +305,12 @@ struct RepositoryWindowSidebarTests {
         func repositoryRow() throws -> Int {
             try row(fixture) { if case .repository(let listed, _) = $0 { listed.root.path == path } else { false } }
         }
+        func localRepoRow() throws -> Int {
+            try #require(
+                sidebar.repositoriesPane.rows.firstIndex {
+                    if case .repository(let listed, _) = $0 { listed.root.path == path } else { false }
+                })
+        }
         func isExpanded() throws -> Bool {
             if case .repository(_, let expanded) = sidebar.rows[try repositoryRow()] { return expanded }
             return false
@@ -317,15 +318,22 @@ struct RepositoryWindowSidebarTests {
         var opened: [URL] = []
         sidebar.onOpenCheckout = { opened.append($0) }
         #expect(try isExpanded())
-        sidebar.click(try repositoryRow())
-        #expect(try !isExpanded())
-        sidebar.activate(try repositoryRow(), fromKeyboard: true)
-        #expect(try !isExpanded(), "landing on a repository with several checkouts leaves it closed")
-        sidebar.secondClick(try repositoryRow())
-        #expect(try isExpanded())
-        sidebar.activate(try repositoryRow(), fromKeyboard: false)
+        // Chevron toggles expansion only without opening.
+        sidebar.repositoriesPane.list.performChevron(try localRepoRow())
         #expect(try !isExpanded())
         #expect(opened.isEmpty)
+        // Arrow-key landing neither toggles nor opens.
+        sidebar.activate(try repositoryRow(), fromKeyboard: true)
+        #expect(try !isExpanded())
+        #expect(opened.isEmpty)
+        // Clicking the collapsed multi-checkout repository expands it and opens its main/MRU checkout.
+        sidebar.click(try repositoryRow())
+        #expect(try isExpanded())
+        #expect(opened.map(\.path) == [path])
+        // Clicking again while expanded opens the primary checkout without collapsing.
+        sidebar.secondClick(try repositoryRow())
+        #expect(try isExpanded())
+        #expect(opened.map(\.path) == [path, path])
     }
 
     @Test func aCheckoutRowOfThisRepositoryShowsHistory() async throws {
@@ -403,7 +411,7 @@ struct RepositoryWindowSidebarTests {
         #expect(controller.sidebarView.isHidden)
         #expect(controller.panes.bottomHeight == geometry.bottomHeight + 40)
         controller.adopt(geometry)
-        controller.settleLayout(sidebarScroll: 0)
+        controller.settleLayout()
         controller.positionHistorySplit()
         controller.focusSearch()
         controller.checkoutLoadingChanged()

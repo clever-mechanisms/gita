@@ -15,6 +15,7 @@ extension RepositoryViewController {
             self.model.refreshProviders()
         }
         providerPage.onChooseAccount = { [weak self] login in self?.model.chooseGitHubAccount(login) }
+        wirePullRequestWorkspace()
         commitDetail.loader = detailLoader
         commitDetail.onSelectCommit = { [weak self] id in self?.selectCommit(id: id) }
         commitDetail.onVercelAction = { [weak self] action, item in
@@ -29,9 +30,19 @@ extension RepositoryViewController {
         detailBar.onSelectTab = { [weak self] tab in self?.selectDetailTab(tab) }
         detailBar.onChooseParent = { [weak self] index in self?.model.compareWithParent(index) }
         detailBar.onApplyStash = { [weak self] in self?.applySelectedStash() }
+        codePane.diffView.defaults = model.defaults
+        codePane.diffView.preferredLayout = DiffPreference.layout(model.defaults)
         codePane.diffView.onHunkSelection = { [weak self] in self?.updateCodePane() }
-        codePane.onApplyHunk = { [weak self] in self?.applyHunk() }
-        filePane.tree.onSelect = { [weak self] entry in self?.model.selectTreeEntry(entry) }
+        codePane.onApplyHunkAtIndex = { [weak self] index in self?.applyHunk(at: index) }
+        codePane.onDiscardHunk = { [weak self] index in self?.discardHunk(at: index) }
+        codePane.onStageLines = { [weak self] rows in self?.applyLines(rows: rows) }
+        codePane.onDiscardLines = { [weak self] rows in self?.discardLines(rows: rows) }
+        codePane.onDiffOptionsChanged = { [weak self] options in self?.model.setDiffOptions(options) }
+        codePane.onOpenInEditor = { [weak self] line in self?.openInEditor(at: line) }
+        filePane.tree.onSelect = { [weak self] entry in
+            self?.closeBlame()
+            self?.model.selectTreeEntry(entry)
+        }
         filePane.tree.onError = { [weak self] message in
             self?.model.log(String(localized: "Tree failed"), message, failed: true)
         }
@@ -70,6 +81,7 @@ extension RepositoryViewController {
                 renderedAmendStaging = amendStaging
                 filePane.showChanges(changes, amendStaging: amendStaging)
             }
+            updateCleanTreeContext()
         } else if renderedFilesRevision != model.filesRevision {
             renderedFilesRevision = model.filesRevision
             filePane.showCommitFiles(model.files)
@@ -83,9 +95,28 @@ extension RepositoryViewController {
     }
 
     func showDiff() {
+        let effectivePath = model.selectedTreePath ?? model.diffPath
+        closeBlameIfFileSwitched(to: effectivePath)
+        codePane.diffView.repositoryRoot = model.snapshot?.root
+        codePane.displayDiffOptions(model.diffOptions)
         codePane.diffView.update(
             model.diff, loading: model.isDiffLoading, blob: model.diffIsBlob,
-            emptyMessage: codePaneState.emptyMessage, path: model.diffPath)
+            emptyMessage: codePaneState.emptyMessage, path: effectivePath,
+            binaryBlobByteCount: model.diffIsBlob ? model.binaryBlobByteCount : nil)
+        if !model.diffIsBlob, let effectivePath {
+            resolveBinarySizesIfNeeded(text: model.diff, path: effectivePath)
+        }
+    }
+
+    private func resolveBinarySizesIfNeeded(text: String, path: String) {
+        guard BinaryDiffSummary.isBinaryDiff(text), let service = model.service else { return }
+        Task { [weak self] in
+            let sizes = await service.binaryObjectSizes(in: text)
+            guard let self, self.model.service === service, self.model.diffPath == path, self.model.diff == text else {
+                return
+            }
+            self.codePane.diffView.updateBinarySizes(old: sizes.old, new: sizes.new, for: path)
+        }
     }
 
     func rebuildCommitDetail() {
@@ -132,22 +163,100 @@ extension RepositoryViewController {
                 isMutating: model.isMutating,
                 isDiffLoading: model.isDiffLoading,
                 canApplyHunks: diff.document?.canApplyHunks == true,
-                hasSelectedHunk: diff.selectedHunk != nil && diff.reviewedText == model.diff))
+                ignoreWhitespace: codePane.diffOptions.ignoreWhitespace))
     }
 
     func updateCodePane() { codePane.apply(codePaneState) }
 
-    func applyHunk() {
-        guard codePane.hunkButton.isEnabled, let file = model.selectedFile, let index = codePane.diffView.selectedHunk
+    func applyHunk(at index: Int) {
+        applyReviewedDiff(
+            title: model.staged ? String(localized: "Unstage hunk") : String(localized: "Stage hunk")
+        ) { service, path, staged, text, stagedBase, options in
+            try await service.applyHunk(
+                path: path, staged: staged, expectedDiff: text, hunkIndex: index, stagedBase: stagedBase,
+                options: options)
+        }
+    }
+
+    func discardHunk(at index: Int) {
+        guard let file = model.selectedFile else { return }
+        let lineCount = DiffDocumentBuilder.changedLineCount(in: codePane.diffView.currentLines, hunkIndex: index)
+        let confirmation = CodePaneView.discardHunkConfirmation(path: file.path, lineCount: lineCount)
+        discardReviewedDiff(title: String(localized: "Discard hunk"), confirmation: confirmation) {
+            service, path, text, options in
+            try await service.discardHunk(path: path, expectedDiff: text, hunkIndex: index, options: options)
+        }
+    }
+
+    func applyLines(rows: IndexSet) {
+        guard !rows.isEmpty else { return }
+        applyReviewedDiff(
+            title: model.staged ? String(localized: "Unstage lines") : String(localized: "Stage lines")
+        ) { service, path, staged, text, stagedBase, options in
+            try await service.applyLines(
+                path: path, staged: staged, expectedDiff: text, selectedRows: rows, stagedBase: stagedBase,
+                options: options)
+        }
+    }
+
+    func discardLines(rows: IndexSet) {
+        guard !rows.isEmpty, let file = model.selectedFile else { return }
+        let confirmation = CodePaneView.discardLinesConfirmation(path: file.path, lineCount: rows.count)
+        discardReviewedDiff(title: String(localized: "Discard lines"), confirmation: confirmation) {
+            service, path, text, options in
+            try await service.discardLines(path: path, expectedDiff: text, selectedRows: rows, options: options)
+        }
+    }
+
+    private func applyReviewedDiff(
+        title: String,
+        action: @escaping @Sendable (GitService, String, Bool, String, String?, DiffOptions) async throws -> Void
+    ) {
+        let options = model.diffOptions
+        guard codePaneState.canApplyDocumentHunks, !model.isMutating,
+            let file = model.selectedFile,
+            hasCurrentReviewedDiff(for: file.path)
         else { return }
         let text = codePane.diffView.reviewedText
         let staged = model.staged
         let stagedBase = staged ? amend.source?.baseTree : nil
         if staged && stagedBase != nil { amendUnstagedPaths.insert(file.path) }
-        model.perform(staged ? String(localized: "Unstage hunk") : String(localized: "Stage hunk")) {
-            try await $0.applyHunk(
-                path: file.path, staged: staged, expectedDiff: text, hunkIndex: index, stagedBase: stagedBase)
+        model.perform(title) {
+            try await action($0, file.path, staged, text, stagedBase, options)
         }
+    }
+
+    private func discardReviewedDiff(
+        title: String,
+        confirmation: DestructiveConfirmation,
+        action: @escaping @Sendable (GitService, String, String, DiffOptions) async throws -> Void
+    ) {
+        let options = model.diffOptions
+        guard codePaneState.canApplyDocumentHunks, !model.isMutating, !model.staged,
+            let file = model.selectedFile,
+            let window = view.window,
+            hasCurrentReviewedDiff(for: file.path)
+        else { return }
+        let expectedDiff = codePane.diffView.reviewedText
+        AlertPresenter.shared.confirm(confirmation.alert(), on: window) { [weak self] in
+            self?.model.perform(title) {
+                try await action($0, file.path, expectedDiff, options)
+            }
+        }
+    }
+
+    private func hasCurrentReviewedDiff(for path: String) -> Bool {
+        guard !codePane.diffView.reviewedText.isEmpty, codePane.diffView.shownPath == path else { return false }
+        return codePane.diffView.reviewedText == model.diff
+    }
+
+    func openInEditor(at line: Int?, opener: AppOpener = .system) {
+        guard let root = model.snapshot?.root,
+            let path = model.selectedTreePath ?? model.selectedFile?.path ?? codePane.diffView.shownPath,
+            OpenIn.editorApp(opener, defaults: model.defaults) != nil
+        else { return }
+        CodePaneView.openInEditor(
+            root.appendingPathComponent(path), line: line, opener: opener, defaults: model.defaults)
     }
 
     func applySelectedStash() {

@@ -42,34 +42,50 @@ import Testing
     @Test func commitNeedsStagedChangesUntilAmendIsArmed() {
         let idle = state(.init(message: "Next"))
         #expect(!idle.canCommit)
-        #expect(idle.commitTitle == "Commit staged")
+        #expect(!idle.canCommitAndPush)
+        #expect(idle.commitTitle == "Commit")
         #expect(idle.canAmend)
         #expect(idle.amendToolTip == "Replace the last commit with this message and the staged changes.")
 
-        // Body without subject cannot commit.
-        #expect(!state(.init(staged: true, message: "\n\nOnly body")).canCommit)
+        #expect(state(.init(stagedCount: 1, message: "One")).commitTitle == "Commit 1 file")
+        #expect(state(.init(stagedCount: 3, message: "Three")).commitTitle == "Commit 3 files")
+        #expect(state(.init(stagedCount: 2, message: "Ready")).canCommitAndPush)
 
-        let armed = state(.init(amends: true, message: "Fix the answer"))
+        // Body without subject cannot commit.
+        #expect(!state(.init(stagedCount: 1, message: "\n\nOnly body")).canCommit)
+
+        let armed = state(
+            .init(mode: .amend(published: false, detached: false), amendCommitID: "a1b2c3d4", message: "Fix the answer")
+        )
         #expect(armed.canCommit)
-        #expect(armed.commitTitle == "Amend")
-        #expect(armed.amendChecked)
-        let published = state(.init(amends: true, published: true, message: "Fix the answer"))
+        #expect(armed.canCommitAndPush)
+        #expect(armed.commitTitle == "Amend a1b2c3d")
+        #expect(armed.mode.isAmend)
+        #expect(armed.amendBanner == nil)
+
+        let published = state(
+            .init(
+                mode: .amend(published: true, detached: false), amendCommitID: "a1b2c3d4",
+                upstreamName: "origin/main", message: "Fix the answer"))
+        #expect(published.canCommit)
+        #expect(!published.canCommitAndPush)
         #expect(
             published.commitToolTip == "This commit is already on the upstream branch. Amending it needs a force push."
         )
-        let detached = state(.init(amends: true, detached: true, message: "Fix the answer"))
+        #expect(published.amendBanner == "⚠ a1b2c3d is on origin/main. Amending needs a force push.")
+
+        let detached = state(.init(mode: .amend(published: false, detached: true), message: "Fix the answer"))
         #expect(detached.amendToolTip == "Repository is in detached HEAD state.")
-        let loading = state(.init(checked: true, loading: true, staged: true, message: "Next"))
+        let loading = state(.init(mode: .amendLoading, stagedCount: 1, message: "Next"))
         #expect(!loading.canCommit)
-        #expect(loading.amendChecked)
+        #expect(loading.mode.isAmend)
         let unborn = state(.init(head: false, message: ""))
         #expect(!unborn.canAmend)
         #expect(unborn.amendToolTip == "There is no commit to amend.")
         let busy = state(.init(operation: true, message: "Next"))
         #expect(!busy.canAmend)
         #expect(busy.commitToolTip == "Use Continue to finish the operation")
-        let conflicted = state(.init(unstaged: true, conflicts: true, message: "Next"))
-        #expect(conflicted.stageAllTitle == "Stage other files")
+        let conflicted = state(.init(conflicts: true, message: "Next"))
         #expect(!conflicted.canAmend)
         let unrestored = state(.init(draft: false, message: ""))
         #expect(!unrestored.canEditMessage)
@@ -78,13 +94,10 @@ import Testing
 
     private struct Sample {
         var head = true
-        var checked = false
-        var amends = false
-        var loading = false
-        var staged = false
-        var unstaged = false
-        var published = false
-        var detached = false
+        var mode = CommitMode.commit
+        var amendCommitID: String?
+        var upstreamName: String?
+        var stagedCount = 0
         var operation = false
         var conflicts = false
         var draft = true
@@ -96,8 +109,7 @@ import Testing
             .init(
                 hasSnapshot: true, hasDraft: sample.draft, isDraftCurrent: sample.draft,
                 hasOperation: sample.operation, hasConflicts: sample.conflicts, isMutating: false,
-                hasStagedChanges: sample.staged, hasUnstagedFiles: sample.unstaged, hasHead: sample.head,
-                amendChecked: sample.checked || sample.amends, amends: sample.amends, amendLoading: sample.loading,
-                amendIsPublished: sample.published, amendIsDetached: sample.detached, message: sample.message))
+                stagedCount: sample.stagedCount, hasHead: sample.head, mode: sample.mode,
+                amendCommitID: sample.amendCommitID, upstreamName: sample.upstreamName, message: sample.message))
     }
 }

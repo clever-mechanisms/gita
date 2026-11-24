@@ -15,7 +15,7 @@ extension AppDelegate: StatusItemHost {
             settings: { [weak self] in self?.settings() },
             quit: { [weak self] in self?.quit() },
             openRepository: { [weak self] in self?.openRepository() },
-            showRepository: { [weak self] url in self?.openRepositoryTab(url) },
+            showRepository: { [weak self] url in self?.showRepositoryTab(url) == true },
             showTab: { [weak self] url, workspace in self?.showTab(url, inWorkspace: workspace) },
             push: { [weak self] url in self?.statusItem?.push(url) },
             reveal: { [weak self] session in self?.reveal(session) },

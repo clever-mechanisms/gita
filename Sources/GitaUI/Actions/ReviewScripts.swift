@@ -7,7 +7,7 @@ enum ReviewScripts {
     static let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
         "GitaReviews", isDirectory: true)
 
-    /// A file named as `ReviewAgentLauncher.writeScript` names its scripts, directly inside `folder`.
+    /// A file named as `TerminalScriptLauncher.writeScript` names its scripts, directly inside `folder`.
     static func isOwn(_ script: URL, in folder: URL = folder) -> Bool {
         let name = script.lastPathComponent
         guard script.isFileURL, name.hasPrefix("review-"), name.hasSuffix(".command") else { return false }

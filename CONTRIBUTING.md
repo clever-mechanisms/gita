@@ -90,7 +90,7 @@ The script passes only these names to `codesign` and `notarytool`; the notarized
 
 ## Rules
 
-- Git writes happen only from explicit user actions. Tests never touch a real repository.
+- Git writes happen only from explicit user actions, or from opt-in background auto-fetch switched on by the user in Settings (off by default), updating `refs/remotes/*` and objects only (`--atomic --no-tags --no-recurse-submodules --no-prune --no-prune-tags --no-write-fetch-head --no-auto-maintenance --no-write-commit-graph`). Tests never touch a real repository.
 - The app stores no credentials and never uses the Keychain; providers are reached through their CLIs.
 - Bundle only material whose license is compatible with MIT, with its license file beside it.
 - One focused change per pull request, with tests.

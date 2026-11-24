@@ -52,6 +52,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     isolated deinit { deactivateCommands() }
 
     var defaults: UserDefaults { environment.defaults }
+    var openRepositoryRoots: [URL] {
+        var seen = Set<String>()
+        return places.flatMap(\.models)
+            .compactMap { $0.snapshot?.root ?? $0.root }
+            .filter { seen.insert($0.standardizedFileURL.path).inserted }
+    }
     var windows: MainWindowController { place.windows }
     /// The model shown while the window is closed (and the first tab's when it opens).
     var restingModel: AppModel {
@@ -237,7 +243,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
             resumePendingAttention()
             loginOffer.update()
         }
-        if change == .repository || change == .status || change == .selection { windows.validateToolbar() }
+        if change == .providers { refreshSettings() }
+        if change == .repository || change == .status || change == .selection || change == .providers {
+            windows.validateToolbar()
+        }
     }
 
     /// Settings changed that every tab reads (zoom, details, fonts…); `refreshProviders` also reloads GitHub/Vercel.

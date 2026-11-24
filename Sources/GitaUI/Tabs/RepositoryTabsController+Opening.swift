@@ -152,6 +152,7 @@ extension RepositoryTabsController {
                 self.mergeDuplicate(tab)
                 self.groupWithRepository(tab)
                 self.finishPending(tab)
+                if tab === self.selectedTab { self.terminalPanel.applyRememberedHeight() }
             }
         }
         // Opening failed: show the tab so its error is visible.

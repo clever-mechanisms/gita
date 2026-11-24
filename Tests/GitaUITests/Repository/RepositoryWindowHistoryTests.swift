@@ -85,7 +85,7 @@ struct RepositoryWindowHistoryTests {
         try await fixture.wait("the search results") {
             fixture.model.isSearchingHistory && controller.historyCommits.map(\.subject) == ["Fix the answer"]
         }
-        #expect(!controller.historyControls.allBranches.isHidden)
+        #expect(controller.historyControls.currentFilters.search?.query == "answer")
         #expect(controller.historyTable.table.tableColumns.first?.title == "History · Search")
         // Search results are not an ancestry walk: no merge flair.
         #expect(controller.historyFlair(for: controller.historyCommits[0]) == nil)
@@ -185,7 +185,7 @@ struct RepositoryWindowHistoryTests {
         let author = try #require(menu.items.first { $0.title == "Gita Tests" })
         try #require(author.submenu?.item(titled: "Highlight")).perform()
         try await fixture.wait("the highlight") { fixture.model.highlightedAuthor != nil }
-        #expect(!controller.historyControls.stopHighlighting.isHidden)
+        #expect(controller.historyControls.currentFilters.author?.mode == .highlight)
         #expect(controller.historyTable.highlightedAuthor?.name == "Gita Tests")
 
         controller.historyMenu.menuNeedsUpdate(menu)
@@ -198,7 +198,7 @@ struct RepositoryWindowHistoryTests {
         #expect(menu.item(titled: "New Branch…") != nil)
 
         fixture.model.highlightAuthor(nil)
-        #expect(controller.historyControls.stopHighlighting.isHidden)
+        #expect(controller.historyControls.currentFilters.author == nil)
     }
 
     @Test func theZoomScalesRowsAndColumns() async throws {

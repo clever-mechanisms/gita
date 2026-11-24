@@ -11,13 +11,19 @@ extension GitService {
         /// HEAD is contained in the branch's upstream, so publishing the rewrite needs a force push.
         public var isPublished: Bool
         public var isDetached: Bool
+        /// Abbreviated upstream name (e.g. `origin/main`) when `isPublished` is true.
+        public var upstream: String?
 
-        public init(id: String, message: String, baseTree: String = "", isPublished: Bool, isDetached: Bool) {
+        public init(
+            id: String, message: String, baseTree: String = "", isPublished: Bool, isDetached: Bool,
+            upstream: String? = nil
+        ) {
             self.id = id
             self.message = message
             self.baseTree = baseTree
             self.isPublished = isPublished
             self.isDetached = isDetached
+            self.upstream = upstream
         }
     }
 
@@ -25,12 +31,14 @@ extension GitService {
     public func amendCommit() async throws -> AmendCommit? {
         guard let id = try await headCommit() else { return nil }
         async let details = commitDetails(ref: id)
-        async let published = upstreamContainsHEAD()
+        async let published = publishedUpstream()
         async let detached = headIsDetached()
         let loaded = try await details
         let baseTree = try await amendBaseTree(for: loaded.commit)
+        let upstream = try await published
         return try await AmendCommit(
-            id: id, message: loaded.message, baseTree: baseTree, isPublished: published, isDetached: detached)
+            id: id, message: loaded.message, baseTree: baseTree, isPublished: upstream != nil,
+            isDetached: detached, upstream: upstream)
     }
 
     /// Staged changes relative to `base` (HEAD's first parent or the empty tree when amending).
@@ -68,14 +76,17 @@ extension GitService {
         return GitOutput.withoutTerminalLF(empty.text)
     }
 
-    /// True when `@{upstream}` exists and already contains HEAD.
-    private func upstreamContainsHEAD() async throws -> Bool {
-        let upstream = try await execute(["rev-parse", "--verify", "--quiet", "@{upstream}"], allowFailure: true)
+    /// The upstream short name (e.g. `origin/main`) when `@{upstream}` exists and already contains HEAD.
+    private func publishedUpstream() async throws -> String? {
+        let upstream = try await execute(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "--quiet", "@{upstream}"], allowFailure: true)
         guard upstream.exitCode == 0 else {
-            guard upstream.exitCode == 1 else { throw Self.failure(upstream) }
-            return false
+            guard upstream.exitCode == 1 || upstream.exitCode == 128 else { throw Self.failure(upstream) }
+            return nil
         }
-        return try await isAncestor("HEAD", of: "@{upstream}")
+        guard try await isAncestor("HEAD", of: "@{upstream}") else { return nil }
+        let name = GitOutput.withoutTerminalLF(upstream.text).trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? nil : name
     }
 
     private func headIsDetached() async throws -> Bool {

@@ -47,6 +47,8 @@ class SettingsPaneContent: NSObject {
     func didDisappear() {}
     /// Gita came back to the front while this pane was showing.
     func applicationDidBecomeActive() {}
+    /// Returns a view inside the pane to scroll to for a deep link.
+    func view(for _: SettingsAnchor) -> NSView? { nil }
 
     /// A switch for a Boolean setting, written to this pane's defaults.
     func toggle(_ preference: Preference, accessibility: String, identifier: String? = nil) -> AccentSwitch {

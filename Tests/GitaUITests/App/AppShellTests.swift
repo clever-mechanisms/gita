@@ -306,7 +306,7 @@ struct AppShellTests {
 
     @Test func terminalsAndAuthorTabsBeforeLaunchAreRefused() throws {
         let shell = AppShellHarness(arguments: ["Gita"])
-        let script = try ReviewAgentLauncher.writeScript("#!/bin/sh\n", in: ReviewScripts.folder)
+        let script = try TerminalScriptLauncher.writeScript("#!/bin/sh\n", in: ReviewScripts.folder)
         defer { try? FileManager.default.removeItem(at: script) }
         shell.app.openTerminal(FileManager.default.temporaryDirectory, launch: .script(script))
         #expect(shell.recorder.beeps == 1)

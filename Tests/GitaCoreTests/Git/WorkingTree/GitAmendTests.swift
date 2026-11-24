@@ -117,16 +117,19 @@ struct GitAmendTests {
         let published = try #require(try await fixture.service.amendCommit())
         #expect(published.isPublished)
         #expect(!published.isDetached)
+        #expect(published.upstream == "origin/main")
 
         try fixture.write("README.md", "two\n")
         _ = try await fixture.commit("Second")
         let ahead = try #require(try await fixture.service.amendCommit())
         #expect(!ahead.isPublished)
+        #expect(ahead.upstream == nil)
 
         try await fixture.git(["switch", "--detach"])
         let detached = try #require(try await fixture.service.amendCommit())
         #expect(detached.isDetached)
         #expect(!detached.isPublished)
+        #expect(detached.upstream == nil)
         #expect(detached.id == ahead.id)
     }
 

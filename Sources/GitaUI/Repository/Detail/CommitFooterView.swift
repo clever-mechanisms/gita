@@ -1,60 +1,82 @@
 import AppKit
+import GitaCore
 
-/// Local Changes' footer: single-line commit subject with GitHub's 50-character guideline counter, multi-line
-/// description textarea, and the Stage all / Amend Last Commit / Commit staged controls below.
+/// Local Changes' docked composer: subject with 50-char counter, expandable multi-line description, inline
+/// published-amend warning banner, recent-messages menu, and split Commit button.
 @MainActor
 final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
-    private enum Metrics {
+    enum Metrics {
         static let subjectHeight: CGFloat = 28
         static let bodyHeight: CGFloat = 62
-        static let composerSpacing: CGFloat = 8
-        static let padding = NSEdgeInsets(top: 8, left: 10, bottom: 10, right: 10)
+        static let composerSpacing: CGFloat = 6
+        static let actionHeight: CGFloat = 24
+        static let padding = NSEdgeInsets(top: 6, left: 8, bottom: 8, right: 8)
     }
 
     let field = NSTextField()
     let bodyView = NSTextView()
     let countLabel = Deck.caption("")
-    let commitButton = Style.button(
-        String(localized: "Commit staged"), symbol: "checkmark", target: nil, action: nil)
-    let stageAllButton = Style.button(String(localized: "Stage all"), symbol: "plus.square", target: nil, action: nil)
-    let amendButton = NSButton(checkboxWithTitle: String(localized: "Amend Last Commit"), target: nil, action: nil)
+    let commitButton = PartsButton(
+        [
+            .symbol("checkmark", color: .white, size: 11),
+            .text(String(localized: "Commit"), font: Theme.bodyEmphasis, color: .white),
+        ],
+        background: .accent, accessibility: String(localized: "Commit"))
+    let commitMenuButton = PartsButton(
+        [.symbol("chevron.down", color: .white, size: 9)], background: .accent,
+        accessibility: String(localized: "Commit options"))
+    let recentButton = PartsButton(
+        [
+            .symbol("clock.arrow.circlepath", color: Theme.secondaryText, size: 11),
+            .symbol("chevron.down", color: Theme.tertiaryText, size: 8),
+        ],
+        background: .hover, accessibility: String(localized: "Recent commit messages"))
+    let descriptionButton = PartsButton(
+        [.symbol("text.alignleft", color: Theme.secondaryText, size: 11)], background: .hover,
+        accessibility: String(localized: "Add description"))
+    let bannerBox = FillView(color: Theme.needsInput.withAlphaComponent(0.12))
+    let bannerLabel = Deck.wrapping("", font: Theme.caption, color: Theme.needsInputText)
 
     private let composerBox = FillView(color: Theme.window)
+    private let bodySeparator = Deck.separator()
     private let bodyScroll = NSScrollView()
     private let bodyPlaceholder = Deck.label(
         String(localized: "Description"), font: Theme.body, color: Theme.tertiaryText)
+    private lazy var bodyHeightConstraint = bodyScroll.heightAnchor.constraint(equalToConstant: 0)
+    private lazy var fallbackUndoManager = UndoManager()
     private var isUpdatingText = false
+    private var isDescriptionFocused = false
+    private(set) var isDescriptionExpanded = false
 
-    var onStageAll: (() -> Void)?
+    var lastActionsState = CommitActionsState(
+        .init(
+            hasSnapshot: false, hasDraft: false, isDraftCurrent: false, hasOperation: false,
+            hasConflicts: false, isMutating: false, stagedCount: 0, hasHead: false, mode: .commit,
+            amendCommitID: nil, upstreamName: nil, message: ""))
+    var recentMessages: [RecentCommitMessage] = []
+    var lastUnsentDraft: String?
+
     var onCommit: (() -> Void)?
+    var onCommitAndPush: (() -> Void)?
     var onAmend: (() -> Void)?
     var onBeginEditing: (() -> Void)?
     var onChange: ((String) -> Void)?
+    var onFillRecent: ((String) -> Void)?
     var onEndEditing: ((String) -> Void)?
+    var onWillOpenRecents: (() -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        configureButtons()
+        configureActionControls()
+        configureRecentControls()
+        configureBanner()
         configureComposer()
         layoutFooter()
-        refreshComposerUI()
+        refreshComposerUI(animated: false)
     }
 
     @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
-
-    private func configureButtons() {
-        commitButton.target = self
-        commitButton.action = #selector(commitPressed)
-        stageAllButton.target = self
-        stageAllButton.action = #selector(stageAllPressed)
-        amendButton.target = self
-        amendButton.action = #selector(amendPressed)
-        amendButton.font = TextLines.system(12)
-        amendButton.controlSize = .small
-        amendButton.setContentHuggingPriority(.required, for: .horizontal)
-        amendButton.setAccessibilityIdentifier("changes.amendLastCommit")
-    }
 
     private func configureComposer() {
         composerBox.cornerRadius = 6
@@ -91,6 +113,7 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
         bodyScroll.drawsBackground = false
         bodyScroll.borderType = .noBorder
         bodyScroll.documentView = bodyView
+        bodySeparator.isHidden = true
         bodyView.isRichText = false
         bodyView.allowsUndo = true
         bodyView.font = Theme.body
@@ -117,26 +140,28 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
     }
 
     private func layoutFooter() {
+        let topSeparator = Deck.separator()
         let subjectRow = Deck.hstack([field, countLabel], spacing: 6)
         subjectRow.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
         subjectRow.heightAnchor.constraint(equalToConstant: Metrics.subjectHeight).isActive = true
-        let separator = Deck.separator()
-        bodyScroll.heightAnchor.constraint(equalToConstant: Metrics.bodyHeight).isActive = true
-        let composerStack = Deck.vstack([subjectRow, separator, bodyScroll], spacing: 0)
+        bodyHeightConstraint.isActive = true
+        let composerStack = Deck.vstack([subjectRow, bodySeparator, bodyScroll], spacing: 0)
         Deck.pin(composerStack, in: composerBox)
-        for view in [subjectRow, separator, bodyScroll] {
+        for view in [subjectRow, bodySeparator, bodyScroll] {
             view.widthAnchor.constraint(equalTo: composerStack.widthAnchor).isActive = true
         }
-        let actions = Deck.hstack([stageAllButton, amendButton, Deck.spacer(), commitButton], spacing: 10)
-        let column = Deck.vstack([composerBox, actions], spacing: Metrics.composerSpacing)
-        Deck.pin(column, in: self, insets: Metrics.padding)
-        composerBox.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
-        actions.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        let splitCommit = Deck.hstack([commitButton, commitMenuButton], spacing: 1)
+        let actions = Deck.hstack([recentButton, descriptionButton, Deck.spacer(), splitCommit], spacing: 4)
+        let column = Deck.vstack([bannerBox, composerBox, actions], spacing: Metrics.composerSpacing)
+        let container = Deck.vstack([topSeparator, column], spacing: 0)
+        Deck.pin(container, in: self)
+        topSeparator.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+        column.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+        column.edgeInsets = Metrics.padding
+        bannerBox.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
+        composerBox.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
+        actions.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
     }
-
-    @objc private func commitPressed() { onCommit?() }
-    @objc private func stageAllPressed() { onStageAll?() }
-    @objc private func amendPressed() { onAmend?() }
 
     /// The combined commit message (`subject`, or `subject + "\n\n" + body` when description is non-empty).
     var message: String { CommitMessageText.join(subject: field.stringValue, body: bodyView.string) }
@@ -149,10 +174,16 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
     /// Either text input currently has keyboard focus.
     var isEditing: Bool { field.currentEditor() != nil || (window?.firstResponder === bodyView) }
 
+    var activeUndoManager: UndoManager { window?.undoManager ?? fallbackUndoManager }
+
     /// Shows `message` unless the user is composing. An open editor takes the same text, so toggling Amend replaces
     /// what is being typed.
     func show(message next: String) {
         guard !isComposing, !self.message.utf8.elementsEqual(next.utf8) else { return }
+        applyDisplayedMessage(next, animated: true)
+    }
+
+    func applyDisplayedMessage(_ next: String, animated: Bool) {
         let parts = CommitMessageText.split(next)
         isUpdatingText = true
         if !field.stringValue.utf8.elementsEqual(parts.subject.utf8) {
@@ -163,48 +194,70 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
             bodyView.string = parts.body
         }
         isUpdatingText = false
-        refreshComposerUI()
+        refreshComposerUI(animated: animated)
     }
 
     func apply(_ state: CommitActionsState) {
-        commitButton.isEnabled = state.canCommit
-        commitButton.title = state.commitTitle
-        commitButton.toolTip = state.commitToolTip
-        stageAllButton.isEnabled = state.canStageAll
-        stageAllButton.title = state.stageAllTitle
+        applyActionsState(state)
         field.isEnabled = state.canEditMessage
         field.toolTip = state.messageToolTip
         bodyView.isEditable = state.canEditMessage
         bodyView.toolTip = state.messageToolTip
-        amendButton.isEnabled = state.canAmend
-        amendButton.state = state.amendChecked ? .on : .off
-        amendButton.toolTip = state.amendToolTip
-        refreshComposerUI()
+        descriptionButton.isEnabled = state.canEditMessage
+        recentButton.isEnabled = state.canEditMessage
+        refreshComposerUI(animated: true)
+    }
+
+    func focusDescription() {
+        isDescriptionFocused = true
+        refreshComposerUI(animated: true)
+        window?.makeFirstResponder(bodyView)
+    }
+
+    func collapseDescription() {
+        isDescriptionFocused = false
+        if window?.firstResponder === bodyView { window?.makeFirstResponder(field) }
+        refreshComposerUI(animated: true)
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         bodyView.textColor = Theme.text
         bodyView.insertionPointColor = Theme.text
-        refreshComposerUI()
+        refreshComposerUI(animated: false)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let isReturn = event.keyCode == KeyPress.returnKey || event.keyCode == KeyPress.keypadEnter
-        if flags == .command, isReturn, isEditing, commitButton.isEnabled {
-            onCommit?()
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
+        handleActionsKeyEquivalent(event) || super.performKeyEquivalent(with: event)
     }
 
-    private func refreshComposerUI() {
+    func refreshComposerUI(animated: Bool = false) {
         let remaining = CommitMessageText.remainingSubjectCharacters(field.stringValue)
         countLabel.stringValue = "\(remaining)"
         countLabel.textColor = remaining < 0 ? Theme.failure : Theme.tertiaryText
         countLabel.setAccessibilityLabel(String(localized: "\(remaining) characters remaining in subject"))
         bodyPlaceholder.isHidden = !bodyView.string.isEmpty
+        updateDescriptionExpansion(animated: animated)
+    }
+
+    private func updateDescriptionExpansion(animated: Bool) {
+        let expanded = isDescriptionFocused || !bodyView.string.isEmpty
+        descriptionButton.background = expanded ? .selected : .hover
+        guard expanded != isDescriptionExpanded || bodyHeightConstraint.constant != (expanded ? Metrics.bodyHeight : 0)
+        else { return }
+        isDescriptionExpanded = expanded
+        bodySeparator.isHidden = !expanded
+        let target: CGFloat = expanded ? Metrics.bodyHeight : 0
+        if animated, window?.isVisible == true, !Deck.reduceMotion {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.16
+                context.allowsImplicitAnimation = true
+                bodyHeightConstraint.animator().constant = target
+                window?.layoutIfNeeded()
+            }
+        } else {
+            bodyHeightConstraint.constant = target
+        }
     }
 
     // MARK: NSTextFieldDelegate
@@ -213,7 +266,7 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
 
     func controlTextDidChange(_: Notification) {
         guard !isUpdatingText else { return }
-        refreshComposerUI()
+        refreshComposerUI(animated: false)
         onChange?(message)
     }
 
@@ -226,7 +279,7 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
         if commandSelector == #selector(NSResponder.insertNewline(_:))
             || commandSelector == #selector(NSResponder.insertTab(_:))
         {
-            window?.makeFirstResponder(bodyView)
+            focusDescription()
             return true
         }
         return false
@@ -234,15 +287,21 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
 
     // MARK: NSTextViewDelegate
 
-    func textDidBeginEditing(_: Notification) { onBeginEditing?() }
+    func textDidBeginEditing(_: Notification) {
+        isDescriptionFocused = true
+        refreshComposerUI(animated: true)
+        onBeginEditing?()
+    }
 
     func textDidChange(_: Notification) {
         guard !isUpdatingText else { return }
-        refreshComposerUI()
+        refreshComposerUI(animated: false)
         onChange?(message)
     }
 
     func textDidEndEditing(_: Notification) {
+        isDescriptionFocused = false
+        refreshComposerUI(animated: true)
         guard !isUpdatingText else { return }
         onEndEditing?(message)
     }

@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-/// Creating a working copy: a new empty repository or a clone, always into a folder this call creates itself.
+/// Creates working copies by initializing a directory or cloning into a newly claimed destination.
 extension GitService {
     public static func initialize(
         at destination: URL, branch: String = "main", runner: any CommandRunning = CommandRunner()
@@ -16,10 +16,21 @@ extension GitService {
         guard checked.exitCode == 0 else { throw GitError.invalidReference }
         try Task.checkCancellation()
         try claimDestination(target)
+        return try await initialize(existing: target, branch: branch, runner: runner)
+    }
+
+    public static func initialize(
+        existing directory: URL, branch: String = "main", runner: any CommandRunning = CommandRunner()
+    ) async throws -> URL {
+        try Task.checkCancellation()
+        try GitInput.validateReference(branch)
+        let target = try acquisitionDestination(directory)
+        var info = stat()
+        guard lstat(target.path, &info) == 0, info.st_mode & S_IFMT == S_IFDIR else { throw GitError.invalidPath }
         let result = try await runner.run(
             CommandRequest.git(
                 GitArguments.noHooks + ["init", "--template=", "--initial-branch=" + branch, "--", target.path],
-                directory: parent, timeout: 30, outputLimit: 1_024 * 1_024))
+                directory: target, timeout: 30, outputLimit: 1_024 * 1_024))
         guard result.exitCode == 0 else { throw failure(result) }
         return target
     }

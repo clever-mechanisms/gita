@@ -89,35 +89,69 @@ extension GitService {
     /// Stages (or, with `staged`, unstages) one hunk of the reviewed diff. The diff must still be byte-identical
     /// and valid UTF-8: the patch is rebuilt from text, so other bytes could not reach the index unchanged.
     public func applyHunk(
-        path: String, staged: Bool, expectedDiff: String, hunkIndex: Int, stagedBase: String? = nil
+        path: String, staged: Bool, expectedDiff: String, hunkIndex: Int, stagedBase: String? = nil,
+        options: DiffOptions = .standard
     ) async throws {
-        try GitInput.validatePath(path)
-        if staged, let stagedBase { try GitInput.validateReference(stagedBase) }
-        guard expectedDiff.utf8.count <= Self.hunkDiffLimit else {
-            throw CommandError.outputLimitExceeded(Self.hunkDiffLimit)
-        }
         try await mutate { service in
-            let currentBytes = try await service.indexDiff(
-                path: path, staged: staged, stagedBase: staged ? stagedBase : nil)
-            guard let current = String(data: currentBytes, encoding: .utf8) else { throw GitError.unsupportedHunk }
-            // String equality normalizes Unicode. This guard must compare the exact
-            // reviewed bytes, including composed/decomposed text and line endings.
-            guard GitOutput.same(current, expectedDiff) else { throw GitError.staleDiff }
-            let document = UnifiedDiff.parse(current)
-            guard document.canApplyHunks, let hunk = document.hunks.first(where: { $0.index == hunkIndex }),
-                !hunk.patch.isEmpty
-            else { throw GitError.unsupportedHunk }
-            try await service.applyPatch(Data(hunk.patch.utf8), reverse: staged)
+            let document = try await service.validatedDiffDocument(
+                path: path, staged: staged, expectedDiff: expectedDiff, stagedBase: stagedBase, options: options)
+            guard let hunk = document.hunks.first(where: { $0.index == hunkIndex }), !hunk.patch.isEmpty else {
+                throw GitError.unsupportedHunk
+            }
+            try await service.applyPatch(
+                Data(hunk.patch.utf8), cached: true, reverse: staged, unidiffZero: options.context == 0)
         }
     }
 
-    private func applyPatch(_ patch: Data, reverse: Bool) async throws {
+    /// Stages (or, with `staged`, unstages) only the selected rows of a reviewed diff.
+    public func applyLines(
+        path: String, staged: Bool, expectedDiff: String, selectedRows: IndexSet, stagedBase: String? = nil,
+        options: DiffOptions = .standard
+    ) async throws {
+        try await mutate { service in
+            let document = try await service.validatedDiffDocument(
+                path: path, staged: staged, expectedDiff: expectedDiff, stagedBase: stagedBase, options: options)
+            guard
+                let patch = UnifiedDiff.patch(
+                    document: document, selecting: selectedRows, mode: staged ? .unstage : .stage)
+            else {
+                throw GitError.unsupportedHunk
+            }
+            try await service.applyPatch(
+                Data(patch.utf8), cached: true, reverse: staged, unidiffZero: options.context == 0)
+        }
+    }
+
+    func validatedDiffDocument(
+        path: String, staged: Bool, expectedDiff: String, stagedBase: String?, options: DiffOptions
+    ) async throws -> DiffDocument {
+        try GitInput.validatePath(path)
+        if staged, let stagedBase { try GitInput.validateReference(stagedBase) }
+        guard !options.ignoreWhitespace else { throw GitError.unsupportedHunk }
+        guard expectedDiff.utf8.count <= Self.hunkDiffLimit else {
+            throw CommandError.outputLimitExceeded(Self.hunkDiffLimit)
+        }
+        let currentBytes = try await indexDiff(
+            path: path, staged: staged, stagedBase: staged ? stagedBase : nil, options: options)
+        guard let current = String(data: currentBytes, encoding: .utf8) else { throw GitError.unsupportedHunk }
+        // String equality normalizes Unicode. This guard must compare the exact
+        // reviewed bytes, including composed/decomposed text and line endings.
+        guard GitOutput.same(current, expectedDiff) else { throw GitError.staleDiff }
+        let document = UnifiedDiff.parse(current)
+        guard document.canApplyHunks else { throw GitError.unsupportedHunk }
+        return document
+    }
+
+    func applyPatch(_ patch: Data, cached: Bool, reverse: Bool, unidiffZero: Bool = false) async throws {
+        let prefix = cached ? "GitaPatch" : "GitaDiscardPatch"
         let temporary = try PrivateTemporaryDirectory.make(
-            prefix: "GitaPatch", failure: LocalFileError.temporaryPatchNotCreated)
+            prefix: prefix, failure: LocalFileError.temporaryPatchNotCreated)
         defer { try? FileManager.default.removeItem(at: temporary) }
         let file = temporary.appendingPathComponent("hunk.patch")
         try patch.write(to: file, options: .withoutOverwriting)
-        let options = ["apply", "--cached", "--whitespace=nowarn"] + (reverse ? ["--reverse"] : [])
+        let options =
+            ["apply"] + (cached ? ["--cached"] : []) + (reverse ? ["--reverse"] : [])
+            + (unidiffZero ? ["--unidiff-zero"] : []) + ["--whitespace=nowarn"]
         _ = try await execute(options + ["--check", "--", file.path])
         try Task.checkCancellation()
         // --cached changes only the index; Git takes its index.lock atomically.

@@ -57,8 +57,7 @@ extension RepositoryTabsController {
         split.adjustSubviews()
         if shown {
             split.layoutSubtreeIfNeeded()
-            let height = TerminalPanelHeight.height(
-                share: Preference.terminalPanelShare.double(terminalPanel.defaults), in: split.bounds.height)
+            let height = TerminalPanelHeight.height(share: terminalPanel.rememberedShare(), in: split.bounds.height)
             split.setPosition(split.bounds.height - height - split.dividerThickness, ofDividerAt: 0)
         } else if let window = view.window, terminalPanel.isAncestorOrSelf(of: window.firstResponder) {
             window.makeFirstResponder(nil)

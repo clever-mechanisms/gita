@@ -20,7 +20,10 @@ import Testing
                 openApp: { self.calls.append("openApp") }, refresh: { self.calls.append("refresh") },
                 settings: { self.calls.append("settings") }, quit: { self.calls.append("quit") },
                 openRepository: { self.calls.append("openRepository") },
-                showRepository: { self.calls.append("show:" + $0.lastPathComponent) },
+                showRepository: {
+                    self.calls.append("show:" + $0.lastPathComponent)
+                    return true
+                },
                 showTab: { self.calls.append("tab:" + $0.lastPathComponent + "@" + $1) },
                 push: { self.calls.append("push:" + $0.lastPathComponent) },
                 reveal: { self.calls.append("reveal:" + $0.id) },

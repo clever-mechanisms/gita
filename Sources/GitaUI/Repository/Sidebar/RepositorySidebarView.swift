@@ -1,20 +1,36 @@
 import AppKit
 import GitaCore
 
-/// Sidebar: REPOSITORIES, each expandable to its checkouts (main checkout and worktrees)
-/// with the agent working there and ahead/dirty meta, then the selected repository's own items: Local Changes,
-/// All Commits, Branches, Remotes, Tags, Stashes, Pull Requests, Workflows, Deployments. Virtualized (NSTableView).
-/// `SidebarRowBuilder` builds the rows; this view shows them and turns clicks into the callbacks below.
-@MainActor
-final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
-    private enum Metrics {
-        static let filterInset: CGFloat = 10
-        static let filterTop: CGFloat = 8
-        static let listGap: CGFloat = 2
-        static let listInset: CGFloat = 8
+/// Pure height math for the top collapsible `REPOSITORIES` drawer (`≤40%` of sidebar height when expanded).
+enum SidebarSplitLayout {
+    static let collapsedHeight: CGFloat = 26
+    static let expandedMinimum: CGFloat = 74
+    static let maxShare: CGFloat = 0.40
+    static let defaultShare: CGFloat = 0.28
+
+    static func maxHeight(totalHeight: CGFloat, dividerThickness: CGFloat) -> CGFloat {
+        let available = max(0, totalHeight - dividerThickness)
+        return max(collapsedHeight, floor(available * maxShare))
     }
 
+    static func clampedHeight(
+        desired: CGFloat, totalHeight: CGFloat, dividerThickness: CGFloat, collapsed: Bool
+    ) -> CGFloat {
+        guard !collapsed else { return collapsedHeight }
+        guard totalHeight > 0 else { return max(expandedMinimum, desired) }
+        let maximum = maxHeight(totalHeight: totalHeight, dividerThickness: dividerThickness)
+        let minimum = min(maximum, expandedMinimum)
+        let target = desired > 0 ? desired : floor(max(0, totalHeight - dividerThickness) * defaultShare)
+        return min(maximum, max(minimum, target))
+    }
+}
+
+/// Split sidebar: pinned collapsible `REPOSITORIES` drawer at top (`SidebarRepositoriesPane`) and the open
+/// repository's scoped filter, pages, recent branches, refs, and stashes below (`SidebarRepositoryPane`).
+@MainActor
+final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataSource, NSTableViewDelegate {
     var onOpenCheckout: ((URL) -> Void)?
+    var onOpenInNewTab: ((URL) -> Void)?
     var onNavigate: ((SidebarSelection) -> Void)?
     var onReference: ((GitReference) -> Void)?
     var onStash: ((GitStash) -> Void)?
@@ -26,17 +42,25 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
     var checkoutMenu: ((String, Bool) -> NSMenu?)?
     /// A repository row in Repositories: the checkout's actions plus Remove from List.
     var repositoryMenu: ((Repository) -> NSMenu?)?
+    /// §6d safe drop handlers (menu / confirmation sheets only).
+    var onDropBranch: ((String, GitReference, NSView?) -> Void)?
+    var onDropCommits: (([String], GitReference) -> Void)?
     /// The event being handled (selection by arrow keys opens rows; tests send their own).
     var currentEventType: () -> NSEvent.EventType? = { NSApp.currentEvent?.type }
+    /// Modifier flags for click-matrix testing without fabricating system events.
+    var currentModifiers: () -> NSEvent.ModifierFlags = { [] }
 
-    let table = SidebarTable()
-    let filter = NSSearchField()
+    let split = DeckSplitView()
+    let repositoriesPane: SidebarRepositoriesPane
+    let repositoryPane: SidebarRepositoryPane
+
+    var rows: [Row] { repositoryPane.rows + repositoriesPane.rows }
+
     private let state: SidebarState
     private var input = Input()
-    private(set) var rows: [Row] = []
-    private var updating = false
-    private var lastQuery = ""
     private var orderObserver: NSObjectProtocol?
+    private var positioningSplit = false
+    private var lastSplitHeight: CGFloat = 0
 
     /// Forgets the open-or-closed state of repositories removed from the list (any spelling of their paths).
     static func forgetRepositories(_ paths: [String]) {
@@ -45,16 +69,18 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
 
     init(state: SidebarState) {
         self.state = state
+        repositoriesPane = SidebarRepositoriesPane(state: state)
+        repositoryPane = SidebarRepositoryPane(state: state)
         super.init(frame: .zero)
-        configureTable()
-        layoutViews()
+        configureSplit()
+        wirePanes()
         orderObserver = NotificationCenter.default.addObserver(
             forName: .gitaPreferenceChanged, object: nil, queue: .main
         ) { [weak self] note in
             guard Preference(changed: note) == .sidebarRepositoryOrder else { return }
             MainActor.assumeIsolated {
                 guard let self, !self.rows.isEmpty else { return }
-                self.rebuild()
+                self.repositoriesPane.rebuild()
             }
         }
     }
@@ -66,62 +92,58 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
         if let orderObserver { NotificationCenter.default.removeObserver(orderObserver) }
     }
 
-    private func configureTable() {
-        table.addTableColumn(NSTableColumn(identifier: .init("sidebar")))
-        table.headerView = nil
-        table.intercellSpacing = .zero
-        table.style = .plain
-        table.backgroundColor = .clear
-        table.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
-        table.selectionHighlightStyle = .regular
-        table.dataSource = self
-        table.delegate = self
-        table.target = self
-        table.action = #selector(clickedRow)
-        table.doubleAction = #selector(doubleClick)
-        table.rowMenu = { [weak self] row in self?.menu(row) }
-        table.onReturn = { [weak self] in
-            guard let self, self.table.selectedRow >= 0 else { return }
-            self.activate(self.table.selectedRow, fromKeyboard: false)
-        }
-        table.onExpand = { [weak self] change in
-            guard let self else { return false }
-            return self.changeGroup(self.table.selectedRow, change)
-        }
-        table.setAccessibilityLabel(String(localized: "Repositories and references"))
-        filter.placeholderString = String(localized: "Filter")
-        filter.controlSize = .small
-        filter.font = Theme.body
-        filter.delegate = self
-        filter.target = self
-        filter.action = #selector(filterChanged)
-        filter.sendsSearchStringImmediately = true
-        filter.setAccessibilityLabel(String(localized: "Filter branches, tags and stashes"))
-        filter.setAccessibilityIdentifier("sidebar.filter")
+    private func configureSplit() {
+        split.isVertical = false
+        split.dividerStyle = .thin
+        split.delegate = self
+        split.addArrangedSubview(repositoriesPane)
+        split.addArrangedSubview(repositoryPane)
+        split.setHoldingPriority(.init(260), forSubviewAt: 0)
+        split.setHoldingPriority(.init(240), forSubviewAt: 1)
+        Style.fill(split, in: self)
     }
 
-    private func layoutViews() {
-        let scroll = NSScrollView()
-        scroll.documentView = table
-        scroll.hasVerticalScroller = true
-        scroll.autohidesScrollers = true
-        scroll.drawsBackground = false
-        scroll.borderType = .noBorder
-        scroll.contentInsets = NSEdgeInsets(top: Metrics.listInset, left: 0, bottom: Metrics.listInset, right: 0)
-        // Fork's place for it: on top, above everything it filters.
-        for view in [filter, scroll] {
-            addSubview(view)
-            view.translatesAutoresizingMaskIntoConstraints = false
+    private func wirePanes() {
+        repositoriesPane.sortMenu = { [weak self] in self?.repositoryOrderMenu() }
+        repositoriesPane.onCollapseChange = { [weak self] _ in self?.applySplitPosition() }
+        repositoriesPane.onRebuildRequested = { [weak self] in self?.repositoriesPane.rebuild() }
+        repositoryPane.onRebuildRequested = { [weak self] in self?.repositoryPane.rebuild() }
+
+        wireList(repositoryPane.list, offset: { 0 })
+        wireList(repositoriesPane.list, offset: { [weak self] in self?.repositoryPane.rows.count ?? 0 })
+        repositoryPane.filter.target = self
+        repositoryPane.filter.action = #selector(filterChanged)
+    }
+
+    private func wireList(_ paneList: SidebarPaneList, offset: @escaping @MainActor () -> Int) {
+        paneList.currentEventType = { [weak self] in self?.currentEventType() }
+        paneList.currentModifiers = { [weak self] in self?.currentModifiers() ?? [] }
+        paneList.onClickRow = { [weak self] local in self?.click(offset() + local) }
+        paneList.onDoubleClickRow = { [weak self] local in self?.secondClick(offset() + local) }
+        paneList.onActivateRow = { [weak self] local, fromKeyboard in
+            self?.activate(offset() + local, fromKeyboard: fromKeyboard)
         }
-        NSLayoutConstraint.activate([
-            filter.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Metrics.filterInset),
-            filter.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Metrics.filterInset),
-            filter.topAnchor.constraint(equalTo: topAnchor, constant: Metrics.filterTop),
-            scroll.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: filter.bottomAnchor, constant: Metrics.listGap),
-            scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
+        paneList.onChangeGroupRow = { [weak self] local, change in
+            self?.changeGroup(offset() + local, change) ?? false
+        }
+        paneList.onRowMenu = { [weak self] local in self?.menu(offset() + local) }
+
+        paneList.actions.onOpenCheckout = { [weak self] url, newTab in self?.openCheckout(url, inNewTab: newTab) }
+        paneList.actions.onNavigate = { [weak self] id in self?.onNavigate?(id) }
+        paneList.actions.onReference = { [weak self] ref, newTab in self?.openReference(ref, inNewTab: newTab) }
+        paneList.actions.onStash = { [weak self] stash in self?.onStash?(stash) }
+        paneList.actions.onFilter = { [weak self] ref, kind in self?.onFilter?(ref, kind) }
+        paneList.actions.referenceMenu = { [weak self] ref in self?.referenceMenu?(ref) }
+        paneList.actions.remoteMenu = { [weak self] name in self?.remoteMenu?(name) }
+        paneList.actions.checkoutMenu = { [weak self] path, isMain in self?.checkoutMenu?(path, isMain) }
+        paneList.actions.repositoryMenu = { [weak self] repo in self?.repositoryMenu?(repo) }
+        paneList.actions.onDropBranch = { [weak self, weak paneList] sourceFullName, target, row in
+            let anchor = paneList?.table.rowView(atRow: row, makeIfNecessary: false)
+            self?.onDropBranch?(sourceFullName, target, anchor)
+        }
+        paneList.actions.onDropCommits = { [weak self] commitIDs, target in
+            self?.onDropCommits?(commitIDs, target)
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -134,163 +156,135 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
         needsDisplay = true
     }
 
-    // MARK: Scrolling
+    override func layout() {
+        super.layout()
+        guard abs(split.bounds.height - lastSplitHeight) > 0.5 else { return }
+        lastSplitHeight = split.bounds.height
+        applySplitPosition()
+    }
 
-    /// Vertical scroll position of the list.
-    var scrollOffset: CGFloat {
-        get { table.enclosingScrollView?.contentView.bounds.origin.y ?? 0 }
-        set {
-            guard let scroll = table.enclosingScrollView else { return }
-            layoutSubtreeIfNeeded()
-            let maximum = max(
-                -scroll.contentInsets.top,
-                table.frame.height - scroll.contentView.bounds.height + scroll.contentInsets.bottom)
-            scroll.contentView.scroll(
-                to: NSPoint(
-                    x: scroll.contentView.bounds.origin.x, y: min(max(newValue, -scroll.contentInsets.top), maximum)))
-            scroll.reflectScrolledClipView(scroll.contentView)
+    // MARK: Split sizing
+
+    func applySplitPosition() {
+        guard split.bounds.height > 0, !repositoryPane.isHidden else { return }
+        let position = SidebarSplitLayout.clampedHeight(
+            desired: state.repositoriesHeight, totalHeight: split.bounds.height,
+            dividerThickness: split.dividerThickness, collapsed: repositoriesPane.isCollapsed)
+        positioningSplit = true
+        split.setPosition(position, ofDividerAt: 0)
+        positioningSplit = false
+    }
+
+    func splitView(
+        _ splitView: NSSplitView, constrainMinCoordinate _: CGFloat, ofSubviewAt dividerIndex: Int
+    ) -> CGFloat {
+        guard dividerIndex == 0, !repositoryPane.isHidden else { return 0 }
+        if repositoriesPane.isCollapsed { return SidebarSplitLayout.collapsedHeight }
+        let maxHeight = SidebarSplitLayout.maxHeight(
+            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness)
+        return min(maxHeight, SidebarSplitLayout.expandedMinimum)
+    }
+
+    func splitView(
+        _ splitView: NSSplitView, constrainMaxCoordinate _: CGFloat, ofSubviewAt dividerIndex: Int
+    ) -> CGFloat {
+        guard dividerIndex == 0, !repositoryPane.isHidden else { return splitView.bounds.height }
+        if repositoriesPane.isCollapsed { return SidebarSplitLayout.collapsedHeight }
+        return SidebarSplitLayout.maxHeight(
+            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness)
+    }
+
+    func splitView(_: NSSplitView, canCollapseSubview _: NSView) -> Bool { false }
+    func splitView(_: NSSplitView, shouldAdjustSizeOfSubview subview: NSView) -> Bool {
+        subview !== repositoriesPane
+    }
+
+    func splitViewDidResizeSubviews(_: Notification) {
+        guard !positioningSplit, !repositoriesPane.isCollapsed, !repositoryPane.isHidden, split.bounds.height > 0
+        else { return }
+        let maxHeight = SidebarSplitLayout.maxHeight(
+            totalHeight: split.bounds.height, dividerThickness: split.dividerThickness)
+        if repositoriesPane.frame.height > maxHeight + 0.5 {
+            applySplitPosition()
+            return
         }
+        state.repositoriesHeight = repositoriesPane.frame.height
     }
 
-    /// The scroll position a tab switch carries over, measured from the Repositories header (below this tab's own
-    /// items, whose length differs per repository): a repository or checkout clicked in Repositories stays under the
-    /// pointer. Any other switch made at the top of the list keeps the new tab at its top (`-greatestFiniteMagnitude`).
-    var repositoriesScroll: CGFloat {
-        get {
-            guard let scroll = table.enclosingScrollView,
-                openedFromRepositories || scrollOffset > -scroll.contentInsets.top + 0.5
-            else { return -.greatestFiniteMagnitude }
-            return scrollOffset - repositoriesHeaderY
-        }
-        set {
-            openedFromRepositories = false
-            scrollOffset = newValue == -.greatestFiniteMagnitude ? newValue : repositoriesHeaderY + newValue
-        }
-    }
-
-    /// The last click opened a repository or checkout from the Repositories section.
-    private(set) var openedFromRepositories = false
-    /// The open checkout's row in Repositories holds the highlight instead of All Commits: it was the row clicked (in
-    /// this tab or, carried over by the switch, in the previous one), so the highlight stays where the pointer is.
-    /// Any other choice in the sidebar hands it back to the page shown.
-    var highlightsOpenCheckout = false {
-        didSet { if highlightsOpenCheckout != oldValue, !rows.isEmpty { rebuild() } }
-    }
-    private var repositoriesHeaderY: CGFloat {
-        layoutSubtreeIfNeeded()
-        let index = rows.firstIndex(of: .divider).map { $0 + 1 } ?? 0
-        return rows.indices.contains(index) ? table.rect(ofRow: index).minY : 0
-    }
-
-    // MARK: Rows
+    // MARK: Updates
 
     func update(_ next: Input) {
         guard next != input || rows.isEmpty else { return }
         input = next
-        rebuild()
+        let hideRepositoryPane = input.currentRoot == nil
+        if repositoryPane.isHidden != hideRepositoryPane {
+            repositoryPane.isHidden = hideRepositoryPane
+            split.adjustSubviews()
+        }
+        repositoriesPane.update(input)
+        repositoryPane.update(input)
+        applySplitPosition()
     }
 
-    private var query: String { filter.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-    private func rebuild() {
-        let next = SidebarRowBuilder(
-            input: input, query: query, repositoryExpansion: state.repositoryExpansion,
-            groupExpansion: state.groupExpansion, order: state.repositoryOrder,
-            key: { WindowAgents.key($0) }
-        ).rows()
-        let clip = table.enclosingScrollView?.contentView
-        let origin = clip?.bounds.origin
-        updating = true
-        defer { updating = false }
-        let previous = rows
-        // A group the arrow keys stopped on keeps the keyboard there while it opens and closes.
-        let focusedGroup = previous.indices.contains(table.selectedRow) ? previous[table.selectedRow].group?.id : nil
-        rows = next
-        reload(from: previous)
-        if let focusedGroup, let row = rows.firstIndex(where: { $0.group?.id == focusedGroup }) {
-            table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-        } else if let selected = highlightedRow() {
-            table.selectRowIndexes(IndexSet(integer: selected), byExtendingSelection: false)
-        } else {
-            table.deselectAll(nil)
-        }
-        if let origin, let clip {
-            clip.scroll(to: origin)
-            table.enclosingScrollView?.reflectScrolledClipView(clip)
-        }
+    func loadRecentBranchesIfNeeded(for snapshot: RepositorySnapshot, service: GitService) {
+        repositoryPane.loadRecentBranchesIfNeeded(for: snapshot, service: service)
     }
 
-    /// The row the highlight belongs on: the page or item shown, or the open checkout when it was the row clicked.
-    private func highlightedRow() -> Int? {
-        if highlightsOpenCheckout, input.selection == .history,
-            let checkout = rows.firstIndex(where: { if case .checkout(_, _, true) = $0 { true } else { false } })
-        {
-            return checkout
-        }
-        return rows.firstIndex(where: \.isSelected)
-    }
+    // MARK: Unified forwarding & clicks
 
-    /// Agent state, counts and selection change far more often than the list's shape: when every row keeps its kind
-    /// (and so its height), only the rows whose content changed reload.
-    private func reload(from previous: [Row]) {
-        guard previous.count == rows.count, zip(previous, rows).allSatisfy({ $0.kind == $1.kind }) else {
-            table.reloadData()
-            return
-        }
-        let changed = IndexSet(rows.indices.filter { previous[$0] != rows[$0] })
-        if !changed.isEmpty { table.reloadData(forRowIndexes: changed, columnIndexes: IndexSet(integer: 0)) }
-        // A checkout row grows a second line when an agent starts there (and loses it when the agent goes): the
-        // table keeps the old height unless told, and the agent's line is cut off.
-        let resized = IndexSet(changed.filter { previous[$0].height != rows[$0].height })
-        guard !resized.isEmpty else { return }
-        NSAnimationContext.runAnimationGroup {
-            $0.duration = 0
-            table.noteHeightOfRows(withIndexesChanged: resized)
-        }
+    private func targetList(for unifiedRow: Int) -> (list: SidebarPaneList, row: Int)? {
+        let count = repositoryPane.rows.count
+        if unifiedRow >= 0, unifiedRow < count { return (repositoryPane.list, unifiedRow) }
+        let repoRow = unifiedRow - count
+        if repoRow >= 0, repoRow < repositoriesPane.rows.count { return (repositoriesPane.list, repoRow) }
+        return nil
     }
-
-    // MARK: Table
 
     func numberOfRows(in _: NSTableView) -> Int { rows.count }
     func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat { rows[row].height }
-    /// A click selects only rows that open something; the arrow keys also stop on groups, to open and close them.
     func tableView(_: NSTableView, shouldSelectRow row: Int) -> Bool {
-        rows[row].isSelectable || (rows[row].group != nil && currentEventType() == .keyDown)
+        guard let target = targetList(for: row) else { return false }
+        return target.list.tableView(target.list.table, shouldSelectRow: target.row)
     }
 
-    func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
-        let id = NSUserInterfaceItemIdentifier("sidebar.row")
-        return tableView.makeView(withIdentifier: id, owner: nil) as? DeckTableRowView
-            ?? {
-                let view = DeckTableRowView()
-                view.identifier = id
-                return view
-            }()
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        guard let target = targetList(for: row) else { return nil }
+        return target.list.tableView(tableView, rowViewForRow: target.row)
     }
 
-    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
-        let id = NSUserInterfaceItemIdentifier("sidebar.cell")
-        let cell = tableView.makeView(withIdentifier: id, owner: nil) as? SidebarCell ?? SidebarCell()
-        cell.identifier = id
-        cell.configure(rows[row])
-        cell.sortMenu = { [weak self] in self?.repositoryOrderMenu() }
-        cell.onPress = rows[row].group.map { group in
-            { [weak self] in
-                guard let self, let row = self.rows.firstIndex(where: { $0.group?.id == group.id }) else { return }
-                self.changeGroup(row, .toggle)
-            }
-        }
-        if case .reference(let reference) = rows[row] {
-            cell.onFilter = { [weak self] kind in self?.onFilter?(reference.reference, kind) }
-        } else {
-            cell.onFilter = nil
-        }
-        return cell
+    func tableView(_ tableView: NSTableView, viewFor column: NSTableColumn?, row: Int) -> NSView? {
+        guard let target = targetList(for: row) else { return nil }
+        return target.list.tableView(tableView, viewFor: column, row: target.row)
     }
 
-    func tableViewSelectionDidChange(_: Notification) {
-        guard !updating, table.selectedRow >= 0, currentEventType() == .keyDown else { return }
-        activate(table.selectedRow, fromKeyboard: true)
+    func click(_ row: Int) {
+        guard let target = targetList(for: row) else { return }
+        target.list.performClick(target.row)
+    }
+
+    func secondClick(_ row: Int) {
+        guard let target = targetList(for: row) else { return }
+        target.list.performSecondClick(target.row)
+    }
+
+    func activate(_ row: Int, fromKeyboard: Bool) {
+        guard let target = targetList(for: row) else { return }
+        target.list.performActivate(target.row, fromKeyboard: fromKeyboard, modifiers: currentModifiers())
+    }
+
+    @discardableResult
+    func changeGroup(_ row: Int, _ change: SidebarTable.GroupChange) -> Bool {
+        guard let target = targetList(for: row) else { return false }
+        return target.list.performChangeGroup(target.row, change)
+    }
+
+    func menu(_ row: Int) -> NSMenu? {
+        guard let target = targetList(for: row) else { return nil }
+        return target.list.performMenu(target.row)
+    }
+
+    @objc func filterChanged() {
+        repositoryPane.filterChanged()
     }
 
     /// The sort button's menu: Name · Recently Opened · Status, the current one checked.
@@ -301,7 +295,6 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
             (.recent, String(localized: "Sort by Recently Opened")),
             (.status, String(localized: "Sort by Status")),
         ] {
-            // Every sidebar, this one included, re-sorts on the change notification.
             let item = MenuAction(title) { [state] in state.setRepositoryOrder(order) }
             item.state = order == state.repositoryOrder ? .on : .off
             menu.addItem(item)
@@ -309,125 +302,26 @@ final class RepositorySidebarView: NSView, NSTableViewDataSource, NSTableViewDel
         return menu
     }
 
-    // MARK: Clicks
-
-    @objc private func clickedRow() { click(table.clickedRow) }
-
-    /// A click on `row`: a repository with one checkout opens it; one with several expands or collapses. A checkout
-    /// is only selected (a double click or Return opens it). Any other row opens.
-    func click(_ row: Int) {
-        guard rows.indices.contains(row) else { return }
-        switch rows[row] {
-        case .repository(let repository, let expanded):
-            if !openSoleCheckout(repository, fromKeyboard: false) { toggle(repository, expanded: expanded) }
-        case .checkout: break
-        default: activate(row, fromKeyboard: false)
+    private func openCheckout(_ url: URL, inNewTab: Bool) {
+        let targetKey = WindowAgents.key(url)
+        if let owner = input.repositories.first(where: { repo in
+            WindowAgents.key(repo.root) == targetKey
+                || repo.checkouts.contains(where: { WindowAgents.key(URL(fileURLWithPath: $0.path)) == targetKey })
+        }) {
+            state.recordCheckout(url, for: owner.root)
+        }
+        if inNewTab {
+            (onOpenInNewTab ?? onOpenCheckout)?(url)
+        } else {
+            onOpenCheckout?(url)
         }
     }
 
-    private func toggle(_ repository: Repository, expanded: Bool) {
-        state.repositoryExpansion[repository.root.path] = !expanded
-        rebuild()
-    }
-
-    /// Opens a repository's only checkout, expanding the row when it was closed, so the repository shows without a
-    /// second click on the checkout. False when it lists several: the row still only expands and collapses.
-    private func openSoleCheckout(_ repository: Repository, fromKeyboard: Bool) -> Bool {
-        guard let checkout = repository.soleCheckout else { return false }
-        if state.repositoryExpansion[repository.root.path] == false {
-            state.repositoryExpansion[repository.root.path] = true
-            rebuild()
-        }
-        let url = URL(fileURLWithPath: checkout.path, isDirectory: true)
-        if WindowAgents.key(input.currentRoot) == WindowAgents.key(url) {
-            openedFromRepositories = !fromKeyboard
-            highlightsOpenCheckout = true
-        }
-        onOpenCheckout?(url)
-        return true
-    }
-
-    /// AppKit sends the second of two quick clicks here instead of to `click`: a checkout opens. A repository with
-    /// one checkout already opened on the first click. On a row that expands and collapses (a group, a remote, a
-    /// repository with several checkouts) it is one more toggle, so fast clicks never get lost. Other rows already
-    /// opened on the first click.
-    @objc private func doubleClick() { secondClick(table.clickedRow) }
-
-    func secondClick(_ row: Int) {
-        guard rows.indices.contains(row) else { return }
-        switch rows[row] {
-        case .checkout: activate(row, fromKeyboard: false)
-        case .repository(let repository, _):
-            if repository.soleCheckout == nil { click(row) }
-        case .remote, .folder: click(row)
-        case .nav(let nav) where nav.expansion != .none: click(row)
-        default: break
-        }
-    }
-
-    func activate(_ row: Int, fromKeyboard: Bool) {
-        guard rows.indices.contains(row) else { return }
-        // Several checkouts: the row only opens and closes (Return toggles it too). One checkout opens it, including
-        // when the selection lands on the row.
-        if case .repository(let repository, let expanded) = rows[row] {
-            if !openSoleCheckout(repository, fromKeyboard: fromKeyboard), !fromKeyboard {
-                toggle(repository, expanded: expanded)
-            }
+    private func openReference(_ reference: GitReference, inNewTab: Bool) {
+        if inNewTab, let worktreePath = input.worktreeBranches[reference.name] {
+            (onOpenInNewTab ?? onOpenCheckout)?(URL(fileURLWithPath: worktreePath, isDirectory: true))
             return
         }
-        if case .checkout = rows[row] { openedFromRepositories = !fromKeyboard } else { openedFromRepositories = false }
-        highlightsOpenCheckout = openedFromRepositories
-        switch rows[row] {
-        case .checkout(let checkout, _, _):
-            guard !fromKeyboard else { return }
-            onOpenCheckout?(URL(fileURLWithPath: checkout.path, isDirectory: true))
-        case .nav(let nav):
-            if case .page(let page) = nav.target { onNavigate?(page) }
-        case .reference(let reference): onReference?(reference.reference)
-        case .stash(let stash, _): onStash?(stash)
-        default: break
-        }
-        // A click or Return toggles a group; arrowing onto one leaves it as it is (Left, Right and Space open and
-        // close it then, through `SidebarTable.onExpand`).
-        if rows[row].group != nil, !fromKeyboard { changeGroup(row, .toggle) }
-    }
-
-    /// Opens, closes or toggles the group on `row`; false when the row is not a group.
-    @discardableResult
-    func changeGroup(_ row: Int, _ change: SidebarTable.GroupChange) -> Bool {
-        guard rows.indices.contains(row), let group = rows[row].group else { return false }
-        let next =
-            switch change {
-            case .open: true
-            case .close: false
-            case .toggle: !group.expanded
-            }
-        guard next != group.expanded else { return true }
-        state.setExpanded(group.id, next)
-        rebuild()
-        return true
-    }
-
-    func menu(_ row: Int) -> NSMenu? {
-        guard rows.indices.contains(row) else { return nil }
-        switch rows[row] {
-        case .reference(let reference): return referenceMenu?(reference.reference)
-        case .checkout(let checkout, _, _): return checkoutMenu?(checkout.path, checkout.isMain)
-        case .repository(let repository, _):
-            return repositoryMenu?(repository) ?? checkoutMenu?(repository.root.path, true)
-        case .remote(let name, _, _, _): return remoteMenu?(name)
-        case .nav(let nav) where nav.target == .group(.remotes): return remoteMenu?(nil)
-        default: return nil
-        }
-    }
-
-    func controlTextDidChange(_: Notification) { filterChanged() }
-
-    /// Each keystroke shows the list from the top, where the matches are.
-    @objc func filterChanged() {
-        guard query != lastQuery else { return }
-        lastQuery = query
-        rebuild()
-        scrollOffset = -.greatestFiniteMagnitude
+        onReference?(reference)
     }
 }

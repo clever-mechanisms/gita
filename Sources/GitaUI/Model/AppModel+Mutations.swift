@@ -7,6 +7,7 @@ extension AppModel {
     /// (unless another one opened meanwhile). Returns the generation the mutation started in.
     private func beginMutation(_ statusText: String) -> Int {
         isMutating = true
+        RemoteMonitor.shared.cancelBackgroundFetch(for: root)
         setStatus(statusText)
         emit(.status)
         return generation
@@ -14,6 +15,13 @@ extension AppModel {
 
     /// `title` names the mutation in the toolbar's result (nil shows none).
     private func endMutation(_ started: Int, _ title: String? = nil, _ outcome: MutationResult.Outcome = .completed) {
+        if outcome == .completed, let title {
+            if title == String(localized: "Fetch") || title == String(localized: "Fetch remote") {
+                RemoteMonitor.shared.didCompleteManualSync(for: root, reenableAuth: true)
+            } else if title == String(localized: "Pull") || title == String(localized: "Push") {
+                RemoteMonitor.shared.didCompleteManualSync(for: root, reenableAuth: false)
+            }
+        }
         endMutation(started) {
             if let title { lastMutation = MutationResult(title: title, outcome: outcome) }
             refresh()
@@ -86,6 +94,7 @@ extension AppModel {
 
     func perform(
         _ title: String, onSuccess: (() -> Void)? = nil,
+        onFailure: (@MainActor (String, Error) -> Void)? = nil,
         operation: @escaping @Sendable (GitService) async throws -> Void
     ) {
         guard let service, !isMutating else { return }
@@ -99,14 +108,20 @@ extension AppModel {
                 if current == generation { onSuccess?() }
             } catch {
                 log(title, error.localizedDescription, failed: true)
-                showError(title, error.localizedDescription)
+                if let onFailure {
+                    if current == generation { onFailure(title, error) }
+                } else {
+                    showError(title, error.localizedDescription)
+                }
             }
             endMutation(current, title, outcome)
         }
     }
 
     func performGitOperation(
-        _ title: String, operation: @escaping @Sendable (GitService) async throws -> GitOperationOutcome
+        _ title: String,
+        onFailure: (@MainActor (String, Error) -> Void)? = nil,
+        operation: @escaping @Sendable (GitService) async throws -> GitOperationOutcome
     ) {
         guard let service, !isMutating else { return }
         let current = beginMutation(String(localized: "\(title)…"))
@@ -116,7 +131,11 @@ extension AppModel {
                 outcome = record(try await operation(service), title: title, generation: current)
             } catch {
                 log(title, error.localizedDescription, failed: true)
-                showError(title, error.localizedDescription)
+                if let onFailure {
+                    if current == generation { onFailure(title, error) }
+                } else {
+                    showError(title, error.localizedDescription)
+                }
             }
             endMutation(current, title, outcome)
         }

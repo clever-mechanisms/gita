@@ -67,12 +67,57 @@ import Testing
 
     @Test func problemNamesTheBrokenProviderAndRepository() {
         let activity = ProviderActivity()
-        #expect(activity.problem(names: [:]) == nil)
+        #expect(activity.problemDetail(names: [:]) == nil)
         activity.record(MF.report(.github, [], status: .signInRequired), snapshot: MF.snapshot())
-        #expect(activity.problem(names: [:]) == "GitHub · Sign in required · app")
+        #expect(activity.problemDetail(names: [:])?.text == "GitHub · Sign in required · app")
         activity.record(MF.report(.vercel, [], status: .offline), snapshot: MF.snapshot(MF.site))
-        #expect(activity.problem(names: [:])?.hasSuffix("2 repositories") == true)
-        #expect(activity.problem(names: [:])?.hasPrefix("GitHub · ") == true)
+        #expect(activity.problemDetail(names: [:])?.text.hasSuffix("2 repositories") == true)
+        #expect(activity.problemDetail(names: [:])?.text.hasPrefix("GitHub · ") == true)
+    }
+
+    @Test func problemDeduplicatesWorktreesOfOneGitHubRepoAndCarriesFullDiagnostic() {
+        let activity = ProviderActivity()
+        let diagnostic = "None of your GitHub accounts (rolottr) can see SQLI-International/kkvb_ecom_monorepo."
+        let mainRoot = URL(fileURLWithPath: "/tmp/GitaUITests-fixtures/monorepo", isDirectory: true)
+        let worktreeRoot = URL(
+            fileURLWithPath: "/tmp/GitaUITests-fixtures/monorepo/.local/worktrees/flux-service-bus",
+            isDirectory: true)
+        let commonGit = mainRoot.appendingPathComponent(".git")
+
+        var mainSnap = MF.snapshot(mainRoot)
+        mainSnap.commonGitDirectory = commonGit
+        var wtSnap = MF.snapshot(worktreeRoot)
+        wtSnap.commonGitDirectory = commonGit
+
+        let report = ProviderReport(
+            provider: .github, items: [], status: .accessDenied, diagnostic: diagnostic,
+            sourceID: "github:SQLI-International/kkvb_ecom_monorepo")
+        activity.record(report, snapshot: worktreeRoot == wtSnap.root ? wtSnap : mainSnap)
+        activity.record(report, snapshot: mainSnap)
+
+        let detail = activity.problemDetail(names: [
+            ProviderActivity.key(mainRoot): "monorepo",
+            ProviderActivity.key(worktreeRoot): "monorepo (flux)",
+        ])
+        let expectedStatus = ProviderStatus.accessDenied.localizedTitle
+        #expect(detail?.text == "GitHub · \(expectedStatus) · monorepo")
+        #expect(detail?.toolTip == diagnostic)
+        #expect(detail?.repository == mainRoot)
+        #expect(detail?.provider == .github)
+
+        // Adding a genuinely different GitHub repo increments count to 2 and combines diagnostics.
+        let otherDiagnostic = "The GitHub account rolottr can’t see other/repo."
+        let otherReport = ProviderReport(
+            provider: .github, items: [], status: .accessDenied, diagnostic: otherDiagnostic,
+            sourceID: "github:other/repo")
+        activity.record(otherReport, snapshot: MF.snapshot(MF.site))
+        let multi = activity.problemDetail(names: [
+            ProviderActivity.key(mainRoot): "monorepo",
+            ProviderActivity.key(MF.site): "site",
+        ])
+        #expect(multi?.text == "GitHub · \(expectedStatus) · 2 repositories")
+        #expect(multi?.toolTip.contains(diagnostic) == true)
+        #expect(multi?.toolTip.contains(otherDiagnostic) == true)
     }
 
     @Test func vercelIncidentIsReportedWhenNothingIsBroken() {
@@ -80,11 +125,11 @@ import Testing
         var report = MF.report(.vercel, [])
         report.vercelSignals = VercelSignals(platform: .init(indicator: "major", summary: "Builds delayed"))
         activity.record(report, snapshot: MF.snapshot())
-        #expect(activity.problem(names: [:])?.hasPrefix("Vercel · ") == true)
+        #expect(activity.problemDetail(names: [:])?.text.hasPrefix("Vercel · ") == true)
         var calm = MF.report(.vercel, [])
         calm.vercelSignals = VercelSignals(platform: .init(indicator: "none", summary: "All good"))
         activity.record(calm, snapshot: MF.snapshot())
-        #expect(activity.problem(names: [:]) == nil)
+        #expect(activity.problemDetail(names: [:]) == nil)
     }
 
     // MARK: Projections

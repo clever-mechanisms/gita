@@ -13,9 +13,13 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
 
     let table = ContextHistoryTable()
     let header = DeckTableHeaderView(frame: NSRect(x: 0, y: 0, width: 900, height: HistoryTableController.headerHeight))
-    let scroll: NSScrollView
+    let scroll = NSScrollView()
+    let headerClip = NSClipView()
+    let workingChangesRow = WorkingChangesRowView()
+    lazy var workingRowHeight = workingChangesRow.heightAnchor.constraint(equalToConstant: 0)
     weak var delegate: (any HistoryTableDelegate)?
     /// The columns need fitting again on the next layout pass of the window's content.
+    var repositoryRoot: () -> String? = { nil }
     var onNeedsLayout: () -> Void = {}
     private var scrollObservation: NSObjectProtocol?
 
@@ -34,8 +38,15 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
     var commits: [GitCommit] { list?.commits ?? [] }
 
     override init() {
-        scroll = Style.scroll(table, horizontal: true)
         super.init()
+        scroll.contentView = PixelAlignedClipView()
+        scroll.documentView = table
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.borderType = .noBorder
+        scroll.drawsBackground = true
+        scroll.backgroundColor = Theme.window
         for column in HistoryColumn.allCases {
             let tableColumn = NSTableColumn(identifier: column.identifier)
             tableColumn.title = column.title
@@ -47,7 +58,10 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
         table.allowsColumnReordering = false
         table.columnAutoresizingStyle = .noColumnAutoresizing
         table.autoresizingMask = [.width]
-        table.headerView = header
+        table.headerView = nil
+        header.tableView = table
+        headerClip.documentView = header
+        headerClip.drawsBackground = false
         table.intercellSpacing = .zero
         table.style = .plain
         table.backgroundColor = Theme.window
@@ -55,8 +69,9 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
         table.usesAlternatingRowBackgroundColors = false
         table.delegate = self
         table.dataSource = self
-        table.allowsMultipleSelection = false
+        table.allowsMultipleSelection = true
         table.allowsEmptySelection = true
+        table.setDraggingSourceOperationMask([.copy], forLocal: true)
         table.setAccessibilityLabel(String(localized: "Commit history"))
         table.referenceMenu = { [weak self] id, reference in
             self?.delegate?.historyReferenceMenu(reference, commitID: id)
@@ -65,7 +80,10 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
         scrollObservation = NotificationCenter.default.addObserver(
             forName: NSView.boundsDidChangeNotification, object: scroll.contentView, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.delegate?.historyDidScroll() }
+            MainActor.assumeIsolated {
+                self?.alignPinnedRows()
+                self?.delegate?.historyDidScroll()
+            }
         }
     }
 
@@ -152,8 +170,32 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
             if table.selectedRow >= 0 { withoutSelectionEvents { table.deselectAll(nil) } }
             return
         }
-        guard table.selectedRow != row else { return }
+        guard table.selectedRowIndexes != IndexSet(integer: row) else { return }
         withoutSelectionEvents { table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false) }
+    }
+
+    func select(_ selection: HistorySelection) {
+        let rows = IndexSet(selection.selectedIDs.compactMap(row(of:)))
+        guard !rows.isEmpty else {
+            if table.selectedRow >= 0 { withoutSelectionEvents { table.deselectAll(nil) } }
+            return
+        }
+        guard table.selectedRowIndexes != rows else { return }
+        withoutSelectionEvents { table.selectRowIndexes(rows, byExtendingSelection: false) }
+    }
+
+    func updateWorkingChanges(_ state: WorkingChangesRowState) {
+        workingChangesRow.scale = scale
+        workingChangesRow.laneCount = laneCount
+        workingChangesRow.state = state
+        workingRowHeight.constant = state.isVisible ? WorkingChangesRowView.height : 0
+    }
+
+    private func alignPinnedRows() {
+        let offset = scroll.contentView.bounds.minX
+        header.setFrameSize(NSSize(width: max(table.frame.width, headerClip.bounds.width), height: Self.headerHeight))
+        headerClip.scroll(to: NSPoint(x: offset, y: 0))
+        workingChangesRow.horizontalOffset = -offset
     }
 
     func scrollToCommit(_ id: String) {
@@ -206,6 +248,7 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
     /// The subject column absorbs the width left by the metadata columns (horizontal scrolling only below its
     /// minimum).
     func fitColumns() {
+        defer { alignPinnedRows() }
         guard let subject = table.column(.subject), let author = table.column(.author), let date = table.column(.date),
             let sha = table.column(.sha), let status = table.column(.signals)
         else { return }
@@ -296,12 +339,22 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
         return factory.cell(column, row: row, commit: commits[row], graphs: list?.graphs ?? [])
     }
 
+    func tableView(_: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
+        guard commits.indices.contains(row), let root = repositoryRoot() else { return nil }
+        return GitaDragReference.commits(ids: [commits[row].id]).pasteboardItem(repositoryRoot: root)
+    }
+
     func tableViewSelectionDidChange(_: Notification) {
         guard !updating else { return }
-        if commits.indices.contains(table.selectedRow) {
-            delegate?.historyDidSelect(commits[table.selectedRow])
-        } else if table.selectedRow < 0 {
+        let selection = HistorySelection(selectedRows: table.selectedRowIndexes, commits: commits)
+        delegate?.historyDidChangeSelection(selection)
+        switch selection {
+        case .commit(let id):
+            if let commit = commits.first(where: { $0.id == id }) { delegate?.historyDidSelect(commit) }
+        case .none:
             delegate?.historyDidDeselect()
+        case .pair, .many:
+            break
         }
     }
 }

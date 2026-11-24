@@ -12,6 +12,26 @@ extension RepositorySidebarView {
         var isLocked = false
         /// The checkout is being opened (its tab is reading the repository): a spinner replaces the meta.
         var isLoading = false
+        /// Exact commits behind upstream (after fetch).
+        var behind = 0
+        /// Tier 1 remote check saw upstream moved before objects were fetched (`RemoteMonitor`).
+        var remoteMoved = false
+
+        var remoteUpdateText: String {
+            if behind > 0, remoteMoved { return "↓\(behind) ⇣" }
+            if behind > 0 { return "↓\(behind)" }
+            if remoteMoved { return "⇣" }
+            return ""
+        }
+
+        var remoteUpdateToolTip: String? {
+            if remoteMoved, behind > 0 {
+                return String(localized: "\(behind) commits behind upstream; remote has un-fetched commits")
+            }
+            if remoteMoved { return String(localized: "Remote has un-fetched commits") }
+            if behind > 0 { return String(localized: "\(behind) commits behind upstream") }
+            return nil
+        }
     }
 
     struct Repository: Equatable {
@@ -22,9 +42,26 @@ extension RepositorySidebarView {
         var isCurrent: Bool
         var checkouts: [Checkout]
         var error: String?
+        var behind = 0
+        var remoteMoved = false
+        /// Most recently used checkout path for this repository, when known.
+        var mruCheckoutPath: String?
 
-        /// The one checkout this row opens. Several stay a group the row only expands and collapses.
-        var soleCheckout: Checkout? { checkouts.count == 1 ? checkouts.first : nil }
+        /// The checkout opened when clicking this repository row: MRU checkout if available, else main, else first,
+        /// else repository root.
+        var primaryCheckoutURL: URL {
+            if let mruCheckoutPath,
+                let match = checkouts.first(where: {
+                    RecentRepositories.canonical($0.path) == RecentRepositories.canonical(mruCheckoutPath)
+                })
+            {
+                return URL(fileURLWithPath: match.path, isDirectory: true)
+            }
+            if let main = checkouts.first(where: \.isMain) ?? checkouts.first {
+                return URL(fileURLWithPath: main.path, isDirectory: true)
+            }
+            return root
+        }
     }
 
     struct Input: Equatable {
@@ -53,6 +90,8 @@ extension RepositorySidebarView {
         var remoteURLs: [String: String] = [:]
         /// Configured remote names resolved as GitHub (including SSH host aliases).
         var githubRemotes: Set<String> = []
+        /// Up to 5 recently checked out branch names from the local reflog.
+        var recentBranches: [String] = []
     }
 
     /// A branch row's filter marks and, in the Worktrees group, the worktree's folder.
@@ -115,8 +154,8 @@ extension RepositorySidebarView {
     }
 
     enum Row: Equatable {
-        /// `sortable`: the Repositories header, which carries the sort button.
-        case header(String, String, sortable: Bool = false)
+        case header(String, String)
+        case subheader(String, String)
         case repository(Repository, expanded: Bool)
         case checkout(Checkout, repository: URL, selected: Bool)
         case divider
@@ -142,6 +181,7 @@ extension RepositorySidebarView {
             case .empty: 7
             case .remote: 8
             case .folder: 9
+            case .subheader: 10
             }
         }
 
@@ -155,12 +195,14 @@ extension RepositorySidebarView {
         }
 
         static let headerHeight: CGFloat = 26
+        static let subheaderHeight: CGFloat = 22
         static let agentCheckoutHeight: CGFloat = 38
         static let dividerHeight: CGFloat = 17
 
         @MainActor var height: CGFloat {
             switch self {
             case .header: Self.headerHeight
+            case .subheader: Self.subheaderHeight
             case .checkout(let checkout, _, _):
                 WindowAgents.crowd(checkout.sessions) == nil ? Theme.rowHeight : Self.agentCheckoutHeight
             case .divider: Self.dividerHeight
@@ -184,7 +226,7 @@ extension RepositorySidebarView {
         /// on the way. The arrow keys do stop on them (`group`), so the keyboard can open and close them too.
         var isSelectable: Bool {
             switch self {
-            case .header, .divider, .empty, .remote, .folder: false
+            case .header, .subheader, .divider, .empty, .remote, .folder: false
             case .nav(let nav): if case .page = nav.target { true } else { false }
             default: true
             }

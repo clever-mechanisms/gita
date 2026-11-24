@@ -7,6 +7,12 @@ public struct GitHubAccount: Sendable, Equatable {
     public var isActive: Bool
     /// `gh` holds a working session for it.
     public var isSignedIn: Bool
+
+    public init(login: GitHubLogin, isActive: Bool, isSignedIn: Bool) {
+        self.login = login
+        self.isActive = isActive
+        self.isSignedIn = isSignedIn
+    }
 }
 
 /// Which `gh` account reads a repository: the account the user chose for it, or the one Gita found that could see

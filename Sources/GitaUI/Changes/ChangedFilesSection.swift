@@ -11,14 +11,14 @@ final class ChangedFilesSection: NSView {
     }
     let list: ChangedFilesView
     let button: NSButton
-    private let title = Deck.label("", font: Theme.bodyEmphasis)
+    private let title: NSTextField
     private let count = Deck.caption("")
 
     init(side: ChangedFilesView.Side, title text: String, button: NSButton) {
         list = ChangedFilesView(side: side)
         self.button = button
+        title = Deck.sectionTitle(text)
         super.init(frame: .zero)
-        title.stringValue = text
         count.textColor = Theme.tertiaryText
         button.setContentHuggingPriority(.required, for: .horizontal)
         // In a narrow pane (or a long translation) the button's title shortens before the section's name does.

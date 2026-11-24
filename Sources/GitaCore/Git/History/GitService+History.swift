@@ -134,6 +134,19 @@ extension GitService {
         return Int(result.text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    /// Asymmetric commit distance (`behind` on base's side, `ahead` on head's side) via `rev-list --left-right`.
+    public func commitDistance(from base: String, to head: String) async -> CommitDistance? {
+        guard let from = try? await resolveCommit(base, verify: true),
+            let to = try? await resolveCommit(head, verify: true),
+            let result = try? await execute(
+                ["rev-list", "--count", "--left-right", from + "..." + to, "--"], timeout: 15, outputLimit: 64)
+        else { return nil }
+        let parts = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
+        guard parts.count == 2, let behind = Int(parts[0]), let ahead = Int(parts[1]) else { return nil }
+        return CommitDistance(behind: behind, ahead: ahead)
+    }
+
     public func compareFiles(base: String, head: String) async throws -> [FileChange] {
         let (from, to) = try await resolvePair(base, head)
         let result = try await execute(
@@ -141,11 +154,14 @@ extension GitService {
         return GitParsers.changedFiles(result.stdout)
     }
 
-    public func compareDiff(base: String, head: String, path: String?) async throws -> String {
+    public func compareDiff(
+        base: String, head: String, path: String?, options: DiffOptions = .standard
+    ) async throws -> String {
         if let path { try GitInput.validatePath(path) }
         let (from, to) = try await resolvePair(base, head)
         return try await execute(
-            ["diff"] + GitArguments.safeDiff + ["--find-renames", from, to, "--"] + (path.map { [$0] } ?? [])
+            ["diff"] + GitArguments.safeDiff + options.arguments + ["--find-renames", from, to, "--"]
+                + (path.map { [$0] } ?? [])
         ).text
     }
 

@@ -79,7 +79,7 @@ struct GitIntegrationTests {
         #expect(committed.commits.count == 1)
         #expect(committed.commits[0].subject == "Store unusual file name")
         #expect(try await fixture.service.changedFiles(commit: "HEAD").map(\.path) == [path])
-        #expect(try await fixture.service.file(commit: "HEAD", path: path) == "first line\nsecond line\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: path).text == "first line\nsecond line\n")
         #expect(try await fixture.service.diff(path: path, commit: "HEAD").contains("+first line"))
     }
 
@@ -268,7 +268,7 @@ struct GitIntegrationTests {
             try await fixture.service.tree(commit: "HEAD", path: "folder").map(\.path) == [
                 "folder/deeper", "folder/near.txt",
             ])
-        #expect(try await fixture.service.file(commit: "HEAD", path: "binary.dat") == "Binary file · 3 bytes")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "binary.dat").text == "Binary file · 3 bytes")
     }
 
     @Test func unstagingARenameRestoresBothIndexPathsWithoutMovingTheWorkingFile() async throws {
@@ -363,7 +363,7 @@ struct GitIntegrationTests {
         let state = try await fixture.service.snapshot()
         #expect(state.head != nil)
         #expect(state.changes.isEmpty)
-        #expect(try await fixture.service.file(commit: "HEAD", path: "initial.txt") == "Initial\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "initial.txt").text == "Initial\n")
     }
 
     @Test func workingFileRefreshUsesCachedHistoryAndEveryRefChangeInvalidatesIt() async throws {
@@ -413,7 +413,8 @@ struct GitIntegrationTests {
         let after = try await fixture.service.snapshot()
         #expect(after.head == before.head && after.references == before.references)
         #expect(after.historyIdentity != nil && after.historyIdentity != before.historyIdentity)
-        #expect(try await fixture.service.file(commit: original, path: "README.md") == "Replacement contents\n")
+        #expect(
+            try await fixture.service.fileBlob(commit: original, path: "README.md").text == "Replacement contents\n")
         try fixture.write(".git/info/grafts", "# No graft entries\n")
         let ancestry = try await fixture.service.snapshot()
         #expect(ancestry.historyIdentity != nil && ancestry.historyIdentity != after.historyIdentity)

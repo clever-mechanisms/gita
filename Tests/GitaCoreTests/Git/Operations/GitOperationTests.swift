@@ -53,7 +53,7 @@ struct GitOperationTests {
         completed(try await fixture.service.continueOperation(expected: state))
         #expect(try await fixture.service.operationState() == nil)
         #expect(try await fixture.service.commitDetails(ref: "HEAD").commit.parents.count == 2)
-        #expect(try await fixture.service.file(commit: "HEAD", path: document.path) == "combined\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: document.path).text == "combined\n")
     }
 
     @Test func rebaseShowsOntoAsOursAndDoesNotUpdateOtherBranches() async throws {
@@ -108,10 +108,10 @@ struct GitOperationTests {
         #expect(document.theirs?.text == "base\n")
         try await fixture.service.resolveConflict(document, resolution: .theirs)
         completed(try await fixture.service.continueOperation(expected: state))
-        #expect(try await fixture.service.file(commit: "HEAD", path: "file.txt") == "base\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "file.txt").text == "base\n")
         let reverted = try await fixture.head()
         completed(try await fixture.service.revert(commit: reverted))
-        #expect(try await fixture.service.file(commit: "HEAD", path: "file.txt") == "later\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "file.txt").text == "later\n")
     }
 
     @Test func dirtyTrackedFilesAndOperationOverlapAreRefusedBeforeMutation() async throws {
@@ -164,7 +164,7 @@ struct GitOperationTests {
         try fixture.write("main.txt", "main\n")
         try await fixture.commit("Main")
         completed(try await fixture.service.cherryPick(commit: incoming))
-        #expect(try await fixture.service.file(commit: "HEAD", path: "incoming.txt") == "incoming\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "incoming.txt").text == "incoming\n")
         #expect(try await fixture.service.operationState() == nil)
         completed(try await fixture.service.merge(ref: "incoming", mode: .noFastForward))
         let merge = try await fixture.head()
@@ -175,7 +175,7 @@ struct GitOperationTests {
             Issue.record("Merge pick must require a parent")
         } catch { #expect(error.localizedDescription.contains("mainline parent")) }
         completed(try await fixture.service.cherryPick(commit: merge, mainline: 2))
-        #expect(try await fixture.service.file(commit: "HEAD", path: "main.txt") == "main\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "main.txt").text == "main\n")
         completed(try await fixture.service.revert(commit: "HEAD"))
         #expect(try await fixture.service.tree(commit: "HEAD").map(\.path) == ["base.txt"])
     }
@@ -206,8 +206,8 @@ struct GitOperationTests {
         await expectGitError(.operationChanged) { _ = try await fixture.service.abortOperation(expected: before) }
         #expect(try await fixture.service.snapshot().changes.contains { $0.path == "second.txt" && $0.isConflict })
         completed(try await fixture.service.skipOperation(expected: after))
-        #expect(try await fixture.service.file(commit: "HEAD", path: "first.txt") == "incoming first\n")
-        #expect(try await fixture.service.file(commit: "HEAD", path: "second.txt") == "current second\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "first.txt").text == "incoming first\n")
+        #expect(try await fixture.service.fileBlob(commit: "HEAD", path: "second.txt").text == "current second\n")
     }
 
     @Test func externalAmAndLinkedWorktreeStatesAreDetectedInTheirOwnGitDirectories() async throws {

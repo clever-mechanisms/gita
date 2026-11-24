@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 final class SettingsFeatureCard: NSView {
     let row: SettingsRow
+    var isSearchHighlighted = false { didSet { if oldValue != isSearchHighlighted { needsDisplay = true } } }
 
     init(_ title: String, control: NSView, help: String? = nil, illustration: NSView) {
         row = SettingsRow(title, [control], help: help)
@@ -26,5 +27,5 @@ final class SettingsFeatureCard: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("SettingsFeatureCard is built in code") }
 
-    override func draw(_: NSRect) { SettingsGroup.drawBox(bounds) }
+    override func draw(_: NSRect) { SettingsGroup.drawBox(bounds, highlighted: isSearchHighlighted) }
 }

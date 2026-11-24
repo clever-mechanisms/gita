@@ -1,12 +1,9 @@
 import AppKit
 import GitaCore
 
-/// A main window's toolbar: sidebar · Fetch / Pull / Push (ahead count) / Stash · the centred
-/// repository + branch pill (switch branch, worktrees) · Branch · Open in ▾ · Agents (working / needs-input counts)
-/// · Workspaces (the same menu as File ▸ Workspace).
-/// `MainWindowController`'s toolbar delegate methods build items here; the window's validation refreshes their
-/// contents. The shell (`host`) validates the items and runs them: Git buttons on the selected tab's commands. Each
-/// main window has its own, showing its own selected tab; a window that is clicked is the shell's before it acts.
+/// A main window's toolbar: sidebar · Fetch / Pull / Push (symmetric badges & one-click sync) / Stash · the centred
+/// repository + branch pill · Open in ▾ · Agents (working / needs-input counts).
+/// `Workspaces` and `Branch` remain in `allowedItems` for Customize Toolbar.
 @MainActor
 final class MainToolbar {
     enum ID: String, CaseIterable {
@@ -15,9 +12,6 @@ final class MainToolbar {
         /// The plain buttons: their label, symbol and the app action they send.
         var action: (label: String, symbol: String, selector: Selector)? {
             switch self {
-            case .fetch: (String(localized: "Fetch"), "arrow.down.to.line", #selector(RepositoryCommandResponder.fetch))
-            case .pull: (String(localized: "Pull"), "arrow.down", #selector(RepositoryCommandResponder.pull))
-            case .push: (String(localized: "Push"), "arrow.up", #selector(RepositoryCommandResponder.push))
             case .stash: (String(localized: "Stash"), "archivebox", #selector(RepositoryCommandResponder.stash))
             case .branch:
                 (String(localized: "Branch"), "arrow.triangle.branch", #selector(RepositoryCommandResponder.newBranch))
@@ -25,7 +19,7 @@ final class MainToolbar {
             case .worktree:
                 (String(localized: "Worktree"), Deck.worktreeSymbol, #selector(RepositoryCommandResponder.newWorktree))
             case .refresh: (String(localized: "Refresh"), "arrow.clockwise", #selector(AppDelegate.refresh))
-            case .sidebar, .repository, .openIn, .agents, .workspaces: nil
+            case .sidebar, .fetch, .pull, .push, .repository, .openIn, .agents, .workspaces: nil
             }
         }
     }
@@ -33,8 +27,7 @@ final class MainToolbar {
         .init(ID.sidebar.rawValue), .init(ID.fetch.rawValue), .init(ID.pull.rawValue), .init(ID.push.rawValue),
         .init(ID.stash.rawValue),
         .flexibleSpace, .init(ID.repository.rawValue), .flexibleSpace,
-        .init(ID.branch.rawValue), .init(ID.openIn.rawValue), .init(ID.agents.rawValue),
-        .init(ID.workspaces.rawValue),
+        .init(ID.openIn.rawValue), .init(ID.agents.rawValue),
     ]
     static let allowedItems: [NSToolbarItem.Identifier] =
         ID.allCases.map { .init($0.rawValue) } + [.flexibleSpace, .space]
@@ -50,11 +43,12 @@ final class MainToolbar {
     /// Its window's selected tab's model; nil for a toolbar without a window, which shows the shell's.
     private let shownModel: @MainActor () -> AppModel?
     private var model: AppModel? { shownModel() ?? host?.model }
-    private weak var pushButton: PartsButton?
+    private weak var fetchButton: ToolbarSyncButton?
+    private weak var pullButton: ToolbarSyncButton?
+    private weak var pushButton: ToolbarSyncButton?
     private weak var pill: RepositoryPill?
     private weak var agentsButton: PartsButton?
     private var observer: NSObjectProtocol?
-    private let tint = Deck.adaptive(light: Theme.text, dark: Theme.text.withAlphaComponent(0.82))
     /// What the dynamic items showed last: they redraw only when it changes.
     private var lastSignature = ""
     /// Refreshes once the pill's mutation result has been shown long enough.
@@ -90,17 +84,59 @@ final class MainToolbar {
         return item
     }
 
+    private func sendAction(_ selector: Selector, from item: NSToolbarItem) {
+        guard let host else { return }
+        let commands = host.commands
+        NSApp.sendAction(selector, to: commands.responds(to: selector) ? commands : host, from: item)
+    }
+
+    private func syncView(_ id: ID, item: NSToolbarItem) -> NSView? {
+        switch id {
+        case .fetch:
+            item.label = String(localized: "Fetch")
+            let control = ToolbarSyncButtons.makeButton(
+                title: item.label, symbol: "arrow.down.to.line",
+                optionsAccessibility: String(localized: "Fetch options"),
+                onPrimary: { [weak self] in
+                    self?.sendAction(#selector(RepositoryCommandResponder.fetchNow), from: item)
+                },
+                onOptions: { [weak self] in self?.sendAction(#selector(RepositoryCommandResponder.fetch), from: item) })
+            fetchButton = control
+            return control
+        case .pull:
+            item.label = String(localized: "Pull")
+            let control = ToolbarSyncButtons.makeButton(
+                title: item.label, symbol: "arrow.down",
+                optionsAccessibility: String(localized: "Pull options"),
+                onPrimary: { [weak self] in
+                    self?.sendAction(#selector(RepositoryCommandResponder.pullNow), from: item)
+                },
+                onOptions: { [weak self] in self?.sendAction(#selector(RepositoryCommandResponder.pull), from: item) })
+            pullButton = control
+            return control
+        case .push:
+            item.label = String(localized: "Push")
+            let control = ToolbarSyncButtons.makeButton(
+                title: item.label, symbol: "arrow.up",
+                optionsAccessibility: String(localized: "Push options"),
+                onPrimary: { [weak self] in
+                    self?.sendAction(#selector(RepositoryCommandResponder.pushOrSheet), from: item)
+                },
+                onOptions: { [weak self] in self?.sendAction(#selector(RepositoryCommandResponder.push), from: item) })
+            pushButton = control
+            return control
+        default:
+            return nil
+        }
+    }
+
     private func view(_ id: ID, item: NSToolbarItem) -> NSView {
+        if let sync = syncView(id, item: item) { return sync }
         if let action = id.action {
             item.label = action.label
-            let button = self.button(action.label, symbol: action.symbol) { [weak self] in
-                guard let host = self?.host else { return }
-                let commands = host.commands
-                NSApp.sendAction(
-                    action.selector, to: commands.responds(to: action.selector) ? commands : host, from: item)
+            return button(action.label, symbol: action.symbol) { [weak self] in
+                self?.sendAction(action.selector, from: item)
             }
-            if id == .push { pushButton = button }
-            return button
         }
         switch id {
         case .sidebar:
@@ -110,6 +146,12 @@ final class MainToolbar {
             item.label = String(localized: "Repository")
             let pill = RepositoryPill()
             pill.menuProvider = { [weak self] in self?.repositoryMenu() }
+            pill.canAcceptDrop = { [weak self] pasteboard in
+                self?.host?.pillDropOperation(for: pasteboard) ?? []
+            }
+            pill.onAcceptDrop = { [weak self] pasteboard, anchor in
+                self?.host?.performPillDrop(from: pasteboard, anchor: anchor) ?? false
+            }
             self.pill = pill
             return pill
         case .openIn:
@@ -128,6 +170,7 @@ final class MainToolbar {
     }
 
     private func button(_ title: String, symbol: String, _ perform: @escaping () -> Void) -> PartsButton {
+        let tint = ToolbarSyncButtons.tint
         let button = PartsButton(
             [.symbol(symbol, color: tint, size: 13), .text(title, font: Theme.body, color: tint)],
             background: .hover, accessibility: title, onClick: perform)
@@ -171,51 +214,60 @@ final class MainToolbar {
 
     // MARK: Dynamic items
 
-    /// Updates the dynamic items (push count, repository pill, agent counts).
+    static func syncState(for model: AppModel?) -> ToolbarSyncState {
+        let snapshot = model?.snapshot
+        let delta = model?.remoteDelta
+        let summary = model?.remoteCheckStatusSummary
+        return ToolbarSyncState(
+            movedBranchCount: delta?.movedCount ?? 0,
+            currentUpstreamMoved: delta?.currentUpstreamMoved == true,
+            behind: snapshot?.behind ?? 0,
+            ahead: snapshot?.ahead ?? 0,
+            fetchToolTip: fetchToolTip(delta: delta, summary: summary))
+    }
+
+    private static func fetchToolTip(delta: RemoteDelta?, summary: String?) -> String? {
+        guard let summary, !summary.isEmpty else { return nil }
+        guard let delta, !delta.isEmpty, !delta.moved.isEmpty else { return summary }
+        let branches = delta.moved.keys
+            .sorted { ($0.remote, $0.branch) < ($1.remote, $1.branch) }
+            .prefix(5)
+            .map { key in
+                SyncTarget(remote: key.remote, branch: key.branch, isNew: delta.moved[key]?.localOID == nil).title
+            }
+            .joined(separator: ", ")
+        return "\(summary)\n\(branches)"
+    }
+
+    /// Updates the dynamic items (sync badges, repository pill, agent counts).
     func refresh() {
         let snapshot = model?.snapshot
         let summary = WindowAgents.shared.summary
-        // The working agents' mark turns in the button (the lead's tool: an agent before a subagent).
         let working = WindowAgents.shared.sessions.filter { $0.state == .working }
         let workingTool = (working.first { !$0.isSubagent } ?? working.first)?.tool
         let paneShown = RepositoryViewController.agentsPaneShown
         let activity = Self.activity(model)
+        let sync = Self.syncState(for: model)
         let parts: [String] = [
             workingTool?.rawValue ?? "", snapshot?.root.path ?? "", snapshot?.localizedBranch ?? "",
-            "\(snapshot?.ahead ?? 0)",
-            "\(snapshot?.behind ?? 0)", "\(model?.isMutating == true)", model?.status ?? "", "\(summary.working)",
-            "\(summary.needsInput)", "\(paneShown)", "\(pushButton != nil)\(pill != nil)\(agentsButton != nil)",
+            "\(sync.ahead)", "\(sync.behind)", "\(sync.movedBranchCount)", "\(sync.currentUpstreamMoved)",
+            "\(model?.isMutating == true)", model?.status ?? "", "\(summary.working)", "\(summary.needsInput)",
+            "\(paneShown)",
+            "\(fetchButton != nil)\(pullButton != nil)\(pushButton != nil)\(pill != nil)\(agentsButton != nil)",
             activity.map { "\($0.kind)\($0.text)" } ?? "",
         ]
         let signature = parts.joined(separator: "|")
         guard signature != lastSignature else { return }
         lastSignature = signature
-        if let pushButton { showAhead(snapshot?.ahead ?? 0, on: pushButton) }
+        if let fetchButton { ToolbarSyncButtons.showFetch(sync, on: fetchButton) }
+        if let pullButton { ToolbarSyncButtons.showPull(sync, on: pullButton) }
+        if let pushButton { ToolbarSyncButtons.showPush(sync, on: pushButton) }
         if let pill { showRepository(activity, on: pill) }
         expireResult()
         if let agentsButton {
             ToolbarAgentsButton.show(
                 working: summary.working, needsInput: summary.needsInput, tool: workingTool, paneShown: paneShown,
                 on: agentsButton)
-        }
-    }
-
-    private func showAhead(_ ahead: Int, on button: PartsButton) {
-        let title = String(localized: "Push")
-        if ahead > 0 {
-            button.parts = [
-                .symbol("arrow.up", color: Theme.accentText, size: 13),
-                .text(title, font: Theme.body, color: Theme.accentText),
-                .badge("\(ahead)", fill: Theme.accent, color: Deck.onAccent),
-            ]
-            button.background = .tinted
-            button.tintFill = Theme.control
-            button.tintBorder = Theme.accent.withAlphaComponent(0.4)
-            button.setAccessibilityLabel(String(localized: "Push \(ahead) commits"))
-        } else {
-            button.parts = [.symbol("arrow.up", color: tint, size: 13), .text(title, font: Theme.body, color: tint)]
-            button.background = .hover
-            button.setAccessibilityLabel(title)
         }
     }
 
@@ -253,14 +305,8 @@ final class MainToolbar {
         let name =
             snapshot?.root.lastPathComponent
             ?? (model?.isLoading == true ? String(localized: "Loading…") : "Gitā")
-        var detail: [String] = []
-        if let snapshot {
-            detail.append(snapshot.localizedBranch)
-            if snapshot.ahead > 0 { detail.append("↑\(snapshot.ahead)") }
-            if snapshot.behind > 0 { detail.append("↓\(snapshot.behind)") }
-        }
-        pill.update(
-            name: name, detail: detail.joined(separator: " · "), hasBranch: snapshot != nil, activity: activity)
+        let detail = snapshot?.localizedBranch ?? ""
+        pill.update(name: name, detail: detail, hasBranch: snapshot != nil, activity: activity)
     }
 
     // MARK: Menus

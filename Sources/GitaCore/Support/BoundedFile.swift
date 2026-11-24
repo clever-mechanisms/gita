@@ -11,7 +11,11 @@ struct BoundedFile {
 
     /// Nil when the file does not exist.
     static func read(_ url: URL, limit: Int = metadataLimit) throws -> Self? {
-        let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        try read(parent: AT_FDCWD, path: url.path, limit: limit)
+    }
+
+    static func read(parent: Int32, path: String, limit: Int) throws -> Self? {
+        let descriptor = openat(parent, path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else {
             if errno == ENOENT { return nil }
             throw LocalFileError.metadataUnreadable

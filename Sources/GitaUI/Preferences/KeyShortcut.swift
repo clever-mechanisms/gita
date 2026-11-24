@@ -68,7 +68,8 @@ struct KeyShortcut: Equatable, Hashable, Sendable {
 /// The commands whose shortcuts Settings ▸ Shortcuts changes, in the pane's order, with their defaults.
 enum ShortcutCommand: String, CaseIterable {
     case allCommits, localChanges, worktrees, pullRequests, deployments, workflows
-    case commitTab, changesTab, fileTreeTab
+    case commitTab, changesTab, fileTreeTab, blame
+    case focusSidebar, focusHistory, focusFiles, focusDiff, cyclePaneFocus
     case commandPalette, switchBranch, newBranch, fetch, pull, push, forcePush, stash, refresh
     case toggleTerminal, newTerminal
 
@@ -77,7 +78,9 @@ enum ShortcutCommand: String, CaseIterable {
     var group: Group {
         switch self {
         case .allCommits, .localChanges, .worktrees, .pullRequests, .deployments, .workflows: .pages
-        case .commitTab, .changesTab, .fileTreeTab: .details
+        case .commitTab, .changesTab, .fileTreeTab, .blame, .focusSidebar, .focusHistory, .focusFiles, .focusDiff,
+            .cyclePaneFocus:
+            .details
         case .toggleTerminal, .newTerminal: .terminal
         default: .repository
         }
@@ -94,7 +97,19 @@ enum ShortcutCommand: String, CaseIterable {
         case .commitTab: String(localized: "Commit")
         case .changesTab: String(localized: "Changes")
         case .fileTreeTab: String(localized: "File Tree")
+        case .blame: String(localized: "Blame File")
+        case .focusSidebar, .focusHistory, .focusFiles, .focusDiff, .cyclePaneFocus: focusTitle
         default: repositoryTitle
+        }
+    }
+
+    private var focusTitle: String {
+        switch self {
+        case .focusSidebar: String(localized: "Focus Sidebar")
+        case .focusHistory: String(localized: "Focus History")
+        case .focusFiles: String(localized: "Focus Files")
+        case .focusDiff: String(localized: "Focus Diff")
+        default: String(localized: "Cycle Pane Focus")
         }
     }
 
@@ -121,6 +136,12 @@ enum ShortcutCommand: String, CaseIterable {
         case .commitTab: KeyShortcut("1", [.command, .control])
         case .changesTab: KeyShortcut("2", [.command, .control])
         case .fileTreeTab: KeyShortcut("3", [.command, .control])
+        case .blame: KeyShortcut("b", [.command, .option])
+        case .focusSidebar: KeyShortcut("1", [.control, .option])
+        case .focusHistory: KeyShortcut("2", [.control, .option])
+        case .focusFiles: KeyShortcut("3", [.control, .option])
+        case .focusDiff: KeyShortcut("4", [.control, .option])
+        case .cyclePaneFocus: KeyShortcut("]", [.control, .option])
         default: repositoryDefault
         }
     }
@@ -197,6 +218,18 @@ enum ShortcutStore {
     /// The command that has `shortcut` now, if any.
     static func command(using shortcut: KeyShortcut, _ defaults: UserDefaults = Preference.store) -> ShortcutCommand? {
         ShortcutCommand.allCases.first { Self.shortcut($0, defaults) == shortcut }
+    }
+
+    static func focusCommand(using event: NSEvent, _ defaults: UserDefaults = Preference.store) -> ShortcutCommand? {
+        guard let shortcut = KeyShortcut(event: event),
+            let command = command(using: shortcut, defaults)
+        else { return nil }
+        switch command {
+        case .focusSidebar, .focusHistory, .focusFiles, .focusDiff, .cyclePaneFocus:
+            return command
+        default:
+            return nil
+        }
     }
 
     /// The menu kept up to date, its settings, and the observer that does it.

@@ -129,6 +129,7 @@ struct MainMenu {
         for (tab, command) in zip(DetailTab.allCases, [ShortcutCommand.commitTab, .changesTab, .fileTreeTab]) {
             item(command, #selector(AppDelegate.showDetailTab(_:)), in: view).tag = tab.rawValue
         }
+        item(.blame, #selector(AppDelegate.blameSelectedFile), in: view)
         view.addItem(.separator())
         item(String(localized: "Zoom In"), #selector(AppDelegate.zoomIn), key: "+", in: view)
         _ = hiddenShortcut(String(localized: "Zoom In"), #selector(AppDelegate.zoomIn), key: "=", in: view)

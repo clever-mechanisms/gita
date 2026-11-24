@@ -1,9 +1,10 @@
 import AppKit
 import GitaCore
 
-/// A pull request's review, in place under its row: a bar (who wants to merge what, the state, Refresh, Merge), the
-/// sidebar beside the page it picks, the box for a line comment or reply when one is being written, and the review
-/// composer along the bottom. A rounded card of a fixed height inside the Pull Requests list.
+/// A pull request's review: a bar (`← PRs` when full-height, summary, `⤢ Window`, Terminal, Refresh, Merge), the
+/// sidebar beside the page it picks, the box for a line comment or reply when one is being written, and the sticky
+/// review composer along the bottom. Adapts across `.inline` (620 pt fallback card), `.page` (full-height), and
+/// `.window` (pop-out).
 @MainActor
 final class PullRequestReviewView: NSView {
     static let inlineHeight: CGFloat = 620
@@ -16,26 +17,63 @@ final class PullRequestReviewView: NSView {
     /// The reply box on the Conversation page.
     let replyEditor = ReviewLineEditorCard()
     let merge = ReviewMergeControl()
+    private(set) lazy var backButton = PartsButton.quiet(String(localized: "PRs"), symbol: "chevron.left") {
+        [weak self] in self?.onBack?()
+    }
+    private(set) lazy var windowButton = PartsButton.quiet(
+        String(localized: "Window"), symbol: "arrow.up.left.and.arrow.down.right"
+    ) { [weak self] in self?.onPopOut?() }
     private let composerLine = Deck.separator()
     private let subtitle = Deck.caption("")
     private let spinner = NSProgressIndicator()
     private let empty = Deck.wrapping("", color: Theme.secondaryText)
     private let pageHost = NSView()
     private let split = DeckSplitView()
+    private var inlineHeightConstraint: NSLayoutConstraint?
+    private var sidebarMinWidthConstraint: NSLayoutConstraint?
+    private var sidebarPreferredWidthConstraint: NSLayoutConstraint?
+    private(set) var presentation = ReviewPresentation.inline
+    var onBack: (() -> Void)?
+    var onPopOut: (() -> Void)?
     var onRefresh: (() -> Void)?
     /// The review moved into a window (or out of one, nil).
     var onWindow: ((NSWindow?) -> Void)?
     /// The Terminal button: the terminal from Settings, in the repository's folder.
     var onTerminal: (() -> Void)?
+    var onToggleViewed: ((String) -> Void)?
     private(set) var shownPage: PullRequestReviewState.Page?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.masksToBounds = true
+        setAccessibilityElement(false)
+        let bar = buildBar()
+        configureSplit()
+        let column = Deck.vstack([bar, Deck.separator(), split, composerLine, composer], spacing: 0)
+        // The title bar and the composer keep their content's height; the sidebar and page take the rest.
+        column.distribution = .fill
+        Style.fill(column, in: self)
+        for view in column.arrangedSubviews { view.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true }
+        bar.setClippingResistancePriority(.required, for: .vertical)
+        let hug = composer.heightAnchor.constraint(equalToConstant: 0)
+        hug.priority = .defaultLow + 10
+        hug.isActive = true
+        split.heightAnchor.constraint(greaterThanOrEqualToConstant: 240).isActive = true
+        inlineHeightConstraint = heightAnchor.constraint(equalToConstant: Self.inlineHeight)
+        setPresentation(.inline)
+    }
+
+    private func buildBar() -> NSStackView {
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
         subtitle.lineBreakMode = .byTruncatingTail
         subtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        backButton.toolTip = String(localized: "Back to Pull Requests")
+        backButton.setAccessibilityIdentifier("review.back")
+        windowButton.toolTip = String(localized: "Open review in a separate window")
+        windowButton.setAccessibilityIdentifier("review.popOut")
         let refresh = PartsButton.quiet(String(localized: "Refresh"), symbol: "arrow.clockwise") { [weak self] in
             self?.onRefresh?()
         }
@@ -43,29 +81,30 @@ final class PullRequestReviewView: NSView {
             self?.onTerminal?()
         }
         terminal.toolTip = String(localized: "Opens a terminal in the repository’s folder.")
-        for button in [terminal, refresh] {
+        for button in [backButton, windowButton, terminal, refresh] {
             button.fixedHeight = 26
             button.horizontalPadding = 11
             button.cornerRadius = 7
         }
-        let bar = Deck.hstack([subtitle, Deck.spacer(), spinner, terminal, refresh, merge], spacing: 10)
+        let bar = Deck.hstack(
+            [backButton, subtitle, Deck.spacer(), spinner, windowButton, terminal, refresh, merge], spacing: 10)
         bar.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 10)
-        // A fixed height, the button centred in it: room above and below instead of touching the card's edges.
         bar.heightAnchor.constraint(equalToConstant: Self.barHeight).isActive = true
-        wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.borderWidth = 1
-        layer?.masksToBounds = true
-        setAccessibilityElement(false)
+        return bar
+    }
+
+    private func configureSplit() {
         split.isVertical = true
         split.dividerStyle = .thin
         split.addArrangedSubview(sidebar)
         split.addArrangedSubview(pageHost)
-        sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
-        // Wide enough for a file name and its folder; dragging the divider still wins.
+        let minWidth = sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 200)
+        minWidth.isActive = true
+        sidebarMinWidthConstraint = minWidth
         let preferred = sidebar.widthAnchor.constraint(equalToConstant: 280)
         preferred.priority = .defaultLow + 20
         preferred.isActive = true
+        sidebarPreferredWidthConstraint = preferred
         pageHost.widthAnchor.constraint(greaterThanOrEqualToConstant: 420).isActive = true
         split.setHoldingPriority(.defaultLow + 10, forSubviewAt: 0)
         for page in [conversation, filePage] as [NSView] { Deck.pin(page, in: pageHost) }
@@ -77,18 +116,31 @@ final class PullRequestReviewView: NSView {
             empty.centerYAnchor.constraint(equalTo: pageHost.centerYAnchor),
             empty.widthAnchor.constraint(lessThanOrEqualTo: pageHost.widthAnchor, constant: -48),
         ])
-        let column = Deck.vstack([bar, Deck.separator(), split, composerLine, composer], spacing: 0)
-        // The title bar and the composer keep their content's height; the sidebar and page take the rest. (A stack's
-        // default gravity layout stretches nothing, which left the page a sliver and the window's foot empty.)
-        column.distribution = .fill
-        Style.fill(column, in: self)
-        for view in column.arrangedSubviews { view.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true }
-        bar.setClippingResistancePriority(.required, for: .vertical)
-        let hug = composer.heightAnchor.constraint(equalToConstant: 0)
-        hug.priority = .defaultLow + 10
-        hug.isActive = true
-        split.heightAnchor.constraint(greaterThanOrEqualToConstant: 240).isActive = true
-        heightAnchor.constraint(equalToConstant: Self.inlineHeight).isActive = true
+        filePage.onToggleViewed = { [weak self] path in self?.onToggleViewed?(path) }
+        sidebar.onToggleViewed = { [weak self] path in self?.onToggleViewed?(path) }
+    }
+
+    func setPresentation(_ next: ReviewPresentation) {
+        presentation = next
+        inlineHeightConstraint?.isActive = next == .inline
+        layer?.cornerRadius = next == .inline ? 8 : 0
+        layer?.borderWidth = next == .inline ? 1 : 0
+        backButton.isHidden = next != .page
+        windowButton.isHidden = next == .window
+        updateSidebarCollapse(forWidth: bounds.width)
+        updateLayer()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateSidebarCollapse(forWidth: newSize.width)
+    }
+
+    private func updateSidebarCollapse(forWidth width: CGFloat) {
+        let compact = width > 0 && presentation.collapsesSidebar(forWidth: width)
+        sidebar.isCompact = compact
+        sidebarMinWidthConstraint?.constant = compact ? 48 : 200
+        sidebarPreferredWidthConstraint?.constant = compact ? 54 : 280
     }
 
     override func viewDidMoveToWindow() {
@@ -97,7 +149,7 @@ final class PullRequestReviewView: NSView {
     }
 
     override func updateLayer() {
-        layer?.borderColor = Theme.separator.cgColor
+        layer?.borderColor = presentation == .inline ? Theme.separator.cgColor : nil
         layer?.backgroundColor = Theme.window.cgColor
     }
     override var wantsUpdateLayer: Bool { true }
@@ -113,7 +165,7 @@ final class PullRequestReviewView: NSView {
         if state.isLoading { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
         merge.apply(state)
         replyEditor.canSend = state.canWrite
-        sidebar.update(state.sidebarRows, selected: state.page)
+        sidebar.update(state.sidebarRows, selected: state.page, viewedCount: state.viewedCount)
         showPage(state, actions: actions)
         composer.apply(state)
         // A merged or closed pull request takes no review: no composer at all, not a disabled one.

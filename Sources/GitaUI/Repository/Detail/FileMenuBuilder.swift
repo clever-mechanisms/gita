@@ -9,6 +9,7 @@ protocol FileMenuActions: AnyObject {
     func resolveConflict(_ file: FileChange, side: MergeSide)
     func reopenConflict(_ file: FileChange)
     func showFileHistory(_ path: String)
+    func blameFile(_ path: String, commit: String?)
     func confirmReset(_ paths: [String], to commit: String, message: String)
     func saveFile(_ path: String, commit: String)
     func showInFileTree(_ path: String)
@@ -90,6 +91,15 @@ struct FileMenuBuilder {
         return item
     }
 
+    func fileBlameItem(_ paths: [String], commit: String?) -> NSMenuItem {
+        let item = MenuAction(String(localized: "Blame")) { [weak actions] in
+            if let path = paths.first { actions?.blameFile(path, commit: commit) }
+        }
+        KeyShortcut.apply(ShortcutStore.shortcut(.blame), to: item)
+        item.isEnabled = paths.count == 1
+        return item
+    }
+
     /// A Local Changes file: stage or unstage, discard (unstaged only), resolve a conflict with one side, reopen a
     /// resolved one.
     func changeMenu(_ files: [FileChange], staged: Bool) -> NSMenu {
@@ -101,18 +111,23 @@ struct FileMenuBuilder {
         let toggle = MenuAction(staged ? String(localized: "Unstage") : String(localized: "Stage")) {
             [weak actions] in actions?.setStaged(files, !staged)
         }
+        toggle.keyEquivalent = "s"
+        toggle.keyEquivalentModifierMask = [.option, .command]
         toggle.isEnabled = editable
         menu.addItem(toggle)
         if !staged {
             let discard = MenuAction(String(localized: "Discard Changes…")) { [weak actions] in
                 actions?.confirmDiscard(files.filter { !$0.isConflict })
             }
+            discard.keyEquivalent = "\u{08}"
+            discard.keyEquivalentModifierMask = [.option, .command]
             discard.isEnabled = editable
             menu.addItem(discard)
         }
         conflictItems(files, staged: staged).forEach(menu.addItem)
         menu.addItem(.separator())
         menu.addItem(fileHistoryItem(paths))
+        menu.addItem(fileBlameItem(paths, commit: nil))
         menu.addItem(.separator())
         copyItems(paths).forEach(menu.addItem)
         return menu
@@ -147,6 +162,7 @@ struct FileMenuBuilder {
         menu.addItem(resetItem(paths, reference: reference))
         menu.addItem(.separator())
         menu.addItem(fileHistoryItem(paths))
+        menu.addItem(fileBlameItem(paths, commit: reference.isCommit ? reference.id : nil))
         // The file as the commit has it (not for a file the commit deleted).
         let kept = files.count == 1 ? files.first.flatMap { $0.indexCode == .deleted ? nil : $0 } : nil
         let save = MenuAction(String(localized: "Save As…")) { [weak actions] in
@@ -202,6 +218,7 @@ struct FileMenuBuilder {
         }
         menu.addItem(fileHistoryItem(paths))
         if isFile {
+            menu.addItem(fileBlameItem(paths, commit: commit))
             menu.addItem(
                 MenuAction(String(localized: "Save As…")) { [weak actions] in
                     actions?.saveFile(entry.path, commit: commit)

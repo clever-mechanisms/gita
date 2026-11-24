@@ -9,6 +9,7 @@ extension AppModel {
     var comparisonBase: String? { selection.base }
     var selectedTreePath: String? { selection.treePath }
     var diffIsBlob: Bool { selection.diffIsBlob }
+    var binaryBlobByteCount: Int64? { selection.binaryBlobByteCount }
     var files: [FileChange] { selection.files }
     var filesRevision: Int { selection.filesRevision }
     var diffPath: String? { selection.diffPath }
@@ -67,16 +68,19 @@ extension AppModel {
         selection.task?.cancel()
         selection.item = .treeEntry(path: entry.path)
         selection.diff = ""
+        selection.binaryBlobByteCount = nil
         selection.diffPath = nil
         selection.isDiffLoading = true
         emit(.diff)
         selection.task = Task { [weak self] in
             do {
-                let text =
+                let blob: (text: String, binaryByteCount: Int64?) =
                     entry.kind == "commit"
-                    ? "Submodule commit " + entry.objectID : try await service.file(commit: commit.id, path: entry.path)
+                    ? ("Submodule commit " + entry.objectID, nil)
+                    : try await service.fileBlob(commit: commit.id, path: entry.path)
                 guard let self, !Task.isCancelled, revision == self.selection.generation else { return }
-                self.selection.diff = text
+                self.selection.diff = blob.text
+                self.selection.binaryBlobByteCount = blob.binaryByteCount
                 self.selection.isDiffLoading = false
                 self.emit(.diff)
             } catch { self?.selectionFailed(error, revision: revision) }
@@ -152,21 +156,30 @@ extension AppModel {
         }
     }
 
+    func setDiffOptions(_ options: DiffOptions) {
+        guard options != diffOptions else { return }
+        diffOptions = options
+        if let file = selectedFile { selectFile(file) } else { emit(.diff) }
+    }
+
     func selectFile(_ file: FileChange, keepingShownDiff: Bool = false) {
         guard let service else { return }
         selection.supersede()
         let revision = selection.generation
         selection.task?.cancel()
+        if selection.diffPath != file.path { diffOptions.context = DiffOptions.standard.context }
         selection.item = .file(file)
         if !keepingShownDiff {
             selection.isDiffLoading = true
             selection.diff = ""
+            selection.binaryBlobByteCount = nil
             selection.diffPath = file.path
             emit(.diff)
         }
         let request = DiffRequest(
             path: file.path, commit: selection.commit?.id ?? selection.stash?.ref, base: selection.base,
-            staged: staged, stagedBase: staged ? amendStaging.base : nil, worktreeCode: file.worktreeCode)
+            staged: staged, stagedBase: staged ? amendStaging.base : nil, worktreeCode: file.worktreeCode,
+            options: diffOptions)
         selection.task = Task { [weak self] in
             do {
                 let text = try await request.read(service)
@@ -197,12 +210,16 @@ private struct DiffRequest: Sendable {
     var staged: Bool
     var stagedBase: String?
     var worktreeCode: FileChange.Code
+    var options: DiffOptions
 
     func read(_ service: GitService) async throws -> String {
-        if let base, let commit { return try await service.compareDiff(base: base, head: commit, path: path) }
+        if let base, let commit {
+            return try await service.compareDiff(base: base, head: commit, path: path, options: options)
+        }
         let tracking: GitService.TrackingGuess =
             commit != nil || staged ? .unknown : worktreeCode == .untracked ? .untracked : .tracked
         return try await service.diff(
-            path: path, staged: staged, commit: commit, stagedBase: staged ? stagedBase : nil, tracking: tracking)
+            path: path, staged: staged, commit: commit, stagedBase: staged ? stagedBase : nil, tracking: tracking,
+            options: options)
     }
 }

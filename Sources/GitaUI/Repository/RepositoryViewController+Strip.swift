@@ -4,16 +4,17 @@ import GitaCore
 /// The worktree strip over the history, the provider pages, and the Worktrees & Agents pane.
 extension RepositoryViewController {
     func wireStrip() {
+        stripHeight.isActive = false
+        strip.heightConstraint.isActive = true
         strip.onAgent = { [weak self] session in
             if let session { WindowAgents.shared.reveal(session) } else { self?.showAgentsPane() }
         }
-        strip.onBranch = { [weak self] _ in
-            guard self?.model.snapshot != nil else { return }
-            NSApp.sendAction(#selector(RepositoryCommandResponder.switchBranch), to: nil, from: nil)
-        }
         strip.onCreatePullRequest = { [weak self] in self?.createPullRequest() }
         strip.onChecks = { [weak self] in self?.showHeadChecks() }
-        strip.onPage = { [weak self] section in self?.model.section = section }
+        strip.onFetch = { [weak self] in
+            guard self?.model.snapshot != nil else { return }
+            NSApp.sendAction(#selector(RepositoryCommandResponder.fetchNow), to: nil, from: nil)
+        }
     }
 
     /// The strip's checks: the head commit's Commit tab in All Commits.
@@ -45,8 +46,9 @@ extension RepositoryViewController {
         guard let snapshot = model.snapshot else { return }
         let presenter = WorktreeStripPresenter(
             snapshot: snapshot, sessions: WindowAgents.shared.sessions(checkout: snapshot.root), signals: signalQuery,
-            checks: checks(for: snapshot.head), reports: model.reports, vercel: model.vercelContext,
-            productionBehind: model.productionBehind, productionBranch: model.productionBranch)
+            checks: checks(for: snapshot.head), vercel: model.vercelContext,
+            productionBehind: model.productionBehind, productionBranch: model.productionBranch,
+            remoteDelta: model.remoteDelta, remoteCheckStatusSummary: model.remoteCheckStatusSummary)
         var input = presenter.input
         input.shown = WorktreeStripView.Cell.shown()
         strip.update(input)
@@ -85,6 +87,7 @@ extension RepositoryViewController {
                 section: model.section, signals: model.allSignals, reports: model.reports,
                 accounts: model.githubAccountPicker),
             vercel: model.vercelContext)
+        syncPullRequestWorkspaceMode()
     }
 
     /// Notification / menu-panel routing: show the item expanded in place on its page.

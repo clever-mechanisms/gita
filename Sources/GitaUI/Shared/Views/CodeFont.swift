@@ -49,6 +49,22 @@ enum CodeFont: String, CaseIterable {
             ?? .monospacedSystemFont(ofSize: size, weight: weight)
     }
 
+    static let defaultDiffSize: CGFloat = 11
+    static let diffSizeRange: ClosedRange<CGFloat> = 9...24
+    static let defaultTabWidth = DiffPreference.defaultTabWidth
+
+    /// Configured code font size for diffs (defaults to 11 pt when unset).
+    static func diffSize(_ defaults: UserDefaults = Preference.store) -> CGFloat {
+        let stored = defaults.double(forKey: "codeFontSize")
+        guard stored > 0 else { return defaultDiffSize }
+        return min(diffSizeRange.upperBound, max(diffSizeRange.lowerBound, CGFloat(stored)))
+    }
+
+    /// Configured tab width for diffs (`2`, `4`, or `8` spaces; defaults to `4`).
+    static func tabWidth(_ defaults: UserDefaults = Preference.store) -> Int {
+        DiffPreference.tabWidth(defaults)
+    }
+
     private func register() -> Bool { folder.map(BundledFonts.register) ?? true }
 }
 

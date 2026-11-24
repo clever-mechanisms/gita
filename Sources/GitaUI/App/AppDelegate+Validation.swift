@@ -50,6 +50,9 @@ extension AppDelegate {
         if menuItem.action == #selector(toggleTerminal) {
             menuItem.state = tabsController?.isTerminalPanelShown == true ? .on : .off
         }
+        if menuItem.action == #selector(blameSelectedFile) {
+            return !isLanguageRestarting && setupGuide == nil && repositoryController?.canBlameSelectedFile == true
+        }
         guard let command = Self.command(for: menuItem.action) else {
             return !isLanguageRestarting && setupGuide == nil
         }
