@@ -13,7 +13,7 @@ class CatalogError(ValueError):
 
 
 LOCALES = ("en", "cs", "de", "es", "fr", "it", "hu", "nl", "pl", "pt-BR",
-           "sv", "tr", "ru", "uk", "ja", "ko", "zh-Hans", "zh-Hant")
+           "sv", "th", "tr", "ru", "uk", "ja", "ko", "zh-Hans", "zh-Hant")
 CATEGORIES = {"zero", "one", "two", "few", "many", "other"}
 # CLDR cardinal categories, including fractional/million categories. Extra valid
 # categories are retained. https://www.unicode.org/cldr/charts/49/supplemental/language_plural_rules.html
@@ -22,7 +22,7 @@ for _locale in ("cs", "pl", "ru", "uk"):
     REQUIRED[_locale] = {"one", "few", "many", "other"}
 for _locale in ("es", "fr", "it", "pt-BR"):
     REQUIRED[_locale] = {"one", "many", "other"}
-for _locale in ("ja", "ko", "zh-Hans", "zh-Hant"):
+for _locale in ("ja", "ko", "th", "zh-Hans", "zh-Hant"):
     REQUIRED[_locale] = {"other"}
 
 STRING_UNIT = "stringUnit"

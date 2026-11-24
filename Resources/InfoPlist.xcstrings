@@ -112,6 +112,12 @@
             "state": "translated",
             "value": "Gitā"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gitā"
+          }
         }
       }
     },
@@ -226,6 +232,12 @@
             "state": "translated",
             "value": "Gitā"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gitā"
+          }
         }
       }
     },
@@ -336,6 +348,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "© 2026 Clever Mechanisms"
+          }
+        },
+        "th": {
           "stringUnit": {
             "state": "translated",
             "value": "© 2026 Clever Mechanisms"

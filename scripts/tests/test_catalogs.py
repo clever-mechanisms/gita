@@ -91,6 +91,15 @@ class ValidateTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "unknown catalog keys"):
             catalogs.validate_catalog(catalog({"k": {}}), catalogs.LOCALIZABLE, {"de": {"other": {}}})
 
+    def test_thai_plural_forms_need_only_other(self):
+        def spec(**forms):
+            return {COMMITS: {"format": "%#@count@", "variables": {"count": {"type": "lld", "forms": forms}}}}
+
+        plurals = {"en": spec(one="%lld commit", other=COMMITS), "th": spec(other="%lld commit")}
+        rendered, missing = catalogs.validate_catalog(catalog({COMMITS: {}}), catalogs.LOCALIZABLE, plurals)
+        self.assertEqual(missing["th"], [])
+        self.assertEqual(rendered["th"]["plurals"][COMMITS]["count"]["other"], "%1$lld commit")
+
 
 class MergeTests(unittest.TestCase):
     def stringsdata(self, directory, fixture, entries):
