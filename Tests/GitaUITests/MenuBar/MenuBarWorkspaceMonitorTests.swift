@@ -37,7 +37,7 @@ import Testing
                     return MenuBarFixtures.gitStatus(branch: "main", changed: 1)
                 },
                 now: { [self] in clock },
-                watch: { [self] paths, ignored, changed in
+                watch: { [self] paths, ignored, _, changed in
                     let watch = Watch(paths, ignored, changed)
                     watches.append(watch)
                     return watch

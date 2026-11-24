@@ -272,7 +272,8 @@ public struct AgentSessionBook: Sendable {
         }
     }
 
-    public var repositoryRoots: Set<URL> { Set(entries.values.compactMap { $0.checkout?.repositoryRoot }) }
+    /// The checkouts the sessions work in.
+    public var checkoutRoots: Set<URL> { Set(entries.values.compactMap { $0.checkout?.checkoutRoot }) }
 
     /// Sessions most urgent first, then most recent `stateSince`. `titles` (checkout path → task title, e.g. from Orca)
     /// apply only where exactly one session works in that checkout.

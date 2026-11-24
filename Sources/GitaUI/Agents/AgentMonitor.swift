@@ -8,7 +8,7 @@ import GitaCore
 /// * Working/idle is inferred from CPU (process + recent children) with hysteresis; a finished turn of at least 10 s
 ///   becomes `done` + `unseen` until `markSeen`.
 /// * With Orca on and running, Orca reports the state of the agents in its terminals (any tool it knows), read every
-///   3 s while agent UI is visible, every 30 s otherwise; no hooks of Gitā's are needed for those.
+///   5 s while agent UI is visible, every 30 s otherwise; no hooks of Gitā's are needed for those.
 /// * Hooks (`installHooks`) report exact states instantly over a socket; once a session reports through hooks, CPU only
 ///   resolves the two cases hooks miss (an approved permission prompt, an interrupted turn).
 /// * No transcript or prompt content is ever read.
@@ -35,6 +35,9 @@ final class AgentMonitor {
     private var preferenceObserver: NSObjectProtocol?
     private var normalizedRoots: [String: String] = [:]
     private static let normalizedLimit = 512
+    /// Each Orca read starts Orca's CLI (an Electron helper, ~0.15 s of CPU), so even while visible it runs at most
+    /// every 5 s; hooks still report their sessions instantly.
+    private static let orcaVisibleInterval: TimeInterval = 5
 
     init(environment: AgentMonitorEnvironment = AgentMonitorEnvironment()) { self.environment = environment }
     isolated deinit {
@@ -227,17 +230,13 @@ final class AgentMonitor {
             environment.orcaRunning()
         else { return }
         let now = environment.now()
-        if let lastRead, now.timeIntervalSince(lastRead) < (visible ? 3 : 30) - 0.5 { return }
-        let roots = Array(book.repositoryRoots.prefix(8))
-        guard !roots.isEmpty else { return }
+        if let lastRead, now.timeIntervalSince(lastRead) < (visible ? Self.orcaVisibleInterval : 30) - 0.5 { return }
+        let checkouts = book.checkoutRoots.sorted { $0.path < $1.path }
+        guard !checkouts.isEmpty else { return }
         let id = UUID()
         let environment = environment
         let task = Task { [weak self] in
-            var sessions: [AgentMonitorEnvironment.OrcaSession] = []
-            await withTaskGroup(of: [AgentMonitorEnvironment.OrcaSession].self) { group in
-                for root in roots { group.addTask { await environment.orcaSessions(root) } }
-                for await found in group { sessions += found }
-            }
+            let sessions = await environment.orcaSessions(checkouts)
             guard let self, !Task.isCancelled, self.orca.isReading(id) else { return }
             self.orca = .idle(lastRead: now)
             self.applyOrca(sessions)

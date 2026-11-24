@@ -34,10 +34,12 @@ final class WorkspaceMonitor {
     private let now: () -> Date
     private let watch: Watch
     private let schedule: Schedule
-    /// Starts watching Git folders (`paths`, minus `ignored`) and returns the watcher to keep alive.
+    /// Starts watching Git folders (`paths`, minus `ignored` and what `events` rules out) and returns the watcher to
+    /// keep alive.
     typealias Watch =
         @MainActor (
-            _ paths: [String], _ ignored: [String], _ changed: @escaping @MainActor @Sendable () -> Void
+            _ paths: [String], _ ignored: [String], _ events: GitDirectoryEvents,
+            _ changed: @escaping @MainActor @Sendable () -> Void
         ) -> AnyObject
     /// Runs `item` on the main queue after `delay` seconds.
     typealias Schedule = @MainActor (_ delay: TimeInterval, _ item: DispatchWorkItem) -> Void
@@ -53,7 +55,7 @@ final class WorkspaceMonitor {
             try await WorkspaceStatusReader.read(root: $0)
         },
         now: @escaping () -> Date = Date.init,
-        watch: @escaping Watch = { RepositoryWatcher(paths: $0, ignoredPaths: $1, action: $2) },
+        watch: @escaping Watch = { RepositoryWatcher(paths: $0, ignoredPaths: $1, gitEvents: $2, action: $3) },
         schedule: @escaping Schedule = { DispatchQueue.main.asyncAfter(deadline: .now() + $0, execute: $1) }
     ) {
         self.read = read
@@ -193,7 +195,9 @@ final class WorkspaceMonitor {
             let ignored = folders.flatMap { folder in
                 Self.ignoredFolders.map { URL(fileURLWithPath: folder).appendingPathComponent($0).path }
             }
-            watchers[id] = watch(folders, ignored) { [weak self] in self?.scheduleRefresh(id) }
+            let events = GitDirectoryEvents(
+                gitDirectory: location.gitDirectory, commonDirectory: location.commonDirectory)
+            watchers[id] = watch(folders, ignored, events) { [weak self] in self?.scheduleRefresh(id) }
         }
     }
 

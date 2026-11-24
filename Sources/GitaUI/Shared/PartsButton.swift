@@ -3,7 +3,7 @@ import AppKit
 /// A flat button drawn from parts (symbols, text, agent marks, count badges), so toolbar buttons, chips, links and
 /// segmented tabs share one metric system. The whole frame is the hit target.
 final class PartsButton: NSControl {
-    enum Part {
+    enum Part: Equatable {
         case symbol(String, color: NSColor, size: CGFloat)
         case text(String, font: NSFont, color: NSColor)
         /// The agent's mark, turning while it works (`AgentMarkView`).
@@ -15,14 +15,16 @@ final class PartsButton: NSControl {
     }
     enum Background: Equatable { case none, hover, quiet, accent, tinted, selected }
 
+    /// Toolbar validation and refreshes assign the same parts and state again and again: only a change redraws.
     var parts: [Part] = [] {
         didSet {
+            guard parts != oldValue else { return }
             rebuildMarks()
             invalidateIntrinsicContentSize()
             needsDisplay = true
         }
     }
-    var background: Background = .hover { didSet { needsDisplay = true } }
+    var background: Background = .hover { didSet { if background != oldValue { needsDisplay = true } } }
     var tintFill: NSColor = Theme.control
     var tintBorder: NSColor = Theme.separator
     var spacing: CGFloat = 6
@@ -101,6 +103,7 @@ final class PartsButton: NSControl {
     override var isFlipped: Bool { true }
     override var isEnabled: Bool {
         didSet {
+            guard isEnabled != oldValue else { return }
             needsDisplay = true
             marks.forEach { $0.alphaValue = contentAlpha }
         }

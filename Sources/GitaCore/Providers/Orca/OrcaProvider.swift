@@ -7,23 +7,40 @@ struct OrcaProvider: Sendable {
 
     func report(root: URL) async -> ProviderReport {
         async let worktrees = localWorktrees(root: root)
-        async let process = execute(["worktree", "ps", "--json", "--agent-wait", "--limit", "100"], in: root)
+        async let process = workspaces(in: root)
         let (knownWorktrees, result) = await (worktrees, process)
+        return Self.report(result, worktrees: knownWorktrees)
+    }
+
+    /// The sessions Orca reports in these checkouts, from one `orca worktree ps` and no Git call. Orca lists every
+    /// local workspace whatever folder it runs in, and the agent monitor already knows each session's checkout, so
+    /// asking once per repository (and listing its worktrees with Git) would only repeat the same answer: each Orca
+    /// call starts an Electron helper costing ~0.15 s of CPU.
+    func report(checkouts: [URL]) async -> ProviderReport {
+        guard let first = checkouts.first else { return Self.report(.success(Data()), worktrees: []) }
+        let worktrees = checkouts.map { GitWorktree(path: $0.path, branch: nil, head: "") }
+        return Self.report(await workspaces(in: first), worktrees: worktrees)
+    }
+
+    private func workspaces(in directory: URL) async -> Result<Data, ProviderFailure> {
+        await execute(["worktree", "ps", "--json", "--agent-wait", "--limit", "100"], in: directory)
+    }
+
+    private static func report(_ result: Result<Data, ProviderFailure>, worktrees: [GitWorktree]) -> ProviderReport {
         if Task.isCancelled { return ProviderReport(.orca, failure: .cancelled) }
         switch result {
         case .failure(let failure): return ProviderReport(.orca, failure: failure)
         case .success(let data):
-            guard !knownWorktrees.isEmpty else {
+            guard !worktrees.isEmpty else {
                 return ProviderReport(
                     .orca, status: .unavailable,
                     diagnostic: String(localized: "Could not resolve this repository’s worktrees."))
             }
-            guard let page = try? OrcaAgentParser.page(data, worktrees: knownWorktrees) else {
+            guard let page = try? OrcaAgentParser.page(data, worktrees: worktrees) else {
                 return ProviderReport(.orca, failure: .unsupportedResponse(.orca))
             }
             return ProviderReport(
-                .orca, items: page.items, status: page.truncated ? .partial : .connected,
-                diagnostic: Self.diagnostic(page))
+                .orca, items: page.items, status: page.truncated ? .partial : .connected, diagnostic: diagnostic(page))
         }
     }
 

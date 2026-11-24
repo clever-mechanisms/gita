@@ -15,17 +15,24 @@ final class RepositoryWatcher {
     final class Sink: @unchecked Sendable {
         let queue = DispatchQueue(label: "dev.clevermechanisms.Gita.watcher", qos: .utility)
         let ignoredPaths: [String]
+        let gitEvents: GitDirectoryEvents?
         let filter: WorktreeEventFilter?
         let action: @MainActor @Sendable () -> Void
         private var classifying = false, deferred: [String] = [] // queue-confined
-        init(ignoredPaths: [String], filter: WorktreeEventFilter?, action: @escaping @MainActor @Sendable () -> Void) {
+        init(
+            ignoredPaths: [String], gitEvents: GitDirectoryEvents? = nil, filter: WorktreeEventFilter?,
+            action: @escaping @MainActor @Sendable () -> Void
+        ) {
             self.ignoredPaths = ignoredPaths
+            self.gitEvents = gitEvents
             self.filter = filter
             self.action = action
         }
-        /// Paths outside the ignored folders (the object database and the like).
+        /// Paths outside the ignored folders (the object database and the like) that can change what is shown.
         func relevant(_ paths: [String]) -> [String] {
-            paths.filter { path in !ignoredPaths.contains { path == $0 || path.hasPrefix($0 + "/") } }
+            paths.filter { path in
+                !ignoredPaths.contains { path == $0 || path.hasPrefix($0 + "/") } && gitEvents?.matters(path) != false
+            }
         }
         /// Called on `queue`.
         func receive(_ paths: [String]) {
@@ -61,10 +68,10 @@ final class RepositoryWatcher {
     }
 
     init(
-        paths: [String], ignoredPaths: [String] = [], filter: WorktreeEventFilter? = nil,
-        action: @escaping @MainActor @Sendable () -> Void
+        paths: [String], ignoredPaths: [String] = [], gitEvents: GitDirectoryEvents? = nil,
+        filter: WorktreeEventFilter? = nil, action: @escaping @MainActor @Sendable () -> Void
     ) {
-        sink = Sink(ignoredPaths: ignoredPaths, filter: filter, action: action)
+        sink = Sink(ignoredPaths: ignoredPaths, gitEvents: gitEvents, filter: filter, action: action)
         var context = FSEventStreamContext(
             version: 0, info: Unmanaged.passUnretained(sink).toOpaque(), retain: retainWatcherSink,
             release: releaseWatcherSink, copyDescription: nil)

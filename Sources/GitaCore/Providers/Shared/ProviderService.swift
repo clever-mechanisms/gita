@@ -59,6 +59,11 @@ public struct ProviderService: Sendable {
         await orcaProvider.report(root: root)
     }
 
+    /// The sessions Orca reports in these checkouts, from a single Orca read.
+    public func orca(checkouts: [URL]) async -> ProviderReport {
+        await orcaProvider.report(checkouts: checkouts)
+    }
+
     /// Brings the Orca terminal tab an agent runs in to the front. Returns false when Orca is unavailable or no
     /// terminal in `checkout` matches; the caller still activates Orca.
     public func orcaSwitchTerminal(checkout: URL, title: String?) async -> Bool {

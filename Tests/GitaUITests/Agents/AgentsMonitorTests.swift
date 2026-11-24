@@ -69,8 +69,8 @@ struct AgentsMonitorTests {
             return nil
         }
         environment.allowedRoots = { [repository.path] }
-        environment.orcaSessions = { root in
-            world.orcaAsked.yield(root)
+        environment.orcaSessions = { checkouts in
+            for checkout in checkouts { world.orcaAsked.yield(checkout) }
             if let orcaGate { _ = await orcaGate.next() }
             guard orcaTitle != nil || orcaState != nil else { return [] }
             return [

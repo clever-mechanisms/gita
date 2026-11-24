@@ -233,6 +233,27 @@ final class ProviderTests: XCTestCase {
     }
 
     @MainActor
+    func testOrcaReadsEveryKnownCheckoutWithOneOrcaCallAndNoGit() async {
+        let runner = RecordingRunner { _ in
+            CommandResult(
+                stdout: Data(
+                    """
+                    {"ok":true,"result":{"worktrees":[\
+                    {"path":"/tmp/one","hostId":"local","agents":[{"paneKey":"a","agentType":"codex"}]},\
+                    {"path":"/tmp/two","hostId":"local","agents":[{"paneKey":"b","agentType":"claude"}]},\
+                    {"path":"/tmp/three","hostId":"local","agents":[{"paneKey":"c","agentType":"claude"}]}]}}
+                    """.utf8), stderr: Data(), exitCode: 0)
+        }
+        let checkouts = [URL(fileURLWithPath: "/tmp/one"), URL(fileURLWithPath: "/tmp/two")]
+        let report = await ProviderService(runner: runner).orca(checkouts: checkouts)
+        XCTAssertEqual(Set(report.items.compactMap(\.worktreePath)), ["/tmp/one", "/tmp/two"])
+        let calls = await runner.calls
+        XCTAssertEqual(calls.map(\.executable), ["orca"])
+        let none = await ProviderService(runner: runner).orca(checkouts: [])
+        XCTAssertEqual(none.status, .unavailable)
+    }
+
+    @MainActor
     func testVercelUsesExistingWorktreeLinkWithoutLinkOrDeployCommands() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let main = root.appendingPathComponent("main")

@@ -18,7 +18,8 @@ struct AgentMonitorEnvironment {
     var listen: (@escaping @Sendable (AgentHookEvent) -> Void) -> AgentEventListener?
     /// Repositories the user opened, the only places privacy-protected folders are resolved in.
     var allowedRoots: () -> [String] = { WorkspaceMonitor.shared.statuses.map(\.root.path) }
-    var orcaSessions: @Sendable (URL) async -> [OrcaSession] = Self.readOrcaSessions
+    /// The sessions in these checkouts, read with one Orca call.
+    var orcaSessions: @Sendable ([URL]) async -> [OrcaSession] = Self.readOrcaSessions
     /// Orca's CLI is asked only while the app runs (it never starts the Orca runtime).
     var orcaRunning: () -> Bool = {
         !NSRunningApplication.runningApplications(withBundleIdentifier: BrandMarks.orca).isEmpty
@@ -49,10 +50,9 @@ struct AgentMonitorEnvironment {
         return try? AgentEventListener(path: AgentEventSocket.path(development: development), handler: handler)
     }
 
-    /// Each Orca session's checkout, task title, tool and state in one repository.
-    private static let readOrcaSessions: @Sendable (URL) async -> [OrcaSession] = { root in
-        let report = await ProviderService().orca(root: root)
-        return report.items.compactMap { item in
+    /// Each Orca session's checkout, task title, tool and state in these checkouts.
+    private static let readOrcaSessions: @Sendable ([URL]) async -> [OrcaSession] = { checkouts in
+        await ProviderService().orca(checkouts: checkouts).items.compactMap { item in
             guard let agent = item.agent, agent.role == .session, let path = item.worktreePath else { return nil }
             return OrcaSession(
                 path: path, title: agent.taskTitle ?? agent.sessionName, tool: item.reportedAgentTool,

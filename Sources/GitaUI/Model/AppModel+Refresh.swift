@@ -204,6 +204,8 @@ extension AppModel {
             RepositoryWatcher(
                 paths: Array(Set([next.root.path, next.gitDirectory.path, next.commonGitDirectory.path])),
                 ignoredPaths: [next.commonGitDirectory.appendingPathComponent("objects").path],
+                gitEvents: GitDirectoryEvents(
+                    gitDirectory: next.gitDirectory, commonDirectory: next.commonGitDirectory),
                 filter: WorktreeEventFilter(root: next.root)
             ) { [weak self] in self?.repositoryChanged() })
         log(String(localized: "Opened repository"), next.root.lastPathComponent)
