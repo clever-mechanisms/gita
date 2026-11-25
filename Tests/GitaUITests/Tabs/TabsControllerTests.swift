@@ -286,4 +286,41 @@ struct TabsControllerTests {
         #expect(controller.count == 3)
         #expect(controller.selectedRepository == gamma)
     }
+
+    @Test func terminalPanelKeepsConfiguredSharesInACompactWindow() throws {
+        let harness = try TabsHarness()
+        let controller = harness.controller
+        // Matches a 1024×768 runner display where the terminal split is ~627 pt tall.
+        harness.window.setContentSize(NSSize(width: 1_024, height: 661))
+        controller.view.layoutSubtreeIfNeeded()
+
+        let panel = controller.terminalPanel
+        panel.defaults = harness.defaults
+        var harnesses: [SessionHarness] = []
+        panel.makeTerminal = { folder, launch in
+            let sessionHarness = SessionHarness(launch: launch, folder: folder)
+            harnesses.append(sessionHarness)
+            return TerminalView(session: sessionHarness.session, page: nil)
+        }
+        defer { panel.closeAll() }
+
+        let alpha = try harness.url("alpha")
+        panel.open(alpha)
+        let split = try #require(panel.superview as? NSSplitView)
+        #expect(abs(panel.frame.height / split.bounds.height - 0.3) < 0.01, "30% even over Welcome Launchpad")
+
+        try harness.openLoaded(["alpha"])
+        #expect(controller.selectedController.welcome.superview == nil)
+        #expect(abs(panel.frame.height / split.bounds.height - 0.3) < 0.01, "30% over a repository")
+
+        split.setPosition(split.bounds.height * 0.8 - split.dividerThickness, ofDividerAt: 0)
+        panel.splitViewDidResizeSubviews(
+            Notification(
+                name: NSSplitView.didResizeSubviewsNotification, object: split,
+                userInfo: ["NSSplitViewDividerIndex": 0]))
+        controller.toggleTerminalPanel()
+        controller.toggleTerminalPanel()
+        #expect(abs(panel.frame.height / split.bounds.height - 0.2) < 0.01, "remembers 20% after toggle")
+        #expect(!harnesses.isEmpty)
+    }
 }

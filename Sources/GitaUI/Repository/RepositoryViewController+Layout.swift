@@ -12,7 +12,6 @@ extension RepositoryViewController {
         Style.fill(prWorkspace, in: pagePane)
         Style.fill(providerPage, in: prWorkspace.listHost)
         providerPage.setZoom(percent: model.historyZoomPercent)
-        Style.fill(welcome, in: historyPane)
         buildWelcome()
     }
 

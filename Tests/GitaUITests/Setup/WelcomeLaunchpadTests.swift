@@ -225,4 +225,39 @@ struct WelcomeLaunchpadTests {
         view.removeFromSuperview()
         #expect(view.entries.first?.status == .loading)
     }
+
+    @Test func welcomeViewFitsCompactHeightAndDetachesWhenRepositoryLoads() throws {
+        UITestSupport.bootstrap()
+        let view = WelcomeView(frame: NSRect(x: 0, y: 0, width: 1_000, height: 360))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_000, height: 360),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        view.frame = NSRect(x: 0, y: 0, width: 1_000, height: 360)
+        view.layoutSubtreeIfNeeded()
+        #expect(view.fittingSize.height < 260)
+        #expect(view.subviews.first?.frame.height == 300)
+
+        let sandbox = try SetupSandbox()
+        let model = AppModel(defaults: sandbox.defaults)
+        let controller = RepositoryViewController(model: model)
+        defer { controller.detach() }
+        _ = controller.view
+        #expect(!controller.welcome.isHidden)
+        #expect(controller.welcome.superview === controller.historyPane)
+
+        let root = sandbox.home
+        model.snapshot = RepositorySnapshot(
+            root: root, branch: "main", head: nil, changes: [], commits: [], references: [], worktrees: [],
+            stashes: [], remoteURL: nil, gitDirectory: root.appendingPathComponent(".git"))
+        model.emit(.repository)
+        #expect(controller.welcome.isHidden)
+        #expect(controller.welcome.superview == nil)
+
+        model.snapshot = nil
+        model.emit(.repository)
+        #expect(!controller.welcome.isHidden)
+        #expect(controller.welcome.superview === controller.historyPane)
+    }
 }

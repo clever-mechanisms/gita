@@ -5,13 +5,7 @@ import GitaCore
 extension WelcomeView {
     func buildLayout() {
         let brand = buildBrandHeader()
-        let startHeader = Deck.sectionTitle(String(localized: "Start"))
-        startStack.alignment = .leading
-        let leftColumn = Deck.vstack([startHeader, startStack, dropZone, Deck.spacer(), footerStack], spacing: 16)
-        leftColumn.alignment = .leading
-        startStack.widthAnchor.constraint(equalTo: leftColumn.widthAnchor).isActive = true
-        dropZone.widthAnchor.constraint(equalTo: leftColumn.widthAnchor).isActive = true
-
+        let leftColumn = buildLeftColumn()
         let recentCard = buildRecentCard()
         recentCard.setAccessibilityIdentifier("welcome.recentCard")
         let columns = NSView()
@@ -54,6 +48,34 @@ extension WelcomeView {
         ])
     }
 
+    private func buildLeftColumn() -> NSView {
+        let startHeader = Deck.sectionTitle(String(localized: "Start"))
+        startStack.alignment = .leading
+        let spacer = Deck.spacer()
+        spacer.setContentHuggingPriority(.init(1), for: .vertical)
+        spacer.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        let stack = Deck.vstack([startHeader, startStack, dropZone, spacer, footerStack], spacing: 16)
+        stack.alignment = .leading
+        startStack.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        dropZone.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Scrollable so compact windows and an open terminal panel are never blocked by the column's natural height.
+        let scroll = Self.makeScrollView()
+        let document = Deck.document(in: scroll)
+        Deck.pin(stack, in: document)
+        document.heightAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.heightAnchor).isActive = true
+        return scroll
+    }
+
+    private static func makeScrollView() -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        return scroll
+    }
+
     private func buildBrandHeader() -> NSView {
         let icon = NSImageView(image: NSApp.applicationIconImage ?? NSImage())
         icon.imageScaling = .scaleProportionallyUpOrDown
@@ -75,13 +97,8 @@ extension WelcomeView {
         card.cornerRadius = 12
         card.borderColor = Theme.separator
         let header = buildRecentHeader()
-        let scroll = NSScrollView()
-        scroll.hasVerticalScroller = true
-        scroll.autohidesScrollers = true
-        scroll.drawsBackground = false
-        scroll.borderType = .noBorder
-        let document = FlippedView()
-        document.translatesAutoresizingMaskIntoConstraints = false
+        let scroll = Self.makeScrollView()
+        let document = Deck.document(in: scroll)
         recentEmpty.alignment = .center
         let content = Deck.vstack([recentStack, recentEmpty], spacing: 8)
         content.alignment = .leading
@@ -89,8 +106,6 @@ extension WelcomeView {
         for child in content.arrangedSubviews {
             child.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
         }
-        scroll.documentView = document
-        document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor).isActive = true
 
         let separator = Deck.separator()
         for child in [header, separator, scroll] {

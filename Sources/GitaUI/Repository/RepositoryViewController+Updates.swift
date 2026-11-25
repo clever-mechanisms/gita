@@ -142,13 +142,23 @@ extension RepositoryViewController {
         syncMergeEditor()
         updateCommitActions()
         updateDetailBar()
-        welcome.isHidden = model.snapshot != nil || model.isLoading
+        syncWelcomeVisibility()
         let showsStrip = model.snapshot != nil && SectionPanes(model.section).showsHistoryPane
         strip.isHidden = !showsStrip
         stripHeight.constant = showsStrip ? RepositoryLayout.stripHeight : 0
         if change == .selection || change == .diff {
             updateWorkingChangesBanner()
             syncHistoryDetailOverlay()
+        }
+    }
+
+    private func syncWelcomeVisibility() {
+        let hidden = model.snapshot != nil || model.isLoading
+        welcome.isHidden = hidden
+        if hidden {
+            if welcome.superview != nil { welcome.removeFromSuperview() }
+        } else if welcome.superview !== historyPane {
+            Style.fill(welcome, in: historyPane)
         }
     }
 

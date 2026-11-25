@@ -41,7 +41,9 @@ strings_check() { scripts/strings.sh check --source; }
 script_tests() { python3 -m unittest discover -s scripts/tests 2>&1 | tail -3; [[ ${PIPESTATUS[0]} -eq 0 ]]; }
 
 tests_with_coverage() {
-  swift test --no-parallel --enable-code-coverage -Xswiftc -warnings-as-errors 2>&1 | tee "$OUT/test.log" | grep -E '✘|error:|Test run with' || true
+  rm -f "$OUT/lcov.info"
+  swift test --no-parallel --enable-code-coverage -Xswiftc -warnings-as-errors 2>&1 \
+    | tee "$OUT/test.log" | { grep -E '✘|error:|Test run with' || true; }
   [[ ${PIPESTATUS[0]} -eq 0 ]] || return 1
   local bin profile objects=()
   bin=$(swift build --show-bin-path)
@@ -58,7 +60,7 @@ build_only() { swift build --build-tests -Xswiftc -warnings-as-errors 2>&1 | gre
 metrics() {
   swift build -c release --package-path Tools/QualityMetrics --product quality-metrics >/dev/null || return 1
   local tool=Tools/QualityMetrics/.build/release/quality-metrics coverage=()
-  [[ $RUN_TESTS == 1 ]] && coverage=(--lcov "$OUT/lcov.info" --sonar-coverage "$OUT/sonar-coverage.xml")
+  [[ $RUN_TESTS == 1 && -f "$OUT/lcov.info" ]] && coverage=(--lcov "$OUT/lcov.info" --sonar-coverage "$OUT/sonar-coverage.xml")
   "$tool" --root "$PWD" --coverage-exclude /main.swift ${coverage[@]+"${coverage[@]}"} --sonar-issues "$OUT/sonar-issues.json" \
     Sources
 }
@@ -67,7 +69,8 @@ metrics() {
 tool_metrics() {
   local package=Tools/QualityMetrics tool=Tools/QualityMetrics/.build/release/quality-metrics coverage=()
   if [[ $RUN_TESTS == 1 ]]; then
-    swift test --package-path "$package" --enable-code-coverage 2>&1 | grep -E '✘|error:|Test run with' || true
+    rm -f "$OUT/tool-lcov.info"
+    swift test --package-path "$package" --enable-code-coverage 2>&1 | { grep -E '✘|error:|Test run with' || true; }
     [[ ${PIPESTATUS[0]} -eq 0 ]] || return 1
     local bin profile objects=()
     bin=$(swift build --package-path "$package" --show-bin-path)
