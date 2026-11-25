@@ -19,13 +19,17 @@ struct ChildEnvironmentPolicy: Sendable, Equatable {
     let isGit: Bool
     /// Inherited variables the program must not see, such as overrides of what Gita verified.
     let removed: Set<String>
+    /// Explicit variables set for the child after `removed` is stripped (e.g. `GH_CONFIG_DIR`).
+    var added: [String: String] = [:]
     /// `ChildEnvironment.orcaPath` is searched, after the system folders.
     var searchesOrca = false
     /// Prevents GUI credential helpers and interactive SSH prompts during background remote operations.
     var isBackground = false
 
-    /// A provider CLI that must not see `variables`.
-    static func tool(removing variables: Set<String>) -> Self { Self(isGit: false, removed: variables) }
+    /// A provider CLI that must not see `variables` and optionally receives explicit `added` overrides.
+    static func tool(removing variables: Set<String>, adding: [String: String] = [:]) -> Self {
+        Self(isGit: false, removed: variables, added: adding)
+    }
 }
 
 /// The environment a child starts with: the app's own, minus anything that could redirect Git, plus
@@ -68,6 +72,7 @@ enum ChildEnvironment {
         var environment = inherited.filter { !isRedirect($0.key) && !policy.removed.contains($0.key) }
         environment.merge(shared) { _, new in new }
         if !policy.isGit { environment.merge(toolOnly) { _, new in new } }
+        if !policy.added.isEmpty { environment.merge(policy.added) { _, new in new } }
         if policy.isBackground { environment.merge(backgroundGit) { _, new in new } }
         environment["PATH"] = searchPaths(policy: policy, inherited: inherited).joined(separator: ":")
         if let editors {

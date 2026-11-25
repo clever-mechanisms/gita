@@ -30,6 +30,9 @@ struct ProviderCommandExecutor: Sendable {
         _ command: ProviderCommand, in root: URL, limits: Limits = .read
     ) async -> Result<CommandResult, ProviderFailure> {
         let tool = command.tool
+        if command.missingProfile, let account = command.account {
+            return .failure(.signedOut(account))
+        }
         do {
             try Task.checkCancellation()
             var request = CommandRequest(

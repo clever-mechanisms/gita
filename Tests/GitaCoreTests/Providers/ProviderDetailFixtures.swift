@@ -76,6 +76,7 @@ actor DetailRecordingRunner: CommandRunning {
         var directory: URL?
         var timeout: TimeInterval
         var outputLimit: Int
+        var environment: ChildEnvironmentPolicy = .tool
     }
     var calls: [Call] = []
     private let response: @Sendable (Call) throws -> CommandResult
@@ -86,6 +87,14 @@ actor DetailRecordingRunner: CommandRunning {
         let call = Call(
             executable: executable, arguments: arguments, directory: directory, timeout: timeout,
             outputLimit: outputLimit)
+        calls.append(call)
+        return try response(call)
+    }
+    func run(_ request: CommandRequest) async throws -> CommandResult {
+        guard request.editors == nil else { throw CommandError.invalidArgument }
+        let call = Call(
+            executable: request.executable, arguments: request.arguments, directory: request.directory,
+            timeout: request.timeout, outputLimit: request.outputLimit, environment: request.environment)
         calls.append(call)
         return try response(call)
     }

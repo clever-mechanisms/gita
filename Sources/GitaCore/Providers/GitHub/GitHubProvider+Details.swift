@@ -39,7 +39,9 @@ extension GitHubProvider {
             "run", "view", String(runID), "--repo", "github.com/" + repository.nameWithOwner, "--attempt",
             String(attempt), "--json", GitHubQueries.runDetailFields,
         ]
-        let response = await executor.execute(.gh(arguments, as: account), in: root).flatMap { data in
+        let response = await executor.execute(
+            .gh(arguments, as: account, configDirectories: configDirectories), in: root
+        ).flatMap { data in
             Result { try GitHubWorkflowParser.run(data, repository: repository, runID: runID, attempt: attempt) }
                 .mapError { _ in ProviderFailure.unverified(.gh) }
         }
@@ -58,7 +60,9 @@ extension GitHubProvider {
         let endpoint =
             "repos/\(repository.nameWithOwner)/actions/runs/\(run.runID)/attempts/\(run.attempt)/jobs?per_page=50&page=1"
         var detail = run
-        let jobs = ProviderCommand.gh(["api", "--hostname", "github.com", "--method", "GET", endpoint], as: account)
+        let jobs = ProviderCommand.gh(
+            ["api", "--hostname", "github.com", "--method", "GET", endpoint], as: account,
+            configDirectories: configDirectories)
         switch await executor.execute(jobs, in: root) {
         case .failure(let failure) where failure.status == .cancelled:
             return ProviderDetailReport(target: target, failure: failure)

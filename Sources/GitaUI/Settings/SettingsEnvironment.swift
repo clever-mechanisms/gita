@@ -86,7 +86,7 @@ struct SettingsSystemHooks {
     var authorizeNotifications: () async -> Bool = { await NotificationService.shared.authorize() }
     var sendTestNotification: () async -> Bool = { await NotificationService.shared.sendTest() }
     var bundleIdentifier: String? = Bundle.main.bundleIdentifier
-    var addGitHubAccount: () -> Void = { GitHubAccountLogin.openTerminal() }
+    var addGitHubAccount: (GitHubConfigProfile?) -> Void = { GitHubAccountLogin.openTerminal(profile: $0) }
 }
 
 /// Open at Login through `LoginItem`.

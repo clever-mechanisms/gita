@@ -1417,6 +1417,124 @@
         }
       }
     },
+    "%@ (default)": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (výchozí)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (Standard)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (default)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (predeterminado)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (par défaut)"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (alapértelmezett)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (predefinito)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（デフォルト）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (기본값)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (standaard)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (domyślne)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (padrão)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (по умолчанию)"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (standard)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (ค่าเริ่มต้น)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (varsayılan)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (за замовчуванням)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（默认）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（預設）"
+          }
+        }
+      }
+    },
     "%@ (new)": {
       "localizations": {
         "cs": {
@@ -10027,6 +10145,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "為此版本庫選擇的帳號 %@ 無法存取它。請在 GitHub 頁面上選取其他帳號。"
+          }
+        }
+      }
+    },
+    "%@, the account chosen for this repository, is not signed in to gh (%@). Sign in with GH_CONFIG_DIR=%@ gh auth login, or choose another account on the GitHub page.": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, účet vybraný pro tento repozitář, není přihlášen v gh (%@). Přihlaste se pomocí GH_CONFIG_DIR=%@ gh auth login nebo vyberte jiný účet na stránce GitHub."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, das für dieses Repository gewählte Konto, ist nicht bei gh (%@) angemeldet. Melde dich mit GH_CONFIG_DIR=%@ gh auth login an oder wähle auf der GitHub-Seite ein anderes Konto."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, the account chosen for this repository, is not signed in to gh (%@). Sign in with GH_CONFIG_DIR=%@ gh auth login, or choose another account on the GitHub page."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, la cuenta elegida para este repositorio, no tiene sesión iniciada en gh (%@). Inicia sesión con GH_CONFIG_DIR=%@ gh auth login o elige otra cuenta en la página de GitHub."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, le compte choisi pour ce dépôt, n’est pas connecté à gh (%@). Connectez-vous avec GH_CONFIG_DIR=%@ gh auth login, ou choisissez un autre compte dans la page GitHub."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tárolóhoz választott fiók (%@) nincs bejelentkezve a gh-ba (%@). Jelentkezzen be a GH_CONFIG_DIR=%@ gh auth login paranccsal, vagy válasszon másik fiókot a GitHub oldalon."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, l’account scelto per questo repository, non ha eseguito l’accesso a gh (%@). Accedi con GH_CONFIG_DIR=%@ gh auth login o scegli un altro account nella pagina GitHub."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリポジトリ用に選択したアカウント %@ は gh（%@）にサインインしていません。GH_CONFIG_DIR=%@ gh auth login でサインインするか、GitHub ページで別のアカウントを選択してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 저장소에 선택한 계정 %@은(는) gh(%@)에 로그인되어 있지 않습니다. GH_CONFIG_DIR=%@ gh auth login으로 로그인하거나 GitHub 페이지에서 다른 계정을 선택하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, het account dat voor deze repository is gekozen, is niet aangemeld bij gh (%@). Log in met GH_CONFIG_DIR=%@ gh auth login of kies een ander account op de GitHub-pagina."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, konto wybrane dla tego repozytorium, nie jest zalogowane w gh (%@). Zaloguj się za pomocą GH_CONFIG_DIR=%@ gh auth login lub wybierz inne konto na stronie GitHub."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, a conta escolhida para este repositório, não está com sessão iniciada no gh (%@). Inicie sessão com GH_CONFIG_DIR=%@ gh auth login ou escolha outra conta na página do GitHub."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Учётная запись %@, выбранная для этого репозитория, не авторизована в gh (%@). Войдите с помощью GH_CONFIG_DIR=%@ gh auth login или выберите другую учётную запись на странице GitHub."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, kontot som valts för detta kodförråd, är inte inloggat i gh (%@). Logga in med GH_CONFIG_DIR=%@ gh auth login eller välj ett annat konto på GitHub-sidan."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ บัญชีที่เลือกไว้สำหรับ repository นี้ ยังไม่ได้ลงชื่อเข้าใช้ gh (%@) ให้ลงชื่อเข้าใช้ด้วย GH_CONFIG_DIR=%@ gh auth login หรือเลือกบัญชีอื่นในหน้า GitHub"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu depo için seçilen hesap (%@) gh'de (%@) oturum açmamış. GH_CONFIG_DIR=%@ gh auth login ile oturum açın veya GitHub sayfasında başka bir hesap seçin."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У gh не виконано вхід в обліковий запис %@, вибраний для цього репозиторію (%@). Увійдіть за допомогою GH_CONFIG_DIR=%@ gh auth login або виберіть інший обліковий запис на сторінці GitHub."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为此仓库选择的账户 %@ 未登录 gh（%@）。请使用 GH_CONFIG_DIR=%@ gh auth login 登录，或在 GitHub 页面上选择其他账户。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "為此版本庫選擇的帳號 %@ 未登入 gh（%@）。請使用 GH_CONFIG_DIR=%@ gh auth login 登入，或在 GitHub 頁面上選取其他帳號。"
           }
         }
       }
@@ -28671,6 +28907,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用已暫存變更修訂此提交並繼續重定基底"
+          }
+        }
+      }
+    },
+    "An account’s gh session has expired: sign in again with GH_CONFIG_DIR=%@ gh auth login.": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relace gh jednoho z účtů vypršela: přihlaste se znovu pomocí GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die gh-Sitzung eines Kontos ist abgelaufen: Melde dich mit GH_CONFIG_DIR=%@ gh auth login erneut an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An account’s gh session has expired: sign in again with GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión de gh de una cuenta ha caducado: vuelve a iniciar sesión con GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La session gh d’un compte a expiré : reconnectez-vous avec GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Egy fiók gh-munkamenete lejárt: jelentkezzen be újra a GH_CONFIG_DIR=%@ gh auth login paranccsal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sessione gh di un account è scaduta: accedi di nuovo con GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アカウントの gh セッションの有効期限が切れました。GH_CONFIG_DIR=%@ gh auth login で再度サインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계정의 gh 세션이 만료되었습니다. GH_CONFIG_DIR=%@ gh auth login으로 다시 로그인하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De gh-sessie van een account is verlopen: log opnieuw in met GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesja gh jednego z kont wygasła: zaloguj się ponownie za pomocą GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sessão do gh de uma conta expirou: inicie sessão novamente com GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сеанс gh одной из учётных записей истёк: войдите снова с помощью GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ett kontos gh-session har gått ut: logga in igen med GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "session gh ของบัญชีหมดอายุ: ให้ลงชื่อเข้าใช้อีกครั้งด้วย GH_CONFIG_DIR=%@ gh auth login"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir hesabın gh oturumunun süresi doldu: GH_CONFIG_DIR=%@ gh auth login ile yeniden oturum açın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сеанс gh одного з облікових записів закінчився: увійдіть знову за допомогою GH_CONFIG_DIR=%@ gh auth login."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "某个账户的 gh 会话已过期：请使用 GH_CONFIG_DIR=%@ gh auth login 重新登录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "某個帳號的 gh 工作階段已過期：請使用 GH_CONFIG_DIR=%@ gh auth login 重新登入。"
           }
         }
       }
@@ -173827,6 +174181,124 @@
         }
       }
     },
+    "Sign in again with GH_CONFIG_DIR=%@ gh auth login --hostname github.com.": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přihlaste se znovu pomocí GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melde dich erneut mit GH_CONFIG_DIR=%@ gh auth login --hostname github.com an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in again with GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a iniciar sesión con GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnectez-vous avec GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jelentkezzen be újra a GH_CONFIG_DIR=%@ gh auth login --hostname github.com paranccsal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accedi di nuovo con GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GH_CONFIG_DIR=%@ gh auth login --hostname github.com で再度サインインしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GH_CONFIG_DIR=%@ gh auth login --hostname github.com으로 다시 로그인하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log opnieuw in met GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaloguj się ponownie za pomocą GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicie sessão novamente com GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите снова с помощью GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logga in igen med GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลงชื่อเข้าใช้อีกครั้งด้วย GH_CONFIG_DIR=%@ gh auth login --hostname github.com"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GH_CONFIG_DIR=%@ gh auth login --hostname github.com ile tekrar oturum açın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увійдіть знову за допомогою GH_CONFIG_DIR=%@ gh auth login --hostname github.com."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请使用 GH_CONFIG_DIR=%@ gh auth login --hostname github.com 重新登录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請使用 GH_CONFIG_DIR=%@ gh auth login --hostname github.com 重新登入。"
+          }
+        }
+      }
+    },
     "Sign in again with gh auth login --hostname github.com.": {
       "localizations": {
         "cs": {
@@ -188691,6 +189163,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub 帳號 %@ 無法存取 %@。"
+          }
+        }
+      }
+    },
+    "The GitHub account %@ is not signed in (%@). Run GH_CONFIG_DIR=%@ gh auth login in Terminal, then refresh.": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Účet GitHub %@ není přihlášen (%@). Spusťte GH_CONFIG_DIR=%@ gh auth login v Terminálu a poté obnovte zobrazení."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das GitHub-Konto %@ ist nicht angemeldet (%@). Führe GH_CONFIG_DIR=%@ gh auth login im Terminal aus und aktualisiere dann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The GitHub account %@ is not signed in (%@). Run GH_CONFIG_DIR=%@ gh auth login in Terminal, then refresh."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cuenta de GitHub %@ no tiene sesión iniciada (%@). Ejecuta GH_CONFIG_DIR=%@ gh auth login en Terminal y actualiza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le compte GitHub %@ n’est pas connecté (%@). Exécutez GH_CONFIG_DIR=%@ gh auth login dans Terminal, puis actualisez."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A(z) %@ GitHub-fiók nincs bejelentkezve (%@). Futtassa a GH_CONFIG_DIR=%@ gh auth login parancsot a Terminálban, majd frissítsen."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’account GitHub %@ non ha eseguito l’accesso (%@). Esegui GH_CONFIG_DIR=%@ gh auth login in Terminale, poi aggiorna."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub アカウント %@ はサインインしていません（%@）。ターミナルで GH_CONFIG_DIR=%@ gh auth login を実行してから更新してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 계정 %@이(가) 로그인되어 있지 않습니다(%@). 터미널에서 GH_CONFIG_DIR=%@ gh auth login을 실행한 다음 새로 고치세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het GitHub-account %@ is niet aangemeld (%@). Voer GH_CONFIG_DIR=%@ gh auth login uit in Terminal en vernieuw daarna."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto GitHub %@ nie jest zalogowane (%@). Uruchom GH_CONFIG_DIR=%@ gh auth login w Terminalu, a następnie odśwież."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A conta do GitHub %@ não está com sessão iniciada (%@). Execute GH_CONFIG_DIR=%@ gh auth login no Terminal e atualize."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В учётную запись GitHub %@ не выполнен вход (%@). Выполните GH_CONFIG_DIR=%@ gh auth login в Терминале, затем обновите."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub-kontot %@ är inte inloggat (%@). Kör GH_CONFIG_DIR=%@ gh auth login i Terminal och uppdatera sedan."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บัญชี GitHub %@ ยังไม่ได้ลงชื่อเข้าใช้ (%@) ให้รัน GH_CONFIG_DIR=%@ gh auth login ใน Terminal แล้วรีเฟรช"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ GitHub hesabında oturum açılmamış (%@). Terminal'de GH_CONFIG_DIR=%@ gh auth login komutunu çalıştırın, ardından yenileyin."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В обліковий запис GitHub %@ не виконано вхід (%@). Виконайте GH_CONFIG_DIR=%@ gh auth login у Терміналі, потім оновіть дані."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 账户 %@ 未登录（%@）。请在终端中运行 GH_CONFIG_DIR=%@ gh auth login，然后刷新。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 帳號 %@ 未登入（%@）。請在「終端機」中執行 GH_CONFIG_DIR=%@ gh auth login，然後重新整理。"
           }
         }
       }

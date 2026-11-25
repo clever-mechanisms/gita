@@ -140,9 +140,9 @@ struct SettingsIntegrationsPaneTests {
     @Test func listsEveryGhAccountAssignedRepositoriesAndChangesOrResetsAssignments() async throws {
         let recorder = SettingsRecorder()
         defer { recorder.tearDown() }
-        var addedAccounts = 0
+        var addedProfiles: [GitHubConfigProfile?] = []
         var env = recorder.environment
-        env.system.addGitHubAccount = { addedAccounts += 1 }
+        env.system.addGitHubAccount = { addedProfiles.append($0) }
         let json = """
             {"hosts":{"github.com":[
               {"login":"rolottr","active":true,"state":"success"},
@@ -157,8 +157,8 @@ struct SettingsIntegrationsPaneTests {
         let work = try #require(GitHubLogin("work"))
         let ghost = try #require(GitHubLogin("ghost"))
         store.apply(.store(rolottr), sourceID: "github:me/app")
-        store.choose(work, sourceID: "github:SQLI-International/monorepo")
-        store.choose(ghost, sourceID: "github:old/orphan")
+        store.choose(GitHubAccountID(work), sourceID: "github:SQLI-International/monorepo")
+        store.choose(GitHubAccountID(ghost), sourceID: "github:old/orphan")
 
         let pane = IntegrationsSettingsPane(environment: env)
         pane.didAppear()
@@ -184,9 +184,65 @@ struct SettingsIntegrationsPaneTests {
         reset.performClick(nil)
         #expect(store.choice(for: "github:SQLI-International/monorepo") == nil)
 
-        // Add account button triggers addGitHubAccount hook.
+        // Add account button triggers addGitHubAccount hook with nil profile.
         pane.addGitHubAccountButton.performClick(nil)
-        #expect(addedAccounts == 1)
+        #expect(addedProfiles == [nil])
+        pane.didDisappear()
+    }
+
+    @Test func listsAndSwitchesAccountsAcrossGhConfigDirProfiles() async throws {
+        let recorder = SettingsRecorder()
+        defer { recorder.tearDown() }
+        let personal = try #require(GitHubLogin("personal"))
+        let client = try #require(GitHubLogin("client-dev"))
+        let expired = try #require(GitHubLogin("acme-dev"))
+        let clientProfile = try #require(GitHubConfigProfile("gh-client"))
+        let acmeProfile = try #require(GitHubConfigProfile("gh-acme"))
+        var signInProfiles: [GitHubConfigProfile?] = []
+
+        var env = recorder.environment
+        env.system.addGitHubAccount = { signInProfiles.append($0) }
+        let expiredAccount = GitHubAccount(
+            login: expired, isActive: true, isSignedIn: false, profile: acmeProfile)
+        env.accounts = CLIAccountProbe(
+            run: recorder.runs.runner,
+            githubAccountsLoader: {
+                [
+                    GitHubAccount(login: personal, isActive: true, isSignedIn: true),
+                    GitHubAccount(login: client, isActive: true, isSignedIn: true, profile: clientProfile),
+                    expiredAccount,
+                ]
+            })
+
+        let store = GitHubAccountStore(defaults: recorder.defaults)
+        let clientID = GitHubAccountID(client, profile: clientProfile)
+        store.apply(.store(clientID), sourceID: "github:client-org/monorepo")
+
+        let pane = IntegrationsSettingsPane(environment: env)
+        pane.didAppear()
+        try await SettingsWait.until { !pane.accounts.isChecking }
+
+        let titles = pane.githubAccountsGroup.rows.map(\.titleLabel.stringValue)
+        #expect(titles.contains("personal"))
+        #expect(titles.contains("client-dev"))
+        #expect(titles.contains("acme-dev"))
+        #expect(titles.contains("client-org/monorepo"))
+
+        let clientRow = try #require(
+            pane.githubAccountsGroup.rows.first { $0.titleLabel.stringValue == "client-dev" })
+        #expect(clientRow.subtitleLabel?.stringValue.contains("gh-client") == true)
+
+        // Clicking "Sign in…" on the expired profile row passes that profile to Terminal login.
+        let expiredRow = try #require(
+            pane.githubAccountsGroup.rows.first { $0.titleLabel.stringValue == "acme-dev" })
+        let signInButton = try #require(
+            expiredRow.settingsDescendants(of: ActionButton.self).first { $0.title == String(localized: "Sign in…") })
+        signInButton.performClick(nil)
+        #expect(signInProfiles == [acmeProfile])
+
+        let controls = try #require(pane.accountAssignmentControls["github:client-org/monorepo"])
+        controls.popup.settingsChoose(value: GitHubAccountStore.accountKey(for: clientID))
+        #expect(store.choice(for: "github:client-org/monorepo") == .chosen(clientID))
         pane.didDisappear()
     }
 }

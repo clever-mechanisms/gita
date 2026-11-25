@@ -130,11 +130,12 @@ struct GitHubAccountTests {
         let accounts = ["ann", "zed", "me", "work"].map {
             GitHubAccount(login: GitHubLogin($0)!, isActive: $0 == "me", isSignedIn: $0 != "ann")
         }
-        let order = GitHubAccounts.candidates(accounts, excluding: [], hint: GitHubLogin("work"), active: Self.me)
-        #expect(order.map(\.value) == ["work", "me", "zed"])
+        let meID = GitHubAccountID(Self.me)
+        let order = GitHubAccounts.candidates(accounts, excluding: [], hint: GitHubLogin("work"), active: meID)
+        #expect(order.map(\.login.value) == ["work", "me", "zed"])
         let afterMe = GitHubAccounts.candidates(
-            accounts, excluding: [Self.me], hint: GitHubLogin("ann"), active: Self.me)
-        #expect(afterMe.map(\.value) == ["work", "zed"], "a signed-out hint is skipped")
+            accounts, excluding: [meID], hint: GitHubLogin("ann"), active: meID)
+        #expect(afterMe.map(\.login.value) == ["work", "zed"], "a signed-out hint is skipped")
     }
 
     @Test func aChosenAccountIsNeverReplaced() async {
@@ -241,8 +242,12 @@ struct GitHubAccountCommandTests {
                 .gh(["api", "user"], as: .named(login)), in: URL(fileURLWithPath: "/tmp"))
             #expect(result.failure?.status == status)
         }
-        let signedOut = ProviderFailure.signedOut(login)
+        let signedOut = ProviderFailure.signedOut(GitHubAccountID(login))
         #expect(signedOut.diagnostic.contains("work"))
+        let profile = try #require(GitHubConfigProfile("gh-client"))
+        let profileSignedOut = ProviderFailure.signedOut(GitHubAccountID(login, profile: profile))
+        #expect(profileSignedOut.diagnostic.contains("GH_CONFIG_DIR="))
+        #expect(profileSignedOut.diagnostic.contains("gh-client"))
     }
 
     /// Runs the script with a `PATH` holding only a fake `gh` (and the system tools the script needs).

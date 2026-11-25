@@ -37,8 +37,56 @@ public struct GitHubLogin: Sendable, Hashable, Comparable, Codable, CustomString
     public static func < (lhs: Self, rhs: Self) -> Bool { lhs.value.lowercased() < rhs.value.lowercased() }
 }
 
+/// One `gh` account identity: a GitHub login paired with its `GH_CONFIG_DIR` profile (`nil` means `gh`'s default).
+public struct GitHubAccountID: Sendable, Hashable, Comparable, CustomStringConvertible {
+    public let login: GitHubLogin
+    public let profile: GitHubConfigProfile?
+
+    public init(_ login: GitHubLogin, profile: GitHubConfigProfile? = nil) {
+        self.login = login
+        self.profile = profile
+    }
+
+    public var description: String {
+        guard let profile else { return login.value }
+        return "\(login.value) (\(profile.name))"
+    }
+
+    /// Whether an SSH host alias (e.g. `github-work`) names this profile's suffix (`work`).
+    func matchesSSHAlias(_ alias: String?) -> Bool {
+        profile?.matchesSSHAlias(alias) ?? false
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.login.matches(rhs.login.value) && lhs.profile == rhs.profile
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(login.value.lowercased())
+        hasher.combine(profile)
+    }
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        let lhsLogin = lhs.login.value.lowercased()
+        let rhsLogin = rhs.login.value.lowercased()
+        if lhsLogin != rhsLogin { return lhsLogin < rhsLogin }
+        return (lhs.profile?.name.lowercased() ?? "") < (rhs.profile?.name.lowercased() ?? "")
+    }
+}
+
 /// Which `gh` account a command runs as: the host's active account, or one named account through `gita-gh`.
 public enum GitHubAccountUse: Sendable, Hashable {
     case active
-    case named(GitHubLogin)
+    case named(GitHubLogin, profile: GitHubConfigProfile? = nil)
+
+    public static func named(_ id: GitHubAccountID) -> Self {
+        .named(id.login, profile: id.profile)
+    }
+
+    public var profile: GitHubConfigProfile? {
+        switch self {
+        case .active: nil
+        case .named(_, let profile): profile
+        }
+    }
 }

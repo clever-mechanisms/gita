@@ -34,8 +34,12 @@ public struct PullRequestReviewService: Sendable {
     }
 
     let executor: ProviderCommandExecutor
+    let configDirectories: GitHubConfigDirectories
 
-    public init(runner: any CommandRunning = CommandRunner()) { executor = ProviderCommandExecutor(runner: runner) }
+    public init(runner: any CommandRunning = CommandRunner(), configDirectories: GitHubConfigDirectories? = nil) {
+        executor = ProviderCommandExecutor(runner: runner)
+        self.configDirectories = configDirectories ?? (runner is CommandRunner ? .system : .none)
+    }
 
     // MARK: Reading
 
@@ -65,13 +69,16 @@ public struct PullRequestReviewService: Sendable {
         root: URL, repository: GitHubRepository, number: Int, as account: GitHubAccountUse
     ) async -> Result<PullRequestConversation, ProviderFailure> {
         let response: Result<GitHubConversationParser.Envelope, ProviderFailure> = await GitHubProvider(
-            executor: executor
+            executor: executor, configDirectories: configDirectories
         ).graphQL(
             GitHubReviewQueries.conversation, repository: repository, variables: ["-F", "number=\(number)"],
             as: account, root: root, limits: .review)
         return response.flatMap { envelope in
-            Result { try GitHubConversationParser.conversation(envelope, repository: repository, number: number) }
-                .mapError { _ in ProviderFailure.unverified(.gh) }
+            Result {
+                var parsed = try GitHubConversationParser.conversation(envelope, repository: repository, number: number)
+                parsed.viewerProfile = account.profile
+                return parsed
+            }.mapError { _ in ProviderFailure.unverified(.gh) }
         }
     }
 
@@ -83,7 +90,9 @@ public struct PullRequestReviewService: Sendable {
         let arguments = [
             "pr", "diff", String(number), "--repo", "github.com/" + repository.nameWithOwner, "--color", "never",
         ]
-        return await executor.run(.gh(arguments, as: account), in: root, limits: .review).flatMap { result in
+        return await executor.run(
+            .gh(arguments, as: account, configDirectories: configDirectories), in: root, limits: .review
+        ).flatMap { result in
             guard result.exitCode == 0 else { return .failure(Self.diffFailure(result)) }
             return .success(PullRequestDiffParser.parse(LossyText.decode(result.stdout)))
         }

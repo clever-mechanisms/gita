@@ -16,6 +16,8 @@ public struct PullRequestConversation: Sendable {
     public var headOID: String
     public var reviewDecision: PullRequestStatusLabel.Review?
     public var viewer: String?
+    /// Explicit `GH_CONFIG_DIR` profile the pull request was loaded with, or `nil` for `gh`'s default config.
+    public var viewerProfile: GitHubConfigProfile?
     /// GitHub refuses approvals and change requests from a pull request's own author.
     public var viewerIsAuthor: Bool
     public var timeline: [ConversationEntry]

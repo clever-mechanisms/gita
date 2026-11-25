@@ -30,13 +30,27 @@ struct CLIAccountProbe: Sendable {
     }
 
     typealias Runner = @Sendable (_ executable: String, _ arguments: [String]) async throws -> CommandResult
+    typealias GitHubAccountsLoader = @Sendable () async throws -> [GitHubAccount]
     private static let timeout: TimeInterval = 15
     private static let outputLimit = 64 * 1_024
     private static let loginLimit = 64
 
-    var run: Runner = { executable, arguments in
-        try await CommandRunner().run(
-            executable: executable, arguments: arguments, timeout: timeout, outputLimit: outputLimit)
+    var run: Runner
+    /// Probes `gh` across its default config and sibling `GH_CONFIG_DIR` profiles; nil in single-runner tests.
+    var githubAccountsLoader: GitHubAccountsLoader?
+
+    init(run: Runner? = nil, githubAccountsLoader: GitHubAccountsLoader? = nil) {
+        if let run {
+            self.run = run
+            self.githubAccountsLoader = githubAccountsLoader
+        } else {
+            self.run = { executable, arguments in
+                try await CommandRunner().run(
+                    executable: executable, arguments: arguments, timeout: Self.timeout, outputLimit: Self.outputLimit)
+            }
+            self.githubAccountsLoader =
+                githubAccountsLoader ?? { try await GitHubAccounts.list(configDirectories: .system) }
+        }
     }
 
     func account(_ service: Service) async -> Account {
@@ -53,6 +67,16 @@ struct CLIAccountProbe: Sendable {
 
     /// Reads both the summary status and every individual `gh` account (signed-in and expired).
     func githubStatus() async -> (account: Account, accounts: [GitHubAccount]) {
+        if let githubAccountsLoader {
+            do {
+                let accounts = try await githubAccountsLoader()
+                return (Self.github(accounts), accounts)
+            } catch let error as CommandError where isTerminalFailure(error) {
+                return (Self.failureAccount(for: error), [])
+            } catch {
+                // Fall back to plain CLI parsing (e.g. older gh without `--json hosts` or non-JSON sign-in output).
+            }
+        }
         do {
             let result = try await run(Service.github.executable, Service.github.arguments)
             if let accounts = try? GitHubAccounts.parse(result) {
@@ -65,6 +89,13 @@ struct CLIAccountProbe: Sendable {
             return (parsed, [])
         } catch {
             return (Self.failureAccount(for: error), [])
+        }
+    }
+
+    private func isTerminalFailure(_ error: CommandError) -> Bool {
+        switch error {
+        case .executableNotFound, .timedOut: true
+        default: false
         }
     }
 
@@ -93,17 +124,16 @@ struct CLIAccountProbe: Sendable {
         return Account(value: String(localized: "Unavailable"), status: .failed)
     }
 
-    /// `gh`'s accounts, the active one first: several mean each repository is read as the account that can see it.
+    /// `gh`'s accounts, default active first: several mean each repository is read as the account that can see it.
     static func github(_ accounts: [GitHubAccount]) -> Account {
-        let signedIn = accounts.filter(\.isSignedIn).sorted { lhs, rhs in
-            lhs.isActive != rhs.isActive ? lhs.isActive : lhs.login < rhs.login
-        }
+        let signedIn = accounts.filter(\.isSignedIn).sorted(by: GitHubAccount.isOrderedBefore)
         guard !signedIn.isEmpty else {
             return Account(
                 value: String(localized: "Sign in required"), status: .attention,
                 tooltip: String(localized: "Sign in using the \("GitHub") CLI in Terminal."))
         }
-        let names = signedIn.map(\.login.value).joined(separator: ", ")
+        let ids = signedIn.map(\.id)
+        let names = ids.map { GitHubAccountPicker.displayTitle(for: $0, among: ids) }.joined(separator: ", ")
         let status: Status = signedIn.count == accounts.count ? .connected : .attention
         guard signedIn.count > 1 || status == .attention else { return Account(value: names, status: status) }
         var tooltip = String(
@@ -111,7 +141,18 @@ struct CLIAccountProbe: Sendable {
                 Each repository is read as the account that can see it. Choose one for a repository on its GitHub page.
                 """)
         if status == .attention {
-            tooltip += " " + String(localized: "An account’s gh session has expired: sign in again with gh auth login.")
+            let expiredProfile = accounts.first { !$0.isSignedIn && $0.profile != nil }?.profile
+            let expiredHint =
+                if let profile = expiredProfile {
+                    String(
+                        localized: """
+                            An account’s gh session has expired: sign in again with GH_CONFIG_DIR=\(profile.displayPath) \
+                            gh auth login.
+                            """)
+                } else {
+                    String(localized: "An account’s gh session has expired: sign in again with gh auth login.")
+                }
+            tooltip += " " + expiredHint
         }
         return Account(value: names, status: status, tooltip: tooltip)
     }

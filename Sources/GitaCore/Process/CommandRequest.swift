@@ -56,6 +56,9 @@ public struct CommandRequest: Sendable {
     var isValid: Bool {
         let strings =
             [executable] + arguments + [editors?.editor, editors?.sequenceEditor, directory?.path].compactMap { $0 }
-        return !executable.isEmpty && timeout > 0 && outputLimit > 0 && !strings.contains { $0.contains("\0") }
+            + Array(environment.added.keys) + Array(environment.added.values)
+        let hasEmptyKey = environment.added.keys.contains(where: \.isEmpty)
+        return !executable.isEmpty && !hasEmptyKey && timeout > 0 && outputLimit > 0
+            && !strings.contains { $0.contains("\0") }
     }
 }
