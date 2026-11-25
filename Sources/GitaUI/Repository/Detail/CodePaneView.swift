@@ -104,6 +104,13 @@ final class CodePaneView: NSView {
         diffView.onDiscardLines = { [weak self] rows in self?.onDiscardLines?(rows) }
         diffView.onOpenInEditor = { [weak self] line in self?.onOpenInEditor?(line) }
         diffView.onExpandContext = { [weak self] in self?.expandContext() }
+        diffView.onMediaDisplayChanged = { [weak self] isImage in self?.updateHeaderForMedia(isImage) }
+    }
+
+    private func updateHeaderForMedia(_ isImage: Bool) {
+        layoutControl.isHidden = isImage
+        optionsButton.isHidden = isImage
+        findButton.isHidden = isImage
     }
 
     @objc private func changeLayout() {

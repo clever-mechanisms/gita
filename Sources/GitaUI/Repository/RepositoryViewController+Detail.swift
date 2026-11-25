@@ -103,19 +103,62 @@ extension RepositoryViewController {
             model.diff, loading: model.isDiffLoading, blob: model.diffIsBlob,
             emptyMessage: codePaneState.emptyMessage, path: effectivePath,
             binaryBlobByteCount: model.diffIsBlob ? model.binaryBlobByteCount : nil)
-        if !model.diffIsBlob, let effectivePath {
-            resolveBinarySizesIfNeeded(text: model.diff, path: effectivePath)
+        guard let effectivePath else {
+            mediaLoadTask?.cancel()
+            mediaLoadTask = nil
+            return
+        }
+        resolveMediaOrBinarySizesIfNeeded(
+            text: model.diff, path: effectivePath, isBlob: model.diffIsBlob)
+    }
+
+    private func resolveMediaOrBinarySizesIfNeeded(text: String, path: String, isBlob: Bool) {
+        if codePane.diffView.needsImageLoad(for: path) {
+            loadImagePreview(text: text, path: path, isBlob: isBlob)
+            return
+        }
+        guard !isBlob, BinaryDiffSummary.isBinaryDiff(text),
+            !ImageFileFormat.isSupportedImagePath(path),
+            let service = model.service
+        else { return }
+        mediaLoadTask?.cancel()
+        mediaLoadTask = Task { [weak self] in
+            let sizes = await service.binaryObjectSizes(in: text)
+            guard let self, !Task.isCancelled, self.model.service === service,
+                self.model.diffPath == path, self.model.diff == text
+            else { return }
+            self.codePane.diffView.updateBinarySizes(old: sizes.old, new: sizes.new, for: path)
         }
     }
 
-    private func resolveBinarySizesIfNeeded(text: String, path: String) {
-        guard BinaryDiffSummary.isBinaryDiff(text), let service = model.service else { return }
-        Task { [weak self] in
-            let sizes = await service.binaryObjectSizes(in: text)
-            guard let self, self.model.service === service, self.model.diffPath == path, self.model.diff == text else {
+    private func loadImagePreview(text: String, path: String, isBlob: Bool) {
+        guard let service = model.service else {
+            codePane.diffView.fallbackToBinaryEmpty(for: path)
+            return
+        }
+        mediaLoadTask?.cancel()
+        if isBlob {
+            guard let commitID = model.selectedCommit?.id else {
+                codePane.diffView.fallbackToBinaryEmpty(for: path)
                 return
             }
-            self.codePane.diffView.updateBinarySizes(old: sizes.old, new: sizes.new, for: path)
+            mediaLoadTask = Task { [weak self] in
+                let asset = await ImageDiffLoader.loadBlob(service: service, commit: commitID, path: path)
+                guard let self, !Task.isCancelled, self.model.service === service,
+                    self.model.selectedTreePath == path, self.model.selectedCommit?.id == commitID
+                else { return }
+                self.codePane.diffView.updateImageDiff(old: nil, new: asset, for: path, isBlob: true)
+            }
+            return
+        }
+        let fileURL = codePane.diffView.existingFileURL(for: path)
+        mediaLoadTask = Task { [weak self] in
+            let loaded = await ImageDiffLoader.loadDiff(service: service, diffText: text, fileURL: fileURL)
+            guard let self, !Task.isCancelled, self.model.service === service,
+                self.model.diffPath == path, self.model.diff == text
+            else { return }
+            self.codePane.diffView.updateBinarySizes(old: loaded.oldByteCount, new: loaded.newByteCount, for: path)
+            self.codePane.diffView.updateImageDiff(old: loaded.old, new: loaded.new, for: path, isBlob: false)
         }
     }
 

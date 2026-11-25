@@ -23,9 +23,12 @@ final class CommitCompareView: NSView {
         ],
         background: .hover, accessibility: String(localized: "Swap comparison order"))
     let filesView = ChangedFilesView(side: .commit)
-    private let diffView = DiffView()
+    let diffView = DiffView()
     private let split = DeckSplitView()
     private var state: CompareState?
+    private var mediaLoadTask: Task<Void, Never>?
+
+    isolated deinit { mediaLoadTask?.cancel() }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -82,9 +85,10 @@ final class CommitCompareView: NSView {
         split.setPosition(Metrics.filePaneWidth, ofDividerAt: 0)
     }
 
-    func update(_ next: CompareState) {
+    func update(_ next: CompareState, service: GitService? = nil, repositoryRoot: URL? = nil) {
         guard next != state else { return }
         state = next
+        diffView.repositoryRoot = repositoryRoot
         let baseShort = String(next.base.prefix(Metrics.shortLength))
         let headShort = String(next.head.prefix(Metrics.shortLength))
         summaryLabel.stringValue = String(localized: "Comparing \(baseShort) → \(headShort)")
@@ -99,6 +103,35 @@ final class CommitCompareView: NSView {
         diffView.update(
             next.diff, loading: next.isLoadingFiles || next.isLoadingDiff, blob: false,
             emptyMessage: empty, path: next.selectedFile?.path)
+        resolveCompareMediaIfNeeded(diff: next.diff, path: next.selectedFile?.path, service: service)
+    }
+
+    private func resolveCompareMediaIfNeeded(diff: String, path: String?, service: GitService?) {
+        mediaLoadTask?.cancel()
+        mediaLoadTask = nil
+        guard let path, let service else {
+            if let path, diffView.needsImageLoad(for: path) { diffView.fallbackToBinaryEmpty(for: path) }
+            return
+        }
+        if diffView.needsImageLoad(for: path) {
+            let fileURL = diffView.existingFileURL(for: path)
+            mediaLoadTask = Task { [weak self] in
+                let loaded = await ImageDiffLoader.loadDiff(service: service, diffText: diff, fileURL: fileURL)
+                guard let self, !Task.isCancelled, self.state?.selectedFile?.path == path,
+                    self.state?.diff == diff
+                else { return }
+                self.diffView.updateBinarySizes(old: loaded.oldByteCount, new: loaded.newByteCount, for: path)
+                self.diffView.updateImageDiff(old: loaded.old, new: loaded.new, for: path, isBlob: false)
+            }
+        } else if BinaryDiffSummary.isBinaryDiff(diff) {
+            mediaLoadTask = Task { [weak self] in
+                let sizes = await service.binaryObjectSizes(in: diff)
+                guard let self, !Task.isCancelled, self.state?.selectedFile?.path == path,
+                    self.state?.diff == diff
+                else { return }
+                self.diffView.updateBinarySizes(old: sizes.old, new: sizes.new, for: path)
+            }
+        }
     }
 
     static func distanceText(_ distance: CommitDistance?) -> String {

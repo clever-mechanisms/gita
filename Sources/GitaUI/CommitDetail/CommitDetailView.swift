@@ -130,7 +130,7 @@ final class CommitDetailView: NSView {
         rebuild()
     }
 
-    func showCompare(_ compare: CompareState) {
+    func showCompare(_ compare: CompareState, service: GitService? = nil, repositoryRoot: URL? = nil) {
         detailOverlayMode = .compare
         empty.isHidden = true
         leftScroll.isHidden = true
@@ -138,7 +138,7 @@ final class CommitDetailView: NSView {
         divider.isHidden = true
         multiCommitView.isHidden = true
         compareView.isHidden = false
-        compareView.update(compare)
+        compareView.update(compare, service: service, repositoryRoot: repositoryRoot)
     }
 
     func showMultiCommit(eligibility: MultiCommitActionEligibility, actions: MultiCommitSummaryView.Actions) {

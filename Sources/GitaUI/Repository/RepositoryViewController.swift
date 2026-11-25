@@ -96,6 +96,8 @@ final class RepositoryViewController: NSViewController {
     var lastAutomaticPage: String?
     /// Pending hover-intent prefetch for a Pull Request row (cancelled if the pointer moves off before the dwell).
     var hoverPrefetchTask: DispatchWorkItem?
+    /// Pending binary size or image preview load for the shown diff.
+    var mediaLoadTask: Task<Void, Never>?
     /// A reopened conflict to select once the refreshed snapshot lists it.
     var pendingConflictPath: String?
     /// Commit ID navigated to from `BlameView.onSelectCommit` so `showDiff` keeps blame open across that selection.
@@ -179,6 +181,8 @@ final class RepositoryViewController: NSViewController {
         mergedPopover.invalidate()
         hoverPrefetchTask?.cancel()
         hoverPrefetchTask = nil
+        mediaLoadTask?.cancel()
+        mediaLoadTask = nil
         for token in notificationObservations { NotificationCenter.default.removeObserver(token) }
         notificationObservations = []
         if let workspaceObservation { WorkspaceMonitor.shared.removeObserver(workspaceObservation) }

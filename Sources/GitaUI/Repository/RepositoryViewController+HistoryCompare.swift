@@ -75,7 +75,7 @@ extension RepositoryViewController {
             if let compare = model.compareState {
                 commitDetail.isHidden = false
                 filesSplit.isHidden = true
-                commitDetail.showCompare(compare)
+                commitDetail.showCompare(compare, service: model.service, repositoryRoot: model.snapshot?.root)
             }
         case .many(let ids):
             if detailTab != .commit { selectDetailTab(.commit) }

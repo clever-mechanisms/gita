@@ -26907,12 +26907,6 @@
     },
     "All Authors": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All Authors"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -26923,6 +26917,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle Autoren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Authors"
           }
         },
         "es": {
@@ -82491,12 +82491,6 @@
     },
     "Filter pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filter pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -82507,6 +82501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pull Requests filtern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter pull requests"
           }
         },
         "es": {
@@ -82609,12 +82609,6 @@
     },
     "Filter pull requests by status": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filter pull requests by status"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -82625,6 +82619,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pull Requests nach Status filtern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter pull requests by status"
           }
         },
         "es": {
@@ -84137,6 +84137,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "已完成"
+          }
+        }
+      }
+    },
+    "Fit": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přizpůsobit"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einpassen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuster"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illesztés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adatta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合わせる"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "맞춤"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passend"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopasuj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По размеру"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anpassa"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พอดีหน้าจอ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sığdır"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За розміром"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适应"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "符合視窗"
           }
         }
       }
@@ -106213,12 +106331,6 @@
     },
     "Loading files…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loading files…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -106229,6 +106341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dateien werden geladen…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading files…"
           }
         },
         "es": {
@@ -106443,6 +106561,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在載入歷史…"
+          }
+        }
+      }
+    },
+    "Loading image preview…": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Načítání náhledu obrázku…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildvorschau wird geladen…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading image preview…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando vista previa de la imagen…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement de l’aperçu de l’image…"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kép előnézetének betöltése…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricamento anteprima immagine…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像プレビューを読み込み中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 미리 보기 로드 중…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afbeeldingsvoorvertoning laden…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytywanie podglądu obrazu…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando pré-visualização da imagem…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка предпросмотра изображения…"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läser in förhandsvisning av bild…"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังโหลดตัวอย่างรูปภาพ…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görsel önizlemesi yükleniyor…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження попереднього перегляду зображення…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在载入图片预览…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在載入圖片預覽…"
           }
         }
       }
@@ -109281,12 +109517,6 @@
     },
     "Me (%@) · %lld": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Me (%@) · %lld"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -109297,6 +109527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ich (%1$@) · %2$lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me (%@) · %lld"
           }
         },
         "es": {
@@ -113057,12 +113293,6 @@
     },
     "Merging pull request…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Merging pull request…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -113073,6 +113303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pull Request wird gemergt…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merging pull request…"
           }
         },
         "es": {
@@ -117541,12 +117777,6 @@
     },
     "Newest": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Newest"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -117557,6 +117787,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neueste"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Newest"
           }
         },
         "es": {
@@ -119193,12 +119429,6 @@
     },
     "No closed pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No closed pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -119209,6 +119439,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine geschlossenen Pull Requests"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No closed pull requests"
           }
         },
         "es": {
@@ -120255,12 +120491,6 @@
     },
     "No draft pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No draft pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -120271,6 +120501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine Pull-Request-Entwürfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No draft pull requests"
           }
         },
         "es": {
@@ -121199,12 +121435,6 @@
     },
     "No matching pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No matching pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -121215,6 +121445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine passenden Pull Requests"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No matching pull requests"
           }
         },
         "es": {
@@ -121671,12 +121907,6 @@
     },
     "No merged pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No merged pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -121687,6 +121917,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine gemergten Pull Requests"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No merged pull requests"
           }
         },
         "es": {
@@ -121789,12 +122025,6 @@
     },
     "No open pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No open pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -121805,6 +122035,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine offenen Pull Requests"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No open pull requests"
           }
         },
         "es": {
@@ -122143,12 +122379,6 @@
     },
     "No pull requests requesting your review": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No pull requests requesting your review"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -122159,6 +122389,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Keine Pull Requests warten auf dein Review"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pull requests requesting your review"
           }
         },
         "es": {
@@ -127925,12 +128161,6 @@
     },
     "Oldest": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Oldest"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -127941,6 +128171,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Älteste"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oldest"
           }
         },
         "es": {
@@ -128627,6 +128863,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "開啟後，合併所在的列代表它引入的所有提交，因此歷史中每個合併只顯示一列。打開合併的標籤即可檢視其提交。"
+          }
+        }
+      }
+    },
+    "Onion": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Překrytí"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überblendung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Superposición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calque"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Átfedés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sovrapposizione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オニオン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오니언"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overvloeien"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenikanie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sobreposição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наложение"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Övertoning"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ซ้อนทับ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katman"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Накладання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "洋葱皮"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "洋蔥皮"
           }
         }
       }
@@ -131819,12 +132173,6 @@
     },
     "Open first": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open first"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -131835,6 +132183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Offene zuerst"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open first"
           }
         },
         "es": {
@@ -147987,12 +148341,6 @@
     },
     "Recently updated": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recently updated"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -148003,6 +148351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zuletzt aktualisiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently updated"
           }
         },
         "es": {
@@ -153177,6 +153531,124 @@
         }
       }
     },
+    "Removed": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odstraněno"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimé"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eltávolítva"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimosso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제됨"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijderd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunięto"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removido"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалён"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borttagen"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบแล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldırıldı"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除"
+          }
+        }
+      }
+    },
     "Removed line %lld": {
       "localizations": {
         "cs": {
@@ -155421,12 +155893,6 @@
     },
     "Reopening conversation…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reopening conversation…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -155437,6 +155903,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konversation wird wieder geöffnet…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopening conversation…"
           }
         },
         "es": {
@@ -160731,12 +161203,6 @@
     },
     "Resolving conversation…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Resolving conversation…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -160747,6 +161213,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konversation wird als erledigt markiert…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolving conversation…"
           }
         },
         "es": {
@@ -170761,12 +171233,6 @@
     },
     "Sending comment…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending comment…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -170777,6 +171243,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kommentar wird gesendet…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending comment…"
           }
         },
         "es": {
@@ -170879,12 +171351,6 @@
     },
     "Sending reply…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending reply…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -170895,6 +171361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antwort wird gesendet…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending reply…"
           }
         },
         "es": {
@@ -173121,12 +173593,6 @@
     },
     "Show All": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show All"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -173137,6 +173603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show All"
           }
         },
         "es": {
@@ -176419,6 +176891,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "僅顯示：%@"
+          }
+        }
+      }
+    },
+    "Side by Side": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vedle sebe"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nebeneinander"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Side by Side"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lado a lado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Côte à côte"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Egymás mellett"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiancate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "並列"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나란히 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naast elkaar"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obok siebie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lado a lado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядом"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sida vid sida"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เทียบเคียง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yan Yana"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поруч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "并排"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "並排"
           }
         }
       }
@@ -180083,12 +180673,6 @@
     },
     "Sort pull requests": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sort pull requests"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -180099,6 +180683,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pull Requests sortieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort pull requests"
           }
         },
         "es": {
@@ -186927,12 +187517,6 @@
     },
     "Submitting review…": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Submitting review…"
-          }
-        },
         "cs": {
           "stringUnit": {
             "state": "translated",
@@ -186943,6 +187527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Review wird gesendet…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Submitting review…"
           }
         },
         "es": {
@@ -187747,6 +188337,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "交換比較順序"
+          }
+        }
+      }
+    },
+    "Swipe": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posuvník"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wischen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deslizar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balayage"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Csúsztatás"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scorrimento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スワイプ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스와이프"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vegen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suwak"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deslizar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шторка"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svep"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปัดเทียบ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydır"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шторка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "滑动对比"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "滑動對比"
           }
         }
       }
@@ -206745,6 +207453,124 @@
           "stringUnit": {
             "state": "translated",
             "value": "推送到："
+          }
+        }
+      }
+    },
+    "Toggle Fit or Actual Size": {
+      "localizations": {
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Přepnout přizpůsobení a skutečnou velikost"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwischen Einpassen und Originalgröße wechseln"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Fit or Actual Size"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alternar entre ajustar y tamaño real"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basculer entre ajusté et taille réelle"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Váltás illesztés és eredeti méret között"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterna tra adatta e dimensioni reali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面に合わせる／実際のサイズを切り替え"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "맞춤 또는 실제 크기 전환"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schakel tussen passend en werkelijke grootte"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przełącz dopasowanie lub rzeczywisty rozmiar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alternar entre ajustar e tamanho real"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переключить между подгонкой и исходным размером"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Växla mellan anpassad och faktisk storlek"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สลับระหว่างพอดีหน้าจอกับขนาดจริง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sığdırma ve Gerçek Boyut Arasında Geçiş Yap"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемкнути між підгонкою та фактичним розміром"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换适应窗口或实际大小"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切換符合視窗或實際大小"
           }
         }
       }

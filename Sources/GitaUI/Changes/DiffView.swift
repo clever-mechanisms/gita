@@ -38,6 +38,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     let findBar = DiffFindBar()
     let selectionBar = DiffSelectionBar()
     let binaryEmptyView = BinaryDiffEmptyView()
+    let imageDiffView = ImageDiffView()
     lazy var findBarHeight = findBar.heightAnchor.constraint(equalToConstant: 0)
     private let empty = Style.label(String(localized: "Select a file"), size: 13, color: Theme.secondaryText)
     var scrollView: NSScrollView?
@@ -78,6 +79,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     var onDiscardLines: ((IndexSet) -> Void)?
     var onExpandContext: (() -> Void)?
     var onOpenInEditor: ((Int?) -> Void)?
+    var onMediaDisplayChanged: ((Bool) -> Void)?
 
     var findState = DiffFind.closed
     var findMatchRanges: [Int: [Range<Int>]] = [:]
@@ -147,7 +149,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         let scroll = Style.scroll(table, horizontal: true)
         scroll.contentView.postsBoundsChangedNotifications = true
         scrollView = scroll
-        for child in [findBar, scroll, empty, binaryEmptyView, selectionBar] as [NSView] {
+        for child in [findBar, scroll, empty, binaryEmptyView, imageDiffView, selectionBar] as [NSView] {
             addSubview(child)
             child.translatesAutoresizingMaskIntoConstraints = false
         }
@@ -166,6 +168,10 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             binaryEmptyView.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
             binaryEmptyView.topAnchor.constraint(equalTo: scroll.topAnchor),
             binaryEmptyView.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            imageDiffView.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            imageDiffView.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            imageDiffView.topAnchor.constraint(equalTo: scroll.topAnchor),
+            imageDiffView.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
             selectionBar.centerXAnchor.constraint(equalTo: centerXAnchor),
             selectionBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
         ])
@@ -230,10 +236,9 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         reviewedText = ""
         lastGutterAnchorRow = nil
         onHunkSelection?()
-        if showBinaryEmptyIfNeeded(text: text, path: path, blob: blob, binaryBlobByteCount: binaryBlobByteCount) {
+        if showBinaryOrImageIfNeeded(text: text, path: path, blob: blob, binaryBlobByteCount: binaryBlobByteCount) {
             return
         }
-        binaryEmptyView.show(nil)
         if !samePath { resetVisibleRows(loading: loading, hasText: !text.isEmpty, emptyMessage: emptyMessage) }
         guard !text.isEmpty else {
             rerunFindIfOpen()
@@ -243,28 +248,13 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     }
 
     private func refreshUnchangedEmptyLabel(loading: Bool, emptyMessage: String) {
-        if lines.isEmpty && binaryEmptyView.isHidden {
+        if lines.isEmpty && binaryEmptyView.isHidden && imageDiffView.isHidden {
             empty.stringValue = loading ? String(localized: "Loading…") : emptyMessage
         }
     }
 
     private func canPreserveScroll(path: String?, blob: Bool, text: String) -> Bool {
         path != nil && path == shown?.path && blob == shown?.blob && !lines.isEmpty && !text.isEmpty
-    }
-
-    private func showBinaryEmptyIfNeeded(
-        text: String, path: String?, blob: Bool, binaryBlobByteCount: Int64?
-    ) -> Bool {
-        guard
-            let binary = BinaryDiffSummary.resolve(
-                .init(
-                    text: text, path: path, isBlob: blob, binaryBlobByteCount: binaryBlobByteCount,
-                    fileURL: existingFileURL(for: path)))
-        else { return false }
-        clearRowsForBinary()
-        binaryEmptyView.show(binary)
-        rerunFindIfOpen()
-        return true
     }
 
     private func resetVisibleRows(loading: Bool, hasText: Bool, emptyMessage: String) {
@@ -279,20 +269,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         empty.isHidden = false
     }
 
-    func updateBinarySizes(old: Int64?, new: Int64?, for path: String) {
-        guard shownPath == path, var summary = binaryEmptyView.summary else { return }
-        if let old { summary.oldByteCount = old }
-        if let new { summary.newByteCount = new }
-        binaryEmptyView.show(summary)
-    }
-
-    private func existingFileURL(for path: String?) -> URL? {
-        guard let path, !path.isEmpty, let root = repositoryRoot else { return nil }
-        let url = root.appendingPathComponent(path)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    private func clearRowsForBinary() {
+    func clearRowsForBinary() {
         lines = []
         wordHighlights = []
         syntaxTokens = []
