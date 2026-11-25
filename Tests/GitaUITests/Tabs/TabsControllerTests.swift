@@ -211,6 +211,7 @@ struct TabsControllerTests {
         #expect(controller.isMutating)
         #expect(!controller.canChangeRepository)
         #expect(!controller.open(try harness.url("gamma")))
+        #expect(!controller.openNewTab())
         controller.select(0)
         controller.close(at: 0)
         controller.openAuthor(
@@ -247,5 +248,42 @@ struct TabsControllerTests {
         controller.setWindowVisible(false)
         controller.refreshSharedPreferences()
         controller.updateLoading()
+    }
+
+    @Test func newTabOpensWelcomeLaunchpadAndReusesOrClosesIt() async throws {
+        let harness = try TabsHarness()
+        let controller = harness.controller
+        try harness.openLoaded(["alpha", "beta"])
+        #expect(controller.count == 2)
+
+        // Clicking the + button opens a Welcome Launchpad tab without duplicating it on repeat calls.
+        let addButton = try #require(
+            controller.view.subviews.flatMap(\.subviews).compactMap { $0 as? PartsButton }.first {
+                $0.accessibilityIdentifier() == "repositories.newTab"
+            })
+        addButton.onClick?()
+        #expect(controller.count == 3)
+        #expect(controller.selectedIndex == 2)
+        #expect(controller.selectedTab?.isWelcome == true)
+        #expect(controller.selectedRepository == nil)
+        #expect(!controller.selectedController.welcome.isHidden)
+
+        controller.select(0)
+        #expect(controller.openNewTab())
+        #expect(controller.count == 3)
+        #expect(controller.selectedIndex == 2)
+
+        // Opening an already-open repository from Welcome switches to it and drops the empty Welcome tab.
+        #expect(controller.open(try harness.url("alpha")))
+        #expect(controller.count == 2)
+        #expect(controller.selectedRepository == (try harness.url("alpha")))
+
+        // Opening a new repository from Welcome loads it in place in that tab.
+        #expect(controller.openNewTab())
+        #expect(controller.count == 3)
+        let gamma = try harness.url("gamma")
+        #expect(controller.open(gamma))
+        #expect(controller.count == 3)
+        #expect(controller.selectedRepository == gamma)
     }
 }

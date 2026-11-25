@@ -17,6 +17,7 @@ extension AppDelegate {
         #selector(toggleTerminal): ["open terminal", "hide terminal", "shell", "console"],
         #selector(newTerminal): ["open terminal", "shell", "console"],
         #selector(openRepository): ["add repository", "folder"],
+        #selector(newTab): ["welcome", "launchpad", "open project", "recent"],
         #selector(refresh): ["reload"],
         #selector(quit): ["exit"],
         #selector(Tab.openRemote): ["browser", "web", "website"],

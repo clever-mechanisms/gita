@@ -79,6 +79,8 @@ enum Preference: String, CaseIterable {
     case workspaceWindows // Bool: a workspace opens in a window of its own instead of taking the window's place
     // String: `RepositoryListOrder` of the sidebar's Repositories ("name" | "recent" | "status")
     case sidebarRepositoryOrder
+    // String: `SidebarRepositoriesPosition` raw value ("bottom" | "top")
+    case sidebarRepositoriesPosition
     case shortcuts // [String: String]: `ShortcutCommand` raw value → `KeyShortcut.storage` ("" = none)
     case filesAsTree // Bool: changed files as a folder tree (else a flat list)
     // Double: Unstaged's share of the Local Changes split height, from the last drag
@@ -110,7 +112,8 @@ enum Preference: String, CaseIterable {
         .commitColor: "automatic", .branchColor: "automatic", .checkedOutColor: "automatic",
         .mergeLabelColor: "automatic",
         .settingsPane: "general",
-        .sidebarRepositoryOrder: "name", .agentsPaneOrder: "status",
+        .sidebarRepositoryOrder: "name", .sidebarRepositoriesPosition: SidebarRepositoriesPosition.default.rawValue,
+        .agentsPaneOrder: "status",
         .shortcuts: [String: String](), .authorColors: [String: Int](), .sidebarGroups: [String: Bool](),
         .sidebarRepositories: [String: Bool](), .githubAccounts: [String: String](),
         .recentRepositories: [String](), .silencedRepositories: [String](), .paletteRecents: [String](),

@@ -3,7 +3,7 @@ import GitaCore
 
 /// Pure, windowless presentation logic for the Welcome Launchpad (`WelcomeView`).
 enum WelcomePresenter {
-    static let recentLimit = 8
+    static let recentLimit = 24
 
     enum ActionKind: Equatable, Sendable {
         case open
@@ -99,6 +99,20 @@ enum WelcomePresenter {
             if result.count == recentLimit { break }
         }
         return result
+    }
+
+    static func filter(_ entries: [RecentEntry], query: String) -> [RecentEntry] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return entries }
+        return entries.filter { entry in
+            if entry.name.localizedStandardContains(trimmed) || entry.displayPath.localizedStandardContains(trimmed) {
+                return true
+            }
+            if case .ready(let summary) = entry.status, let branch = summary.branch {
+                return branch.localizedStandardContains(trimmed)
+            }
+            return false
+        }
     }
 
     static func statusSummary(

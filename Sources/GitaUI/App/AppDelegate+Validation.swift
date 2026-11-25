@@ -9,6 +9,7 @@ extension AppDelegate {
     private static let commands: [Selector: MenuCommand] = [
         #selector(showSetupGuide): .setupGuide, #selector(nextTab): .nextTab, #selector(previousTab): .previousTab,
         #selector(selectTabNumber(_:)): .selectTab, #selector(openRepository): .openRepository,
+        #selector(newTab): .newTab,
         #selector(openRecent): .openRecent, #selector(cloneRepository): .cloneRepository,
         #selector(initializeRepository): .initializeRepository, #selector(closeWindow): .closeTab,
         #selector(closeEntireWindow): .closeWindow, #selector(quit): .quit,

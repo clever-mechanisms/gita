@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-/// Pure height math for the top collapsible `REPOSITORIES` drawer (`≤40%` of sidebar height when expanded).
+/// Pure height math for the collapsible `REPOSITORIES` drawer (`≤40%` of sidebar height when expanded).
 enum SidebarSplitLayout {
     static let collapsedHeight: CGFloat = 26
     static let expandedMinimum: CGFloat = 74
@@ -23,10 +23,35 @@ enum SidebarSplitLayout {
         let target = desired > 0 ? desired : floor(max(0, totalHeight - dividerThickness) * defaultShare)
         return min(maximum, max(minimum, target))
     }
+
+    static func dividerPosition(
+        desired: CGFloat, totalHeight: CGFloat, dividerThickness: CGFloat, collapsed: Bool,
+        position: SidebarRepositoriesPosition
+    ) -> CGFloat {
+        let drawerHeight = clampedHeight(
+            desired: desired, totalHeight: totalHeight, dividerThickness: dividerThickness, collapsed: collapsed)
+        switch position {
+        case .top: return drawerHeight
+        case .bottom: return max(0, totalHeight - dividerThickness - drawerHeight)
+        }
+    }
+
+    static func dividerBounds(
+        totalHeight: CGFloat, dividerThickness: CGFloat, collapsed: Bool, position: SidebarRepositoriesPosition
+    ) -> (min: CGFloat, max: CGFloat) {
+        let available = max(0, totalHeight - dividerThickness)
+        let maxHeight = maxHeight(totalHeight: totalHeight, dividerThickness: dividerThickness)
+        let drawerMin = collapsed ? collapsedHeight : min(maxHeight, expandedMinimum)
+        let drawerMax = collapsed ? collapsedHeight : maxHeight
+        switch position {
+        case .top: return (drawerMin, drawerMax)
+        case .bottom: return (max(0, available - drawerMax), max(0, available - drawerMin))
+        }
+    }
 }
 
-/// Split sidebar: pinned collapsible `REPOSITORIES` drawer at top (`SidebarRepositoriesPane`) and the open
-/// repository's scoped filter, pages, recent branches, refs, and stashes below (`SidebarRepositoryPane`).
+/// Split sidebar: pinned collapsible `REPOSITORIES` drawer (`SidebarRepositoriesPane`) and the open repository's
+/// scoped filter, pages, recent branches, refs, and stashes (`SidebarRepositoryPane`), ordered per user preference.
 @MainActor
 final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataSource, NSTableViewDelegate {
     var onOpenCheckout: ((URL) -> Void)?
@@ -58,7 +83,8 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
 
     private let state: SidebarState
     private var input = Input()
-    private var orderObserver: NSObjectProtocol?
+    private var preferenceObserver: NSObjectProtocol?
+    private var appliedPosition: SidebarRepositoriesPosition?
     private var positioningSplit = false
     private var lastSplitHeight: CGFloat = 0
 
@@ -74,13 +100,19 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
         super.init(frame: .zero)
         configureSplit()
         wirePanes()
-        orderObserver = NotificationCenter.default.addObserver(
+        preferenceObserver = NotificationCenter.default.addObserver(
             forName: .gitaPreferenceChanged, object: nil, queue: .main
         ) { [weak self] note in
-            guard Preference(changed: note) == .sidebarRepositoryOrder else { return }
+            let changed = Preference(changed: note)
+            guard changed == .sidebarRepositoryOrder || changed == .sidebarRepositoriesPosition else { return }
             MainActor.assumeIsolated {
-                guard let self, !self.rows.isEmpty else { return }
-                self.repositoriesPane.rebuild()
+                guard let self else { return }
+                if changed == .sidebarRepositoryOrder {
+                    guard !self.rows.isEmpty else { return }
+                    self.repositoriesPane.rebuild()
+                } else if self.appliedPosition != self.state.repositoriesPosition {
+                    self.applyRepositoriesPosition()
+                }
             }
         }
     }
@@ -89,18 +121,41 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     isolated deinit {
-        if let orderObserver { NotificationCenter.default.removeObserver(orderObserver) }
+        if let preferenceObserver { NotificationCenter.default.removeObserver(preferenceObserver) }
     }
 
     private func configureSplit() {
         split.isVertical = false
         split.dividerStyle = .thin
         split.delegate = self
-        split.addArrangedSubview(repositoriesPane)
-        split.addArrangedSubview(repositoryPane)
-        split.setHoldingPriority(.init(260), forSubviewAt: 0)
-        split.setHoldingPriority(.init(240), forSubviewAt: 1)
+        arrangeSplitPanes()
         Style.fill(split, in: self)
+    }
+
+    func applyRepositoriesPosition() {
+        arrangeSplitPanes()
+        if split.bounds.height > 0 {
+            positioningSplit = true
+            split.adjustSubviews()
+            positioningSplit = false
+            applySplitPosition()
+        }
+    }
+
+    private func arrangeSplitPanes() {
+        let position = state.repositoriesPosition
+        appliedPosition = position
+        let ordered: [NSView] =
+            position == .top ? [repositoriesPane, repositoryPane] : [repositoryPane, repositoriesPane]
+        if split.arrangedSubviews != ordered {
+            positioningSplit = true
+            for subview in split.arrangedSubviews { subview.removeFromSuperview() }
+            for subview in ordered { split.addArrangedSubview(subview) }
+            positioningSplit = false
+        }
+        let repositoriesIndex = position == .top ? 0 : 1
+        split.setHoldingPriority(.init(260), forSubviewAt: repositoriesIndex)
+        split.setHoldingPriority(.init(240), forSubviewAt: 1 - repositoriesIndex)
     }
 
     private func wirePanes() {
@@ -167,9 +222,10 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
 
     func applySplitPosition() {
         guard split.bounds.height > 0, !repositoryPane.isHidden else { return }
-        let position = SidebarSplitLayout.clampedHeight(
+        let position = SidebarSplitLayout.dividerPosition(
             desired: state.repositoriesHeight, totalHeight: split.bounds.height,
-            dividerThickness: split.dividerThickness, collapsed: repositoriesPane.isCollapsed)
+            dividerThickness: split.dividerThickness, collapsed: repositoriesPane.isCollapsed,
+            position: state.repositoriesPosition)
         positioningSplit = true
         split.setPosition(position, ofDividerAt: 0)
         positioningSplit = false
@@ -179,19 +235,20 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
         _ splitView: NSSplitView, constrainMinCoordinate _: CGFloat, ofSubviewAt dividerIndex: Int
     ) -> CGFloat {
         guard dividerIndex == 0, !repositoryPane.isHidden else { return 0 }
-        if repositoriesPane.isCollapsed { return SidebarSplitLayout.collapsedHeight }
-        let maxHeight = SidebarSplitLayout.maxHeight(
-            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness)
-        return min(maxHeight, SidebarSplitLayout.expandedMinimum)
+        return SidebarSplitLayout.dividerBounds(
+            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness,
+            collapsed: repositoriesPane.isCollapsed, position: state.repositoriesPosition
+        ).min
     }
 
     func splitView(
         _ splitView: NSSplitView, constrainMaxCoordinate _: CGFloat, ofSubviewAt dividerIndex: Int
     ) -> CGFloat {
         guard dividerIndex == 0, !repositoryPane.isHidden else { return splitView.bounds.height }
-        if repositoriesPane.isCollapsed { return SidebarSplitLayout.collapsedHeight }
-        return SidebarSplitLayout.maxHeight(
-            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness)
+        return SidebarSplitLayout.dividerBounds(
+            totalHeight: splitView.bounds.height, dividerThickness: splitView.dividerThickness,
+            collapsed: repositoriesPane.isCollapsed, position: state.repositoriesPosition
+        ).max
     }
 
     func splitView(_: NSSplitView, canCollapseSubview _: NSView) -> Bool { false }
@@ -287,7 +344,7 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
         repositoryPane.filterChanged()
     }
 
-    /// The sort button's menu: Name · Recently Opened · Status, the current one checked.
+    /// The repositories header menu: sort order and sidebar position, current choices checked.
     func repositoryOrderMenu() -> NSMenu {
         let menu = NSMenu()
         for (order, title) in [
@@ -297,6 +354,12 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
         ] {
             let item = MenuAction(title) { [state] in state.setRepositoryOrder(order) }
             item.state = order == state.repositoryOrder ? .on : .off
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        for position in SidebarRepositoriesPosition.allCases {
+            let item = MenuAction(position.menuTitle) { [state] in state.setRepositoriesPosition(position) }
+            item.state = position == state.repositoriesPosition ? .on : .off
             menu.addItem(item)
         }
         return menu

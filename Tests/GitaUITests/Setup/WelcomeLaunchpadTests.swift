@@ -15,7 +15,7 @@ struct WelcomeLaunchpadTests {
         let hints = WelcomePresenter.footerHints(defaults: sandbox.defaults)
         #expect(hints.first?.shortcut == "⌥⌘P")
 
-        let paths = (0..<12).map { "/tmp/repo-\($0)" } + ["/tmp/repo-0/"]
+        let paths = (0..<(WelcomePresenter.recentLimit + 4)).map { "/tmp/repo-\($0)" } + ["/tmp/repo-0/"]
         let entries = WelcomePresenter.recentEntries(
             paths: paths,
             fileExists: { !$0.hasSuffix("repo-1") },
@@ -23,6 +23,13 @@ struct WelcomeLaunchpadTests {
         #expect(entries.count == WelcomePresenter.recentLimit)
         #expect(entries[0].status == .loading)
         #expect(entries[1].status == .missing)
+        #expect(WelcomePresenter.filter(entries, query: "").count == entries.count)
+        #expect(WelcomePresenter.filter(entries, query: "repo-10").map(\.name) == ["repo-10"])
+        var withBranch = entries[0]
+        withBranch.status = .ready(
+            WelcomePresenter.StatusSummary(
+                branch: "feat/audit", changedFiles: 0, ahead: 0, behind: 0, remoteMoved: false))
+        #expect(WelcomePresenter.filter([withBranch, entries[1]], query: "audit").map(\.name) == ["repo-0"])
         #expect(WelcomePresenter.displayPath("/Users/dev/code/app", homeDirectory: "/Users/dev") == "~/code/app")
         #expect(WelcomePresenter.displayPath("/Users/dev", homeDirectory: "/Users/dev") == "~")
     }
@@ -135,11 +142,33 @@ struct WelcomeLaunchpadTests {
         view.onOpenRepository = { opened.append($0) }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 960, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: 1600, height: 900),
             styleMask: [.titled, .closable], backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
         window.contentView = view
+        view.frame = NSRect(x: 0, y: 0, width: 1600, height: 900)
+        view.layoutSubtreeIfNeeded()
+        #expect((view.subviews.first?.frame.width ?? 0) >= 1500)
+        #expect((view.subviews.first?.frame.height ?? 0) >= 820)
+        let logo = SetupTestSupport.views(NSImageView.self, in: view).first {
+            $0.accessibilityIdentifier() == "welcome.logo"
+        }
+        #expect(logo?.frame.size == NSSize(width: 56, height: 56))
+        let recentCard = SetupTestSupport.views(FillView.self, in: view).first {
+            $0.accessibilityIdentifier() == "welcome.recentCard"
+        }
+        #expect((recentCard?.frame.width ?? 0) >= 1100)
+        #expect((recentCard?.frame.height ?? 0) >= 700)
         view.reload(paths: [repo.url.path, missingPath])
+
+        // Filter narrows visible rows and restores them when cleared.
+        view.filterField.stringValue = "no-such-repo-xyz"
+        view.filterChanged()
+        #expect(
+            SetupTestSupport.views(NSTextField.self, in: view).map(\.stringValue).contains(
+                String(localized: "No matching repositories")))
+        view.filterField.stringValue = ""
+        view.filterChanged()
 
         try await SetupTestSupport.waitUntil("lazy WorkspaceStatusReader completes") {
             if case .ready = view.entries.first?.status { true } else { false }

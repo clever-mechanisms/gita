@@ -16,6 +16,10 @@ final class AppearanceSettingsPane: SettingsPaneContent {
     let mergeColor = SettingsForm.popup(accessibility: String(localized: "Merge colour"))
     private let interfaceFontPreview = FontMenuPreview()
     private let codeFontPreview = FontMenuPreview()
+    private(set) lazy var repositoriesPosition = SettingsForm.segmented(
+        SidebarRepositoriesPosition.allCases.map(\.title),
+        accessibility: String(localized: "Repositories position")
+    ) { [weak self] segment in self?.setRepositoriesPosition(segment) }
     private(set) lazy var collapseLeftGroups = toggle(
         .collapsesLeftTabGroups, accessibility: String(localized: "Collapse a group when you leave it"),
         identifier: "settings.collapseLeftTabGroups")
@@ -28,6 +32,7 @@ final class AppearanceSettingsPane: SettingsPaneContent {
         fillTheme()
         fillInterfaceFont()
         fillCodeFont()
+        repositoriesPosition.setAccessibilityIdentifier("settings.repositoriesPosition")
         wire(commitColor, .commits, "settings.commitColor")
         wire(branchColor, .branches, "settings.branchColor")
         wire(checkedOutColor, .checkedOut, "settings.checkedOutColor")
@@ -40,13 +45,16 @@ final class AppearanceSettingsPane: SettingsPaneContent {
                 SettingsRow(String(localized: "Interface font"), [interfaceFont]),
                 SettingsRow(String(localized: "Code font"), [codeFont]),
             ])
+        let sidebar = SettingsGroup(
+            String(localized: "Sidebar"),
+            [SettingsRow(String(localized: "Repositories position"), [repositoriesPosition])])
         let tabs = SettingsGroup(
             String(localized: "Tabs"),
             [
                 SettingsRow(String(localized: "Collapse a group when you leave it"), [collapseLeftGroups]),
                 SettingsRow(String(localized: "Group a worktree with its repository"), [groupWorktreeTabs]),
             ])
-        setGroups([interface, colorGroup(), tabs])
+        setGroups([interface, colorGroup(), sidebar, tabs])
     }
 
     override func refresh() {
@@ -57,6 +65,8 @@ final class AppearanceSettingsPane: SettingsPaneContent {
         }
         if !interfaceFont.select(value: InterfaceFont.current.id) { interfaceFont.selectItem(at: 0) }
         codeFont.select(value: CodeFont.current.rawValue)
+        let position = SidebarRepositoriesPosition(stored: Preference.sidebarRepositoriesPosition.string(defaults))
+        repositoriesPosition.selectedSegment = SidebarRepositoriesPosition.allCases.firstIndex(of: position) ?? 1
         collapseLeftGroups.setOn(Preference.collapsesLeftTabGroups.bool(defaults))
         groupWorktreeTabs.setOn(Preference.groupsWorktreeTabs.bool(defaults))
         HistoryTint.refresh(commitColor, role: .commits, defaults: defaults)
@@ -164,5 +174,9 @@ final class AppearanceSettingsPane: SettingsPaneContent {
     private func setAppearance(_ segment: Int) {
         Preference.appearance.set(segment, defaults)
         environment.look.applyAppearance(SettingsAppearance(stored: segment).appearance)
+    }
+    private func setRepositoriesPosition(_ segment: Int) {
+        guard SidebarRepositoriesPosition.allCases.indices.contains(segment) else { return }
+        Preference.sidebarRepositoriesPosition.set(SidebarRepositoriesPosition.allCases[segment].rawValue, defaults)
     }
 }

@@ -30,6 +30,8 @@ extension RepositoryTabsController {
         var root: URL? { model.snapshot?.root ?? requestedURL }
         /// An author tab ("project [Author]"): a second view of a repository, never merged into its own tab.
         var author: CommitAuthor? { model.authorLens }
+        /// A blank Welcome Launchpad tab with no repository loaded or loading yet.
+        var isWelcome: Bool { model.service == nil && requestedURL == nil && author == nil }
         /// The repository's own tab (not an author tab) for this root.
         var repositoryRoot: URL? { author == nil ? root : nil }
         var titleEntry: TabTitles.Entry {

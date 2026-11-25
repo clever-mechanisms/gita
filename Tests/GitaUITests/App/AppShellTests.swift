@@ -288,6 +288,9 @@ struct AppShellTests {
         number.tag = 1
         shell.app.selectTabNumber(number)
         #expect(shell.app.tabsController?.selectedIndex == 0)
+        shell.app.newTab()
+        #expect(shell.app.tabsController?.count == 3)
+        #expect(shell.app.tabsController?.selectedTab?.isWelcome == true)
     }
 
     @Test func requestsBeforeLaunchWaitAndOpenAfterIt() async throws {

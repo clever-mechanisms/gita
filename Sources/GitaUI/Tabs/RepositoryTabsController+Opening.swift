@@ -10,10 +10,13 @@ extension RepositoryTabsController {
         }
         let canonical = RepositoryTabSession.canonical(url)
         if let existing = tabs.firstIndex(where: { $0.repositoryRoot.map { sameRepository($0, canonical) } == true }) {
+            let empty = selectedTab?.isWelcome == true ? selectedTab : nil
             openExisting(at: existing)
-        } else if let current = selectedTab, current.model.service == nil, current.requestedURL == nil,
-            current.author == nil
-        {
+            if let empty, empty !== selectedTab, let emptyIndex = index(of: empty) {
+                remove(at: emptyIndex)
+                refreshTabs()
+            }
+        } else if let current = selectedTab, current.isWelcome {
             current.requestedURL = canonical
             environment.openRepository(current.model, canonical)
             refreshTabs()
@@ -22,6 +25,20 @@ extension RepositoryTabsController {
             // no panes collapsing and coming back while the history loads.
             openInBackground(AppModel(), url: canonical)
         }
+        return true
+    }
+
+    /// Opens a Welcome Launchpad tab, or focuses one that is already open.
+    @discardableResult func openNewTab() -> Bool {
+        guard canChangeRepository else {
+            NSSound.beep()
+            return false
+        }
+        if let existing = tabs.firstIndex(where: \.isWelcome) {
+            select(existing)
+            return true
+        }
+        append(model: AppModel(defaults: selectedTab?.model.defaults ?? Preference.store), url: nil)
         return true
     }
     func openExisting(at index: Int) {

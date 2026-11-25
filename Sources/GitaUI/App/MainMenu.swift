@@ -78,7 +78,7 @@ struct MainMenu {
         item(
             String(localized: "Open Repository…"), #selector(AppDelegate.openRepository), key: "o", in: file,
             symbol: "folder")
-        item(String(localized: "New Tab…"), #selector(AppDelegate.openRepository), key: "t", in: file)
+        item(String(localized: "New Tab"), #selector(AppDelegate.newTab), key: "t", in: file, symbol: "plus")
         item(String(localized: "Clone Repository…"), #selector(AppDelegate.cloneRepository), in: file)
         item(String(localized: "New Repository…"), #selector(AppDelegate.initializeRepository), in: file)
         item(String(localized: "Open Recent"), #selector(AppDelegate.openRecent), in: file)

@@ -1,6 +1,32 @@
 import Foundation
 import GitaCore
 
+/// Where the collapsible `REPOSITORIES` drawer sits in the sidebar: above or below the open repository's pane.
+enum SidebarRepositoriesPosition: String, CaseIterable, Sendable {
+    case top
+    case bottom
+
+    static let `default`: Self = .bottom
+
+    init(stored raw: String) {
+        self = Self(rawValue: raw) ?? .default
+    }
+
+    var title: String {
+        switch self {
+        case .top: String(localized: "Top")
+        case .bottom: String(localized: "Bottom")
+        }
+    }
+
+    var menuTitle: String {
+        switch self {
+        case .top: String(localized: "Show at Top")
+        case .bottom: String(localized: "Show at Bottom")
+        }
+    }
+}
+
 /// What the user opened or closed in the sidebar and the order of Repositories: shared by every tab's sidebar and
 /// remembered across launches (switching to another checkout of the same repository keeps the list's shape; a
 /// relaunch keeps it too).
@@ -30,9 +56,13 @@ final class SidebarState {
     private(set) var groupExpansion: [String: Bool] {
         didSet { remember(groupExpansion, .sidebarGroups) }
     }
-    /// Whether the pinned Repositories drawer at the top of the sidebar is collapsed to its header.
+    /// Whether the pinned Repositories drawer is collapsed to its header.
     var repositoriesCollapsed: Bool {
         didSet { defaults.set(repositoriesCollapsed, forKey: Self.collapsedKey) }
+    }
+    /// Whether Repositories sits at the top or bottom of the sidebar split.
+    var repositoriesPosition: SidebarRepositoriesPosition {
+        SidebarRepositoriesPosition(stored: Preference.sidebarRepositoriesPosition.string(defaults))
     }
     /// Remembered height of the Repositories drawer before the 40% cap. Zero means use the default share.
     var repositoriesHeight: CGFloat {
@@ -77,6 +107,11 @@ final class SidebarState {
     func setRepositoryOrder(_ order: RepositoryListOrder) {
         repositoryOrder = order
         Preference.sidebarRepositoryOrder.set(order.rawValue, defaults)
+    }
+
+    /// Every tab's sidebar listens for the change and moves the Repositories drawer.
+    func setRepositoriesPosition(_ position: SidebarRepositoriesPosition) {
+        Preference.sidebarRepositoriesPosition.set(position.rawValue, defaults)
     }
 
     /// Forgets the open-or-closed state of repositories removed from the list (any spelling of their paths).

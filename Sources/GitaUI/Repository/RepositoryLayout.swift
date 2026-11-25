@@ -27,8 +27,8 @@ enum RepositoryLayout {
     static let historyTopMinimumID = "repository.historyTopMinimum"
     static let fileColumnMinimumID = "repository.fileColumnMinimum"
     static let retryFooterHeight: CGFloat = 25
-    static let welcomeTitleSize: CGFloat = 30
-    static let welcomeSpacing: CGFloat = 24
+    static let welcomeTitleSize: CGFloat = 34
+    static let welcomeSpacing: CGFloat = 32
 }
 
 /// Where the window's dividers are and whether they were placed yet.

@@ -60,7 +60,9 @@ struct AppMenuAvailabilityTests {
     @Test func repositoryChoicesFollowWhetherTheRepositoryCanChange() {
         var state = Self.ready
         state.canChangeRepository = false
-        for command in [MenuCommand.openRepository, .openRecent, .cloneRepository, .initializeRepository, .nextTab] {
+        for command in [
+            MenuCommand.openRepository, .newTab, .openRecent, .cloneRepository, .initializeRepository, .nextTab,
+        ] {
             #expect(!state.isEnabled(command), "\(command)")
         }
         #expect(!state.isToolbarItemEnabled("open"))

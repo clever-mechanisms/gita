@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-/// Pinned collapsible `REPOSITORIES` drawer at the top of the sidebar: remembers its collapsed state and height
+/// Pinned collapsible `REPOSITORIES` drawer in the sidebar: remembers its collapsed state and height
 /// (capped at ≤40% by `RepositorySidebarView`), supports type-to-select and a local `⌘F` filter.
 @MainActor
 final class SidebarRepositoriesPane: NSView, NSSearchFieldDelegate {

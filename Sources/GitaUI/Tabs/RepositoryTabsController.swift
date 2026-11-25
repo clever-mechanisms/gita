@@ -28,7 +28,6 @@ final class RepositoryTabsController: NSViewController {
     var isVisible = false
     private(set) var isDetached = false
     var onSelectionChange: ((AppModel) -> Void)?
-    var onOpenRepository: (() -> Void)?
     var onLastTabClosed: (() -> Void)?
     var onSessionChange: ((RepositoryTabSession) -> Void)?
 
@@ -108,11 +107,11 @@ final class RepositoryTabsController: NSViewController {
         configureScroll()
         let add = PartsButton(
             [.symbol("plus", color: Theme.secondaryText, size: 13)], background: .hover,
-            accessibility: String(localized: "Open Repository in New Tab")
-        ) { [weak self] in self?.onOpenRepository?() }
+            accessibility: String(localized: "New Tab")
+        ) { [weak self] in self?.openNewTab() }
         add.horizontalPadding = 7
         add.fixedHeight = 24
-        add.toolTip = String(localized: "Open Repository in New Tab · ⌘T")
+        add.toolTip = String(localized: "New Tab · ⌘T")
         add.setAccessibilityIdentifier("repositories.newTab")
         let separator = Deck.separator()
         view.addSubview(bar)
@@ -204,7 +203,7 @@ final class RepositoryTabsController: NSViewController {
         remove(at: index)
         if wasSelected { select(selectedIndex, checkingState: false) } else { refreshTabs() }
     }
-    private func remove(at index: Int) {
+    func remove(at index: Int) {
         let tab = tabs[index]
         list.remove(at: index)
         tabsByID[tab.id] = nil

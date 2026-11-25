@@ -103,4 +103,24 @@ struct SettingsAppearancePaneTests {
         #expect(pane.collapseLeftGroups.isOn)
         #expect(pane.groupWorktreeTabs.isOn == Preference.groupsWorktreeTabs.bool(recorder.defaults))
     }
+
+    @Test func sidebarRepositoriesPositionIsSavedAndFollowsTheSettings() {
+        let recorder = SettingsRecorder()
+        defer { recorder.tearDown() }
+        let pane = makePane(recorder)
+        let topIndex = SidebarRepositoriesPosition.allCases.firstIndex(of: .top) ?? 0
+        let bottomIndex = SidebarRepositoriesPosition.allCases.firstIndex(of: .bottom) ?? 1
+
+        #expect(pane.repositoriesPosition.selectedSegment == bottomIndex)
+        pane.repositoriesPosition.settingsChoose(topIndex)
+        #expect(Preference.sidebarRepositoriesPosition.string(recorder.defaults) == "top")
+
+        recorder.defaults.set("bottom", forKey: Preference.sidebarRepositoriesPosition.rawValue)
+        pane.refresh()
+        #expect(pane.repositoriesPosition.selectedSegment == bottomIndex)
+
+        recorder.defaults.set("invalid", forKey: Preference.sidebarRepositoriesPosition.rawValue)
+        pane.refresh()
+        #expect(pane.repositoriesPosition.selectedSegment == bottomIndex)
+    }
 }

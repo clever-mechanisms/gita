@@ -2,12 +2,14 @@ import AppKit
 import GitaCore
 
 /// Actionable Welcome Launchpad: left START column (`Open…`, `Clone…`, `New repository…` with live shortcut hints +
-/// drop target), right RECENT column (up to 8 repositories with lazy `WorkspaceStatusReader` status and missing-path
-/// removal).
+/// drop target), right scrollable RECENT column (up to 24 repositories with live filter, lazy `WorkspaceStatusReader`
+/// status, and missing-path removal).
 @MainActor
 final class WelcomeView: NSView {
-    private static let maxContentWidth: CGFloat = 820
-    private static let startColumnWidth: CGFloat = 330
+    static let startColumnWidth: CGFloat = 360
+    static let horizontalMargin: CGFloat = 40
+    static let topMargin: CGFloat = 32
+    static let bottomMargin: CGFloat = 28
 
     var defaults: UserDefaults = Preference.store
     var onOpen: (() -> Void)?
@@ -39,11 +41,13 @@ final class WelcomeView: NSView {
     private(set) var entries: [WelcomePresenter.RecentEntry] = []
     private var readTasks: [String: Task<Void, Never>] = [:]
     private var recentPaths: [String] = []
-    private let startStack = Deck.vstack([], spacing: 10)
-    private let recentStack = Deck.vstack([], spacing: 4)
-    private let recentEmpty = Deck.caption(String(localized: "No recent repositories"))
-    private let footerStack = Deck.hstack([], spacing: 14)
-    private let dropZone = WelcomeDropZoneView()
+    let startStack = Deck.vstack([], spacing: 8)
+    let recentStack = Deck.vstack([], spacing: 2)
+    let recentEmpty = Deck.caption(String(localized: "No recent repositories"))
+    let recentCount = Deck.caption("")
+    let filterField = NSSearchField()
+    let footerStack = Deck.hstack([], spacing: 14)
+    let dropZone = WelcomeDropZoneView()
     private var preferenceObserver: NSObjectProtocol?
 
     override init(frame frameRect: NSRect) {
@@ -142,61 +146,25 @@ final class WelcomeView: NSView {
         }
     }
 
-    // MARK: Layout
+    // MARK: Actions & Filtering
 
-    private func buildLayout() {
-        let title = Style.label("Gitā", size: RepositoryLayout.welcomeTitleSize, weight: .semibold, color: Theme.text)
-        let subtitle = Deck.caption(String(localized: "Native Git history, PRs, deploys & agents."))
-        let startHeader = Deck.sectionTitle(String(localized: "Start"))
-        let leftColumn = Deck.vstack([startHeader, startStack, dropZone, footerStack], spacing: 14)
-        leftColumn.alignment = .leading
-        leftColumn.widthAnchor.constraint(equalToConstant: Self.startColumnWidth).isActive = true
-        dropZone.widthAnchor.constraint(equalTo: leftColumn.widthAnchor).isActive = true
-
-        let recentCard = buildRecentCard()
-        let columns = Deck.hstack([leftColumn, recentCard], spacing: RepositoryLayout.welcomeSpacing)
-        columns.alignment = .top
-        let root = Deck.vstack([title, subtitle, columns], spacing: 10)
-        root.alignment = .leading
-        root.setCustomSpacing(20, after: subtitle)
-        addSubview(root)
-        root.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            root.centerXAnchor.constraint(equalTo: centerXAnchor),
-            root.centerYAnchor.constraint(equalTo: centerYAnchor),
-            root.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
-            root.widthAnchor.constraint(lessThanOrEqualToConstant: Self.maxContentWidth),
-            recentCard.widthAnchor.constraint(greaterThanOrEqualToConstant: 340),
-        ])
-    }
-
-    private func buildRecentCard() -> NSView {
-        let card = FillView(color: Theme.inset)
-        card.cornerRadius = 10
-        card.borderColor = Theme.separator
-        let header = Deck.hstack(
-            [Deck.sectionTitle(String(localized: "Recent Repositories")), Deck.spacer()], spacing: 8)
-        recentEmpty.alignment = .center
-        let stack = Deck.vstack([header, Deck.separator(), recentStack, recentEmpty], spacing: 8)
-        stack.alignment = .leading
-        Deck.pin(stack, in: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
-        for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        return card
+    @objc func filterChanged() {
+        rebuildRecentRows()
     }
 
     private func rebuildStartActions() {
         startStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for action in WelcomePresenter.startActions() {
             var parts: [PartsButton.Part] = [
-                .symbol(action.symbol, color: action.kind == .open ? Deck.onAccent : Theme.secondaryText, size: 12),
+                .symbol(action.symbol, color: action.kind == .open ? Deck.onAccent : Theme.secondaryText, size: 15),
                 .text(
-                    action.title, font: Theme.bodyEmphasis,
+                    action.title, font: TextLines.system(14, weight: .medium),
                     color: action.kind == .open ? Deck.onAccent : Theme.text),
             ]
             if let hint = action.shortcutHint {
                 parts.append(
                     .text(
-                        hint, font: Theme.caption,
+                        hint, font: TextLines.system(12.5, weight: .regular),
                         color: action.kind == .open ? Deck.onAccent.withAlphaComponent(0.85) : Theme.tertiaryText))
             }
             let button = PartsButton(
@@ -204,19 +172,21 @@ final class WelcomeView: NSView {
             ) { [weak self] in
                 self?.trigger(action.kind)
             }
-            button.fixedHeight = 30
-            button.horizontalPadding = 12
-            button.cornerRadius = 7
+            button.contentAlignment = .left
+            button.fixedHeight = 44
+            button.horizontalPadding = 16
+            button.spacing = 10
+            button.cornerRadius = 9
             button.setAccessibilityIdentifier("welcome.action.\(action.kind)")
             startStack.addArrangedSubview(button)
+            button.widthAnchor.constraint(equalTo: startStack.widthAnchor).isActive = true
         }
     }
 
     private func rebuildFooterHints() {
         footerStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for hint in WelcomePresenter.footerHints(defaults: defaults) {
-            let text = Deck.caption("\(hint.shortcut) \(hint.title)")
-            text.textColor = Theme.tertiaryText
+            let text = Style.label("\(hint.shortcut) \(hint.title)", size: 12.5, color: Theme.tertiaryText)
             footerStack.addArrangedSubview(text)
         }
     }
@@ -268,8 +238,13 @@ final class WelcomeView: NSView {
 
     private func rebuildRecentRows() {
         recentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        recentEmpty.isHidden = !entries.isEmpty
-        for entry in entries {
+        recentCount.stringValue = entries.isEmpty ? "" : "\(entries.count)"
+        let visible = WelcomePresenter.filter(entries, query: filterField.stringValue)
+        recentEmpty.stringValue =
+            entries.isEmpty
+            ? String(localized: "No recent repositories") : String(localized: "No matching repositories")
+        recentEmpty.isHidden = !visible.isEmpty
+        for entry in visible {
             let row = WelcomeRecentRow(
                 entry: entry,
                 onOpen: { [weak self] in
@@ -282,91 +257,4 @@ final class WelcomeView: NSView {
             row.widthAnchor.constraint(equalTo: recentStack.widthAnchor).isActive = true
         }
     }
-}
-
-@MainActor
-private final class WelcomeDropZoneView: NSView {
-    var isHighlighted = false { didSet { if isHighlighted != oldValue { needsDisplay = true } } }
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        let label = Deck.caption(String(localized: "Drop a folder here to open it"))
-        label.alignment = .center
-        addSubview(label)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 56),
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) { fatalError("WelcomeDropZoneView is built in code") }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
-        let dash: [CGFloat] = [5, 4]
-        path.setLineDash(dash, count: dash.count, phase: 0)
-        path.lineWidth = isHighlighted ? 1.5 : 1
-        (isHighlighted ? Theme.accent : Theme.separator).setStroke()
-        if isHighlighted {
-            Theme.accent.withAlphaComponent(0.08).setFill()
-            path.fill()
-        }
-        path.stroke()
-    }
-}
-
-@MainActor
-private final class WelcomeRecentRow: RowView {
-    init(entry: WelcomePresenter.RecentEntry, onOpen: @escaping () -> Void, onRemove: @escaping () -> Void) {
-        super.init(frame: .zero)
-        let title = Deck.label(entry.name, font: Theme.bodyEmphasis)
-        let subtitle = Deck.caption(entry.displayPath)
-        subtitle.lineBreakMode = .byTruncatingMiddle
-        subtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        var topItems: [NSView] = [title]
-        var bottomItems: [NSView] = [subtitle]
-        var rightItems: [NSView] = []
-        switch entry.status {
-        case .loading:
-            rightItems.append(Deck.caption("…"))
-        case .missing:
-            onClick = nil
-            let missing = Deck.label(String(localized: "⚠ Missing"), font: Theme.captionEmphasis, color: Theme.failure)
-            let remove = PartsButton.link(String(localized: "Remove from list"), size: 11, action: onRemove)
-            rightItems.append(contentsOf: [missing, remove])
-        case .ready(let summary):
-            onClick = onOpen
-            if let branch = summary.branch, !branch.isEmpty {
-                let branchLabel = Deck.label(branch, font: Theme.mono, color: Theme.secondaryText)
-                branchLabel.lineBreakMode = .byTruncatingTail
-                topItems.append(branchLabel)
-            }
-            if let tool = summary.agentTool, let state = summary.agentState {
-                let mark = AgentMarkView(side: 12)
-                mark.tool = tool
-                mark.state = state
-                bottomItems.append(mark)
-            }
-            if let dateText = WelcomePresenter.relativeDateText(summary.lastUpdated) {
-                bottomItems.append(Deck.caption(dateText))
-            }
-            let badgeColor = summary.isClean ? Theme.success : Theme.needsInput
-            let badgeText = WelcomePresenter.badgeText(for: summary)
-            rightItems.append(Deck.label(badgeText, font: Theme.captionEmphasis, color: badgeColor))
-        }
-        let topRow = Deck.hstack(topItems + [Deck.spacer()], spacing: 6)
-        let bottomRow = Deck.hstack(bottomItems + [Deck.spacer()], spacing: 6)
-        let left = Deck.vstack([topRow, bottomRow], spacing: 2)
-        let row = Deck.hstack([left, Deck.spacer()] + rightItems, spacing: 8)
-        row.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
-        Deck.pin(row, in: self)
-        setAccessibilityLabel(entry.name)
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) { fatalError("WelcomeRecentRow is built in code") }
 }

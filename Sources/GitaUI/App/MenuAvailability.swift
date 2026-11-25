@@ -3,7 +3,7 @@ import GitaCore
 /// A command of the app's menus (and of the context menus that reuse their actions).
 enum MenuCommand: CaseIterable {
     case setupGuide, nextTab, previousTab, selectTab
-    case openRepository, openRecent, cloneRepository, initializeRepository
+    case openRepository, newTab, openRecent, cloneRepository, initializeRepository
     case closeTab, closeWindow, quit
     case toggleHistoryDetails, zoomIn, zoomOut, actualSize
     case merge, rebase, cherryPick, revert, reset, editCommits
@@ -21,7 +21,7 @@ enum MenuCommand: CaseIterable {
         switch self {
         case .setupGuide: .setupGuide
         case .nextTab, .previousTab, .selectTab: .tabs
-        case .openRepository, .openRecent, .cloneRepository, .initializeRepository: .repositoryChoice
+        case .openRepository, .newTab, .openRecent, .cloneRepository, .initializeRepository: .repositoryChoice
         case .closeTab, .closeWindow, .quit: .window
         case .toggleHistoryDetails, .zoomIn, .zoomOut, .actualSize: .history
         case .merge, .rebase, .cherryPick, .revert, .reset, .editCommits: .sequence

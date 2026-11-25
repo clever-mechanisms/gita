@@ -119,7 +119,6 @@ extension AppDelegate {
             // A tab that finished opening in a window behind is not the shell's active model.
             if let self, self.place === place { self.observeActiveModel(model) }
         }
-        tabs.onOpenRepository = { [weak self] in self?.openRepository() }
         tabs.onLastTabClosed = { [weak place] in place?.windows.window?.performClose(nil) }
         tabs.onSessionChange = { [weak self, weak place] session in
             guard let self, let place else { return }

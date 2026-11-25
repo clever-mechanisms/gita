@@ -37,6 +37,26 @@ struct SidebarSplitPaneTests {
         #expect(
             SidebarSplitLayout.clampedHeight(
                 desired: 100, totalHeight: 0, dividerThickness: 1, collapsed: false) == 100)
+
+        // Divider coordinates and bounds for top vs bottom placement.
+        #expect(
+            SidebarSplitLayout.dividerPosition(
+                desired: 0, totalHeight: 600, dividerThickness: 1, collapsed: false, position: .top) == 167)
+        #expect(
+            SidebarSplitLayout.dividerPosition(
+                desired: 0, totalHeight: 600, dividerThickness: 1, collapsed: false, position: .bottom) == 432)
+        #expect(
+            SidebarSplitLayout.dividerPosition(
+                desired: 200, totalHeight: 600, dividerThickness: 1, collapsed: true, position: .bottom) == 573)
+        let topBounds = SidebarSplitLayout.dividerBounds(
+            totalHeight: 600, dividerThickness: 1, collapsed: false, position: .top)
+        #expect(topBounds.min == 74 && topBounds.max == 239)
+        let bottomBounds = SidebarSplitLayout.dividerBounds(
+            totalHeight: 600, dividerThickness: 1, collapsed: false, position: .bottom)
+        #expect(bottomBounds.min == 360 && bottomBounds.max == 525)
+        let bottomCollapsed = SidebarSplitLayout.dividerBounds(
+            totalHeight: 600, dividerThickness: 1, collapsed: true, position: .bottom)
+        #expect(bottomCollapsed.min == 573 && bottomCollapsed.max == 573)
     }
 
     @Test func splitSidebarHostsPinnedCollapsibleDrawerAndScopedFilter() throws {
@@ -75,8 +95,32 @@ struct SidebarSplitPaneTests {
         sidebar.layoutSubtreeIfNeeded()
 
         #expect(sidebar.split.arrangedSubviews.count == 2)
+        #expect(sidebar.split.arrangedSubviews.first === sidebar.repositoryPane)
+        #expect(sidebar.split.arrangedSubviews.last === sidebar.repositoriesPane)
+        #expect(sidebar.repositoriesPane.frame.height <= 240)
+
+        // Switching Repositories position via the header menu moves the drawer live and keeps clamping & collapse.
+        let menu = sidebar.repositoryOrderMenu()
+        #expect(menu.item(titled: String(localized: "Show at Bottom"))?.state == .on)
+        #expect(menu.item(titled: String(localized: "Show at Top"))?.state == .off)
+        menu.item(titled: String(localized: "Show at Top"))?.perform()
+        sidebar.layoutSubtreeIfNeeded()
+        #expect(state.repositoriesPosition == .top)
         #expect(sidebar.split.arrangedSubviews.first === sidebar.repositoriesPane)
         #expect(sidebar.split.arrangedSubviews.last === sidebar.repositoryPane)
+        #expect(sidebar.repositoriesPane.frame.height <= 240)
+        #expect(
+            sidebar.splitView(sidebar.split, constrainMinCoordinate: 0, ofSubviewAt: 0)
+                == SidebarSplitLayout.expandedMinimum)
+        #expect(
+            sidebar.splitView(sidebar.split, constrainMaxCoordinate: 600, ofSubviewAt: 0)
+                == SidebarSplitLayout.maxHeight(totalHeight: 600, dividerThickness: sidebar.split.dividerThickness))
+
+        sidebar.repositoryOrderMenu().item(titled: String(localized: "Show at Bottom"))?.perform()
+        sidebar.layoutSubtreeIfNeeded()
+        #expect(state.repositoriesPosition == .bottom)
+        #expect(sidebar.split.arrangedSubviews.first === sidebar.repositoryPane)
+        #expect(sidebar.split.arrangedSubviews.last === sidebar.repositoriesPane)
         #expect(sidebar.repositoriesPane.frame.height <= 240)
 
         // Lower filter scopes strictly to current repository refs and updates VoiceOver label.

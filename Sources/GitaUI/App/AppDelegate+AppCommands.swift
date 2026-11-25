@@ -6,6 +6,11 @@ extension AppDelegate {
     /// Where Clone suggests putting a new clone.
     private static let cloneFolder = "Projects/repository"
 
+    @objc func newTab() {
+        showWindow()
+        tabsController?.openNewTab()
+    }
+
     @objc func openRepository() {
         showWindow()
         guard let mainWindow, tabsController?.canChangeRepository == true else {
