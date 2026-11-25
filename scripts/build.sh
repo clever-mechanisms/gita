@@ -138,6 +138,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>SUFeedURL</key><string>$SPARKLE_FEED_URL</string>
 <key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_ED_KEY</string>
 <key>SUEnableAutomaticChecks</key><true/>
+<key>SUAllowsAutomaticUpdates</key><true/>
+<key>SUAutomaticallyUpdate</key><false/>
 <key>SUScheduledCheckInterval</key><integer>86400</integer>
 <key>SUSendProfileInfo</key><false/>
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
@@ -190,34 +192,35 @@ rm -rf "$APP/Contents/Resources/Terminal"; cp -R Resources/Terminal "$APP/Conten
 # Review skills handed to the agent (README › Review skills: each with its license).
 rm -rf "$APP/Contents/Resources/ReviewSkills"; cp -R Resources/ReviewSkills "$APP/Contents/Resources/ReviewSkills"
 
-# Third-party notices (fail closed when Resources/ThirdParty/ is present and empty or lacks ThirdParty-Notices.txt).
+# Third-party notices (unconditional, fail closed).
 THIRD_PARTY_SRC="$ROOT/Resources/ThirdParty"
-if [[ -d "$THIRD_PARTY_SRC" ]]; then
-  if [[ -z "$(find "$THIRD_PARTY_SRC" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
-    printf 'Resources/ThirdParty/ is empty; add third-party notices before building.\n' >&2
-    exit 1
-  fi
-  mkdir -p "$APP/Contents/Resources/ThirdParty"
-  /usr/bin/ditto "$THIRD_PARTY_SRC" "$APP/Contents/Resources/ThirdParty"
-  [[ -f "$APP/Contents/Resources/ThirdParty/ThirdParty-Notices.txt" ]] \
-    || { printf 'Resources/ThirdParty/ThirdParty-Notices.txt is missing.\n' >&2; exit 1; }
-fi
+[[ -d "$THIRD_PARTY_SRC" ]] || { printf 'Resources/ThirdParty/ is missing.\n' >&2; exit 1; }
+[[ -f "$THIRD_PARTY_SRC/ThirdParty-Notices.txt" ]] \
+  || { printf 'Resources/ThirdParty/ThirdParty-Notices.txt is missing.\n' >&2; exit 1; }
+rm -rf "$APP/Contents/Resources/ThirdParty"
+mkdir -p "$APP/Contents/Resources/ThirdParty"
+/usr/bin/ditto "$THIRD_PARTY_SRC" "$APP/Contents/Resources/ThirdParty"
+[[ -f "$APP/Contents/Resources/ThirdParty/ThirdParty-Notices.txt" ]] \
+  || { printf 'Bundled Contents/Resources/ThirdParty/ThirdParty-Notices.txt is missing.\n' >&2; exit 1; }
 
-# Embed Sparkle.framework when built by SwiftPM. Gitā is not sandboxed, so Sparkle installs updates directly
-# via Autoupdate + Updater.app and its sandbox XPCServices are removed before inside-out signing.
-SPARKLE=""
-SPARKLE_SOURCE="$BIN/Sparkle.framework"
-if [[ -d "$SPARKLE_SOURCE" ]]; then
-  SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
-  mkdir -p "$APP/Contents/Frameworks"
-  /usr/bin/ditto "$SPARKLE_SOURCE" "$SPARKLE"
-  rm -rf "$SPARKLE/Versions/B/XPCServices" "$SPARKLE/XPCServices"
-  if ! otool -l "$APP/Contents/MacOS/Gita" | grep -A2 LC_RPATH | grep -qF "path @executable_path/../Frameworks "; then
-    install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Gita"
+# Embed Sparkle.framework (unconditional, fail closed). Gitā is not sandboxed, so Sparkle installs updates
+# directly via Autoupdate + Updater.app and its sandbox XPCServices are removed before inside-out signing.
+SPARKLE_SOURCE=""
+for candidate in \
+  "$BIN/Sparkle.framework" \
+  "$ROOT/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"; do
+  if [[ -d "$candidate" ]]; then
+    SPARKLE_SOURCE="$candidate"
+    break
   fi
-elif grep -qF "Sparkle" "$ROOT/Package.swift" 2>/dev/null; then
-  printf 'Sparkle.framework not found at %s\n' "$SPARKLE_SOURCE" >&2
-  exit 1
+done
+[[ -n "$SPARKLE_SOURCE" ]] || { printf 'Sparkle.framework not found in %s or .build/artifacts\n' "$BIN" >&2; exit 1; }
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+mkdir -p "$APP/Contents/Frameworks"
+/usr/bin/ditto "$SPARKLE_SOURCE" "$SPARKLE"
+rm -rf "$SPARKLE/Versions/B/XPCServices" "$SPARKLE/XPCServices"
+if ! otool -l "$APP/Contents/MacOS/Gita" | grep -A2 LC_RPATH | grep -qF "path @executable_path/../Frameworks "; then
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Gita"
 fi
 
 # Extended attributes (quarantine flags, Finder info) have no place in a signed bundle.
@@ -228,28 +231,22 @@ xattr -cr "$APP"
 # when GITA_NOTARY_PROFILE / NOTARY_PROFILE names an `xcrun notarytool store-credentials` profile.
 if [[ -n "$SIGN_IDENTITY" ]]; then
   SIGN=(--force --sign "$SIGN_IDENTITY" --options runtime --timestamp)
-  if [[ -n "$SPARKLE" ]]; then
-    codesign "${SIGN[@]}" "$SPARKLE/Versions/B/Autoupdate"
-    codesign "${SIGN[@]}" "$SPARKLE/Versions/B/Updater.app"
-    codesign "${SIGN[@]}" "$SPARKLE"
-  fi
+  codesign "${SIGN[@]}" "$SPARKLE/Versions/B/Autoupdate"
+  codesign "${SIGN[@]}" "$SPARKLE/Versions/B/Updater.app"
+  codesign "${SIGN[@]}" "$SPARKLE"
   codesign "${SIGN[@]}" --identifier "$BUNDLE_ID.agent" "$APP/Contents/Helpers/gita-agent"
   codesign "${SIGN[@]}" --identifier "$BUNDLE_ID" "$APP"
 else
   [[ -z "$NOTARY_PROFILE" ]] || { printf 'GITA_NOTARY_PROFILE needs GITA_SIGN_IDENTITY\n' >&2; exit 1; }
-  if [[ -n "$SPARKLE" ]]; then
-    codesign --force --sign - "$SPARKLE/Versions/B/Autoupdate"
-    codesign --force --sign - "$SPARKLE/Versions/B/Updater.app"
-    codesign --force --sign - "$SPARKLE"
-  fi
+  codesign --force --sign - "$SPARKLE/Versions/B/Autoupdate"
+  codesign --force --sign - "$SPARKLE/Versions/B/Updater.app"
+  codesign --force --sign - "$SPARKLE"
   codesign --force --sign - --identifier "$BUNDLE_ID.agent" "$APP/Contents/Helpers/gita-agent"
   codesign --force --sign - --identifier "$BUNDLE_ID" --requirements "=designated => identifier \"$BUNDLE_ID\"" "$APP"
 fi
 
 codesign --verify --deep --strict "$APP"
-if [[ -n "$SPARKLE" ]]; then
-  "$ROOT/scripts/check-updater.sh" "$APP"
-fi
+"$ROOT/scripts/check-updater.sh" "$APP"
 
 if (( PACKAGE_ZIP )); then
   ARCHIVE_NAME="${ZIP_BASENAME}-${VERSION_RAW}-macos.zip"

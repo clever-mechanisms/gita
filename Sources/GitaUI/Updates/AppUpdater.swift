@@ -96,6 +96,11 @@ final class AppUpdater: NSObject {
     private(set) var availableVersion: String?
     private(set) var pendingVersion: String?
 
+    /// Whether menu and About update triggers should be enabled (always on for unsigned copies so they explain why).
+    var canRunUpdateAction: Bool {
+        !isEnabled || canCheckForUpdates || availableVersion != nil || pendingVersion != nil
+    }
+
     var automaticallyChecksForUpdates = true {
         didSet {
             guard !isSyncingFromDriver, isEnabled, let driver,

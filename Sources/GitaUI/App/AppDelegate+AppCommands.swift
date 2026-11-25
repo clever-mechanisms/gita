@@ -142,6 +142,11 @@ extension AppDelegate {
         AboutWindowController.shared.show()
     }
 
+    @objc func checkForUpdates() {
+        statusItem?.closePanel()
+        updater.checkForUpdates()
+    }
+
     @objc func findInHistory() {
         showWindow()
         repositoryController?.focusSearch()

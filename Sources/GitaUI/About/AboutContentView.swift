@@ -80,7 +80,7 @@ final class AboutContentView: NSView {
             updateButton.title = String(localized: "Check for Updates…")
             updateButton.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
             updateButton.setAccessibilityIdentifier("about.checkForUpdates")
-            updateButton.isEnabled = !updater.isEnabled || updater.canCheckForUpdates
+            updateButton.isEnabled = updater.canRunUpdateAction
         }
         autoCheckToggle.setOn(updater.automaticallyChecksForUpdates)
         autoCheckToggle.isEnabled = updater.isEnabled

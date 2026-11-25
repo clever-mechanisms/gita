@@ -93,6 +93,7 @@ extension AppDelegate {
         notifications.resolveOpenURL = { Self.deploymentURL(for: $0) }
         notifications.onShowRepository = { [weak self] url in self?.openRepositoryTab(url) }
         AgentMonitor.shared.start()
+        updater.start(environment: environment)
     }
 
     /// A deployment notification opens the deployment's current main URL (production domain or branch preview).

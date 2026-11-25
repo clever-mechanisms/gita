@@ -61,6 +61,7 @@ struct MainMenu {
     private func appMenu() {
         let app = menu("Gitā")
         item(String(localized: "About Gitā"), #selector(AppDelegate.about), in: app)
+        item(String(localized: "Check for Updates…"), #selector(AppDelegate.checkForUpdates), in: app)
         item(String(localized: "Setup Guide…"), #selector(AppDelegate.showSetupGuide), in: app)
         app.addItem(.separator())
         item(String(localized: "Settings…"), #selector(AppDelegate.settings), key: ",", in: app)

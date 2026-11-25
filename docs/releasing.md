@@ -53,8 +53,8 @@ Keychain (`SecItem*` and `import Security` are blocked by the quality gate).
   `scripts/unregister-build-apps.sh`.
 - `scripts/verify-zip.sh` extracts `Gita-<version>-macos.zip` into a temporary `.noindex` folder and checks strict
   codesign, Developer ID + Hardened Runtime + `stapler validate` + `spctl --assess`, universal `arm64`/`x86_64` slices
-  on `Gita` and `gita-agent`, `Assets.car`, `ThirdParty-Notices.txt` (when bundled), at least 19 `.lproj` localizations,
-  and `scripts/check-updater.sh` (when `Sparkle.framework` is embedded), then unregisters and removes the temp copy.
+  on `Gita` and `gita-agent`, `Assets.car`, `ThirdParty-Notices.txt`, at least 19 `.lproj` localizations, and
+  `scripts/check-updater.sh`, then unregisters and removes the temp copy.
 - `scripts/check-updater.sh` validates `Sparkle.framework`, universal slices, `@rpath/Sparkle.framework`,
   `SUFeedURL = https://getgita.app/appcast.xml`, a 32-byte base64 `SUPublicEDKey`, `SUEnableAutomaticChecks = true`,
   `SUSendProfileInfo = false`, `SUVerifyUpdateBeforeExtraction = true`, and strict nested signatures.

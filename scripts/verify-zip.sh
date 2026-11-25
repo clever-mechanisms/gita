@@ -112,22 +112,18 @@ ICON_NAME=$(plutil -extract CFBundleIconName raw "$PLIST" 2>/dev/null || true)
 [[ "$ICON_NAME" == "AppIcon" ]] || fail "CFBundleIconName must be AppIcon (got: ${ICON_NAME:-<missing>})"
 echo "    Assets.car + AppIcon.icns verified (CFBundleIconName=$ICON_NAME)"
 
-if [[ -d "$ROOT/Resources/ThirdParty" || -d "$EXTRACTED_APP/Contents/Resources/ThirdParty" ]]; then
-  echo "==> Third-party notices"
-  [[ -f "$EXTRACTED_APP/Contents/Resources/ThirdParty/ThirdParty-Notices.txt" ]] \
-    || fail "Contents/Resources/ThirdParty/ThirdParty-Notices.txt is missing"
-  echo "    Contents/Resources/ThirdParty/ThirdParty-Notices.txt verified"
-fi
+echo "==> Third-party notices"
+[[ -f "$EXTRACTED_APP/Contents/Resources/ThirdParty/ThirdParty-Notices.txt" ]] \
+  || fail "Contents/Resources/ThirdParty/ThirdParty-Notices.txt is missing"
+echo "    Contents/Resources/ThirdParty/ThirdParty-Notices.txt verified"
 
 echo "==> Localizations"
 LPROJ_COUNT=$(find "$EXTRACTED_APP/Contents/Resources" -maxdepth 1 -type d -name '*.lproj' | wc -l | tr -d ' ')
 (( LPROJ_COUNT >= 19 )) || fail "expected >= 19 .lproj directories, found $LPROJ_COUNT"
 echo "    $LPROJ_COUNT .lproj bundles"
 
-if [[ -d "$EXTRACTED_APP/Contents/Frameworks/Sparkle.framework" ]] || grep -qF "Sparkle" "$ROOT/Package.swift" 2>/dev/null; then
-  echo "==> Updater guard"
-  [[ -x "$ROOT/scripts/check-updater.sh" ]] || fail "required guard missing or not executable: scripts/check-updater.sh"
-  "$ROOT/scripts/check-updater.sh" "$EXTRACTED_APP"
-fi
+echo "==> Updater guard"
+[[ -x "$ROOT/scripts/check-updater.sh" ]] || fail "required guard missing or not executable: scripts/check-updater.sh"
+"$ROOT/scripts/check-updater.sh" "$EXTRACTED_APP"
 
 echo "==> Verified $ZIP ($VERSION build $BUILD)"

@@ -211,4 +211,36 @@ struct AppShellCommandTests {
         #expect(window.attachedSheet != nil)
         window.attachedSheet.map { window.endSheet($0) }
     }
+
+    @Test func checkForUpdatesMenuItemTracksUpdaterStateAndRunsAction() async throws {
+        let driver = FakeUpdaterDriver()
+        let updater = AppUpdater(
+            driverFactory: { _ in driver }, officialBuildCheck: { _ in true }, activateApp: {}, presentUnavailable: {})
+        var releaseEnv = AppEnvironment(
+            isDevelopment: false, defaults: .standard, arguments: [], bundle: .main,
+            startsServices: true, statusBar: NSStatusBar())
+        releaseEnv.bundleURL = URL(fileURLWithPath: "/Applications/Gita.app")
+
+        let shell = AppShellHarness(arguments: ["Gita"], isDevelopment: true, updater: updater)
+        await shell.launch()
+        defer { shell.tearDown() }
+
+        let item = try #require(shell.menuItem(#selector(AppDelegate.checkForUpdates)))
+        #expect(shell.app.validateMenuItem(item))
+
+        updater.start(environment: releaseEnv)
+        #expect(shell.app.validateMenuItem(item))
+
+        driver.emit(canCheck: false, autoCheck: true, autoDownload: false)
+        #expect(!shell.app.validateMenuItem(item))
+
+        updater.recordFoundVersion("0.2.3")
+        #expect(shell.app.validateMenuItem(item))
+
+        shell.app.checkForUpdates()
+        #expect(driver.checkCalls == 1)
+
+        shell.app.showSetupGuide()
+        #expect(!shell.app.validateMenuItem(item))
+    }
 }

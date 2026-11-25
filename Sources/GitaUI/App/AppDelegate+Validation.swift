@@ -51,11 +51,8 @@ extension AppDelegate {
         if menuItem.action == #selector(toggleTerminal) {
             menuItem.state = tabsController?.isTerminalPanelShown == true ? .on : .off
         }
-        if menuItem.action == #selector(blameSelectedFile) {
-            return !isLanguageRestarting && setupGuide == nil && repositoryController?.canBlameSelectedFile == true
-        }
         guard let command = Self.command(for: menuItem.action) else {
-            return !isLanguageRestarting && setupGuide == nil
+            return validateUnlistedMenuItem(menuItem)
         }
         if command == .toggleHistoryDetails { menuItem.state = model.showsHistoryDetails ? .on : .off }
         if command == .openRemote {
@@ -67,6 +64,15 @@ extension AppDelegate {
         }
         return availability.isEnabled(
             command, tag: menuItem.tag, reference: menuItem.representedObject as? GitReference)
+    }
+
+    private func validateUnlistedMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard !isLanguageRestarting, setupGuide == nil else { return false }
+        if menuItem.action == #selector(blameSelectedFile) {
+            return repositoryController?.canBlameSelectedFile == true
+        }
+        if menuItem.action == #selector(checkForUpdates) { return updater.canRunUpdateAction }
+        return true
     }
 
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool {

@@ -14,6 +14,7 @@ extension AppDelegate {
         #selector(navigate(_:)): ["go to", "open", "show", "page"],
         #selector(showDetailTab(_:)): ["go to", "show", "tab"],
         #selector(settings): ["preferences", "options"],
+        #selector(checkForUpdates): ["upgrade", "version"],
         #selector(toggleTerminal): ["open terminal", "hide terminal", "shell", "console"],
         #selector(newTerminal): ["open terminal", "shell", "console"],
         #selector(openRepository): ["add repository", "folder"],

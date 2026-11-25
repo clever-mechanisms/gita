@@ -8,7 +8,7 @@ import os
 @testable import GitaUI
 
 @MainActor
-private final class FakeUpdaterDriver: UpdaterDriver {
+final class FakeUpdaterDriver: UpdaterDriver {
     var canCheckForUpdates = true
     var automaticallyChecksForUpdates = true {
         didSet { automaticCheckWrites.append(automaticallyChecksForUpdates) }

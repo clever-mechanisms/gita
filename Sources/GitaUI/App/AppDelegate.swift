@@ -11,6 +11,7 @@ import GitaCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidation, NSMenuItemValidation {
     let environment: AppEnvironment
+    let updater: AppUpdater
     let router: URLRouter
     let loginOffer = LoginOfferController()
     var workspaces: WorkspaceList
@@ -36,8 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     /// The open command palette, if any; see `AppDelegate+Palette`.
     var palette: PaletteController?
 
-    init(environment: AppEnvironment = .current) {
+    init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment
+        self.updater = updater
         router = URLRouter(scheme: environment.urlScheme)
         workspaces = WorkspaceList.restore(from: environment.defaults)
         place = Self.makePlace(workspaces.active, environment: environment, autosaveName: nil)

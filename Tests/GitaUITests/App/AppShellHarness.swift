@@ -78,7 +78,8 @@ final class AppShellHarness {
 
     /// `settings`: a settings domain filled before the launch (a fresh one otherwise).
     init(
-        arguments: [String] = ["Gita"], isDevelopment: Bool = true, settings: AppTestDefaults = AppTestDefaults()
+        arguments: [String] = ["Gita"], isDevelopment: Bool = true, settings: AppTestDefaults = AppTestDefaults(),
+        updater: AppUpdater = AppUpdater(officialBuildCheck: { _ in false }, activateApp: {}, presentUnavailable: {})
     ) {
         self.settings = settings
         UITestSupport.bootstrap()
@@ -86,7 +87,7 @@ final class AppShellHarness {
             isDevelopment: isDevelopment, defaults: settings.defaults, arguments: arguments, bundle: .main,
             startsServices: false, statusBar: NSStatusBar())
         environment.system = recorder.hooks()
-        app = AppDelegate(environment: environment)
+        app = AppDelegate(environment: environment, updater: updater)
         app.loginOffer.delay = .zero
     }
 
