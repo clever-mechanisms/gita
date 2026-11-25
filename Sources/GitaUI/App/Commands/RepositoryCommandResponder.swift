@@ -29,6 +29,7 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     func openAuthorTab(_ author: CommitAuthor, in root: URL) { host?.openAuthorTab(author, in: root) }
     func removeFromRepositoryList(_ paths: [String]) { host?.removeFromRepositoryList(paths) }
     func openStackedBranches(baseBranch: String?) { host?.openStackedBranches(baseBranch: baseBranch) }
+    func openLineHistory(range: LineRangeSpec) { host?.openLineHistory(range: range) }
 
     // MARK: Remotes and the working copy
 

@@ -109,6 +109,7 @@ extension RepositoryViewController {
         view.onBlamePrior = { [weak self] commit, path in
             self?.showBlame(path: path, revision: commit)
         }
+        view.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
         view.onClose = { [weak self] in self?.closeBlame() }
         Style.fill(view, in: codePane)
         view.isHidden = true

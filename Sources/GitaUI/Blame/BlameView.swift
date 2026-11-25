@@ -4,7 +4,7 @@ import GitaCore
 /// Streaming file blame view (`§6c`): age heat bars (`▇▅▂`), block commit metadata, click to select commit in
 /// history, `⌥`-click or `◀ Blame prior revision` to walk back in history.
 @MainActor
-final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate {
+final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     private enum Metrics {
         static let headerHeight: CGFloat = 28
         static let rowHeight: CGFloat = 21
@@ -16,6 +16,7 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     var onSelectCommit: ((String) -> Void)?
     var onBlamePrior: ((String, String) -> Void)?
+    var onShowLineHistory: ((LineRangeSpec) -> Void)?
     var onClose: (() -> Void)?
     var currentModifiers: () -> NSEvent.ModifierFlags = { NSApp.currentEvent?.modifierFlags ?? [] }
 
@@ -89,6 +90,9 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         table.action = #selector(clickedTable)
         table.setAccessibilityLabel(String(localized: "File blame"))
         table.setAccessibilityIdentifier("blame.table")
+        let menu = NSMenu()
+        menu.delegate = self
+        table.menu = menu
     }
 
     private func buildLayout() {
@@ -258,5 +262,18 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         cell.isBlockHighlighted = selectedLineIndex.map { document.blockRange(at: $0).contains(row) } ?? false
         cell.annotation = annotation
         return cell
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let row = table.clickedRow >= 0 ? table.clickedRow : (selectedLineIndex ?? -1)
+        guard let document, document.annotations.indices.contains(row), let onShowLineHistory else { return }
+        let lineNumber = row + 1
+        let spec = LineRangeSpec(
+            path: document.path, startLine: lineNumber, endLine: lineNumber, revision: document.revision)
+        menu.addItem(
+            MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
+                onShowLineHistory(spec)
+            })
     }
 }

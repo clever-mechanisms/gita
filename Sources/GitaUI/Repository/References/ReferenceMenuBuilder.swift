@@ -55,6 +55,13 @@ struct ReferenceMenuBuilder {
             items.append(detach)
         }
         if let review = actions.reviewCommit(commit) { items.append(review) }
+        if let startBisect = actions.startBisectFromCommit {
+            let bisect = MenuAction(String(localized: "Start Bisect from Here…"), symbol: "scope") {
+                startBisect(commit)
+            }
+            bisect.isEnabled = canOperate
+            items.append(bisect)
+        }
         return items
     }
 

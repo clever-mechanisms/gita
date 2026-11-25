@@ -30,7 +30,7 @@ extension RepositoryViewController {
         return [
             (create, ["pull request", "new pr", "open pr", "github"]), (stage, ["add", "stage everything"]),
             (commit, ["commit message", "save"]),
-        ]
+        ] + bisectPaletteActions()
     }
 
     /// Local Changes with the commit message ready to type: Commit staged follows there.

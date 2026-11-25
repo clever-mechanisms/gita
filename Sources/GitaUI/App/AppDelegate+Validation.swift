@@ -74,8 +74,13 @@ extension AppDelegate {
         if menuItem.action == #selector(showSubmodulesAndLFS)
             || menuItem.action == #selector(showCleanupAssistant)
             || menuItem.action == #selector(showStackedBranches)
+            || menuItem.action == #selector(showReflogBrowser)
+            || menuItem.action == #selector(showCodeSearch)
         {
             return model.snapshot != nil && model.service != nil
+        }
+        if menuItem.action == #selector(startBisect) {
+            return model.snapshot != nil && model.service != nil && !model.isMutating
         }
         if menuItem.action == #selector(checkForUpdates) {
             menuItem.title =

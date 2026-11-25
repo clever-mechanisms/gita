@@ -21,8 +21,10 @@ protocol RepositoryCommandHost: AnyObject {
     func openAuthorTab(_ author: CommitAuthor, in root: URL)
     func removeFromRepositoryList(_ paths: [String])
     func openStackedBranches(baseBranch: String?)
+    func openLineHistory(range: LineRangeSpec)
 }
 
 extension RepositoryCommandHost {
     func openStackedBranches(baseBranch _: String?) {}
+    func openLineHistory(range _: LineRangeSpec) {}
 }

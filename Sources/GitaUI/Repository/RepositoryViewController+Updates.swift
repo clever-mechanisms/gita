@@ -46,6 +46,7 @@ extension RepositoryViewController {
         reconcileAmend()
         showCommitField()
         commitEcosystemRepositoryChanged()
+        syncBisectPresenter()
         sheets.repositoryChanged(to: model.service)
         historyControls.search.stringValue = model.searchQuery
         unpushed.update(model.snapshot)

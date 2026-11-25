@@ -43,16 +43,17 @@ extension RepositoryViewController {
         wireContentBanner()
         let banner = contentBanner
         let focusKey = PaneFocusKeyView { [weak self] event in self?.handlePaneFocusKey(event) ?? false }
-        for child in [banner, strip, operationBar, historyPane, pagePane, focusKey] as [NSView] {
+        for child in [banner, strip, operationBar, bisectBanner, historyPane, pagePane, focusKey] as [NSView] {
             content.addSubview(child)
             child.translatesAutoresizingMaskIntoConstraints = false
         }
         NSLayoutConstraint.activate(
-            pinnedSides(banner, strip, operationBar, historyPane, pagePane) + [
+            pinnedSides(banner, strip, operationBar, bisectBanner, historyPane, pagePane) + [
                 banner.topAnchor.constraint(equalTo: content.topAnchor), bannerHeight,
                 strip.topAnchor.constraint(equalTo: banner.bottomAnchor), stripHeight,
                 operationBar.topAnchor.constraint(equalTo: strip.bottomAnchor), operationHeight,
-                historyPane.topAnchor.constraint(equalTo: operationBar.bottomAnchor),
+                bisectBanner.topAnchor.constraint(equalTo: operationBar.bottomAnchor), bisectHeight,
+                historyPane.topAnchor.constraint(equalTo: bisectBanner.bottomAnchor),
                 historyPane.bottomAnchor.constraint(equalTo: content.bottomAnchor),
                 pagePane.topAnchor.constraint(equalTo: banner.bottomAnchor),
                 pagePane.bottomAnchor.constraint(equalTo: content.bottomAnchor),

@@ -39,6 +39,7 @@ extension RepositoryViewController {
         codePane.onDiscardLines = { [weak self] rows in self?.discardLines(rows: rows) }
         codePane.onDiffOptionsChanged = { [weak self] options in self?.model.setDiffOptions(options) }
         codePane.onOpenInEditor = { [weak self] line in self?.openInEditor(at: line) }
+        codePane.diffView.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
         filePane.tree.onSelect = { [weak self] entry in
             self?.closeBlame()
             self?.model.selectTreeEntry(entry)

@@ -34,6 +34,7 @@ final class RepositoryViewController: NSViewController {
     let commitDetail = CommitDetailView()
     let detailBar = DetailBarView()
     let operationBar = OperationBarView(commands: nil)
+    let bisectBanner = BisectBannerView()
     let commitFooter = CommitFooterView()
     /// Amend Last Commit in Local Changes. The draft message stays put while this is on.
     var amend = CommitAmend.off
@@ -73,6 +74,7 @@ final class RepositoryViewController: NSViewController {
         String(localized: "Load more commits"), symbol: "arrow.down", target: self, action: #selector(moreHistory))
     lazy var historyFooterHeight = loadMore.heightAnchor.constraint(equalToConstant: 0)
     lazy var operationHeight = operationBar.heightAnchor.constraint(equalToConstant: 0)
+    lazy var bisectHeight = bisectBanner.heightAnchor.constraint(equalToConstant: 0)
     lazy var stripHeight = strip.heightAnchor.constraint(equalToConstant: RepositoryLayout.stripHeight)
 
     // MARK: State
@@ -108,6 +110,8 @@ final class RepositoryViewController: NSViewController {
     var commitSigningRowState = CommitSigningRowState()
     var loadedSigningRepoPath: String?
     var appliedTemplateRepoPaths: Set<String> = []
+    var bisectPresenter: BisectPresenter?
+    var bisectServiceID: ObjectIdentifier?
     lazy var detailLoader: ProviderDetailLoader = { [weak self] item, force in
         guard let self, let target = item.target, let root = self.model.snapshot?.root, let service = self.model.service
         else { return nil }
@@ -192,6 +196,7 @@ final class RepositoryViewController: NSViewController {
         mediaLoadTask?.cancel()
         mediaLoadTask = nil
         detachCommitEcosystem()
+        detachBisect()
         for token in notificationObservations { NotificationCenter.default.removeObserver(token) }
         notificationObservations = []
         if let workspaceObservation { WorkspaceMonitor.shared.removeObserver(workspaceObservation) }

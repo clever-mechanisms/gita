@@ -166,6 +166,16 @@ struct MainMenu {
             String(localized: "Stacked Branches…"), #selector(AppDelegate.showStackedBranches), in: repo,
             symbol: "square.stack.3d.up")
         item(
+            String(localized: "Reflog / Undo Browser…"), #selector(AppDelegate.showReflogBrowser), in: repo,
+            symbol: "clock.arrow.circlepath")
+        item(
+            String(localized: "Code Search (Pickaxe)…"), #selector(AppDelegate.showCodeSearch), key: "f", in: repo,
+            symbol: "doc.text.magnifyingglass"
+        ).keyEquivalentModifierMask = [.command, .option]
+        item(
+            String(localized: "Start Git Bisect…"), #selector(AppDelegate.startBisect), in: repo,
+            symbol: "scope")
+        item(
             String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
             in: repo,
             symbol: "globe")

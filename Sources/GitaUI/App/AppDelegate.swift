@@ -42,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var cleanupWindows: [String: CleanupAssistantWindowController] = [:]
     /// Open Stacked Branches windows keyed by repository root path and base branch.
     var stackWindows: [String: BranchStackWindowController] = [:]
+    /// Open Reflog, Code Search, and Line History windows keyed by repository scope.
+    var reflogWindows: [String: ReflogWindowController] = [:]
+    var codeSearchWindows: [String: CodeSearchWindowController] = [:]
+    var lineHistoryWindows: [String: LineHistoryWindowController] = [:]
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment

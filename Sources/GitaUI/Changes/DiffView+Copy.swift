@@ -68,6 +68,20 @@ extension DiffView {
         }
         openItem.isEnabled = shownPath != nil
         menu.addItem(openItem)
+
+        if let path = shownPath, let onShowLineHistory {
+            let lineNumbers = docRows.compactMap { row -> Int? in
+                guard currentLines.indices.contains(row) else { return nil }
+                return DiffDocumentBuilder.sourceLineNumber(for: currentLines[row])
+            }
+            if let start = lineNumbers.min(), let end = lineNumbers.max() {
+                let spec = LineRangeSpec(path: path, startLine: start, endLine: end)
+                menu.addItem(
+                    MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
+                        onShowLineHistory(spec)
+                    })
+            }
+        }
         return menu
     }
 }

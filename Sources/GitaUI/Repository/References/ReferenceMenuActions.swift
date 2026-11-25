@@ -12,6 +12,7 @@ struct ReferenceMenuActions {
     var clearFilters: () -> Void
     var openRemoteBranch: (String) -> Void
     var viewStacksFromBranch: ((String) -> Void)?
+    var startBisectFromCommit: ((GitCommit) -> Void)?
     var open: (URL) -> Void = { Deck.open($0) }
     var copy: (String) -> Void = { Deck.copy($0) }
 }

@@ -218,6 +218,81 @@ extension AppDelegate {
         controller.present()
     }
 
+    @objc func showReflogBrowser() {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = root.standardizedFileURL.path
+        let controller: ReflogWindowController
+        if let existing = reflogWindows[key] {
+            controller = existing
+        } else {
+            controller = ReflogWindowController(
+                service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
+            controller.onJumpToCommit = { [weak self] sha in
+                self?.showWindow()
+                self?.repositoryController?.showCommit(id: sha)
+            }
+            controller.onRepositoryMutated = { [weak self] in self?.model.refresh() }
+            reflogWindows[key] = controller
+        }
+        controller.show(ref: "HEAD")
+    }
+
+    @objc func showCodeSearch() {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = root.standardizedFileURL.path
+        let controller: CodeSearchWindowController
+        if let existing = codeSearchWindows[key] {
+            controller = existing
+        } else {
+            controller = CodeSearchWindowController(
+                service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
+            controller.onJumpToCommit = { [weak self] sha in
+                self?.showWindow()
+                self?.repositoryController?.showCommit(id: sha)
+            }
+            codeSearchWindows[key] = controller
+        }
+        controller.show()
+    }
+
+    @objc func startBisect() {
+        guard model.snapshot != nil, model.service != nil, !model.isMutating else {
+            environment.system.beep()
+            return
+        }
+        showWindow()
+        repositoryController?.presentBisectStartSheet(initialBad: nil)
+    }
+
+    func openLineHistory(range: LineRangeSpec) {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = "\(root.standardizedFileURL.path)#\(range.path)#\(range.startLine)-\(range.endLine)"
+        let controller: LineHistoryWindowController
+        if let existing = lineHistoryWindows[key] {
+            controller = existing
+        } else {
+            controller = LineHistoryWindowController(service: service, range: range, repositoryRoot: root)
+            controller.onJumpToCommit = { [weak self] sha in
+                self?.showWindow()
+                self?.repositoryController?.showCommit(id: sha)
+            }
+            lineHistoryWindows[key] = controller
+        }
+        controller.show(range: range)
+    }
+
     /// View › a page (⌥⌘1…); Worktrees & Agents opens or closes the right-hand pane.
     @objc func navigate(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let section = Section(rawValue: raw) else { return }

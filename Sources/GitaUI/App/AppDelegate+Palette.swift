@@ -35,6 +35,15 @@ extension AppDelegate {
         #selector(showStackedBranches): [
             "stack", "stacked branches", "restack", "update-refs", "rebase stack",
         ],
+        #selector(showReflogBrowser): [
+            "reflog", "undo", "recover", "orphaned", "dropped commit", "visual undo",
+        ],
+        #selector(showCodeSearch): [
+            "pickaxe", "code search", "grep history", "regex", "-S", "-G",
+        ],
+        #selector(startBisect): [
+            "bisect", "regression", "find bug", "git bisect",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).

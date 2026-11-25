@@ -79,6 +79,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     var onDiscardLines: ((IndexSet) -> Void)?
     var onExpandContext: (() -> Void)?
     var onOpenInEditor: ((Int?) -> Void)?
+    var onShowLineHistory: ((LineRangeSpec) -> Void)?
     var onMediaDisplayChanged: ((Bool) -> Void)?
 
     var findState = DiffFind.closed
