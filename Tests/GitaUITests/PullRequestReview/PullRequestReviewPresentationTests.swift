@@ -143,4 +143,30 @@ struct PullRequestReviewPresentationTests {
         #expect(controller.isRetired && controller.popOutWindow == nil)
         #expect(!second.isVisible && returned == nil)
     }
+
+    @Test func popOutWindowRestoresAccessoryPolicyOnCloseAndClampsOffscreenFrame() async throws {
+        let originalScreens = WindowFrameClamp.screenVisibleFrames
+        defer { WindowFrameClamp.screenVisibleFrames = originalScreens }
+        let visible = NSRect(x: 100, y: 120, width: 900, height: 600)
+        WindowFrameClamp.screenVisibleFrames = { [visible] }
+
+        let controller = try await open()
+        let popOut = PullRequestReviewWindowController(controller: controller, title: "#42 Fix Dock")
+        let window = try #require(popOut.window)
+        defer { window.orderOut(nil) }
+
+        var policies: [NSApplication.ActivationPolicy] = []
+        var activations = 0
+        popOut.activation = ActivationPolicyCoordinator(
+            setPolicy: { policies.append($0) }, activate: { activations += 1 }, windows: { [window] })
+
+        window.setFrame(NSRect(x: 4_000, y: 2_500, width: 800, height: 520), display: false)
+        popOut.show()
+        #expect(policies == [.regular])
+        #expect(activations == 1)
+        #expect(visible.contains(window.frame))
+
+        window.close()
+        #expect(policies == [.regular, .accessory])
+    }
 }

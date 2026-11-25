@@ -170,8 +170,8 @@ import Testing
             contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
         closing.isReleasedWhenClosed = false
         hidden.isReleasedWhenClosed = false
-        #expect(!AuxiliaryWindowActivation.hasOtherWindows(than: closing, in: [closing, hidden]))
-        #expect(!AuxiliaryWindowActivation.hasOtherWindows(than: nil, in: []))
+        #expect(!ActivationPolicyCoordinator.keepsRegular([closing, hidden], closing: closing))
+        #expect(!ActivationPolicyCoordinator.keepsRegular([], closing: nil))
     }
 
     @Test func stackHugsItsContentWeakly() {

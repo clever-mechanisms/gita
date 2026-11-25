@@ -124,6 +124,8 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
 
     /// The app's active tab model, followed while the window was opened for it.
     var activeModel: () -> AppModel? = { nil }
+    /// Activation policy coordinator; replaceable in tests.
+    var activation = ActivationPolicyCoordinator.shared
     /// Asks where to save the export (nil when cancelled); replaced in tests to answer without a panel.
     var chooseExportURL: (NSWindow, @escaping @MainActor (URL?) -> Void) -> Void = { window, answer in
         let panel = NSSavePanel()
@@ -140,9 +142,7 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
     /// Shows the diagnostic log of the given repository model (nil or the active tab's model = follow the active tab).
     func show(model: AppModel?) {
         let window = prepareWindow(model: model)
-        if NSApp.activationPolicy() == .accessory { NSApp.setActivationPolicy(.regular) }
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AuxiliaryWindowActivation.show(window, coordinator: activation)
     }
 
     /// The app's active tab changed; an Activity window that follows it switches over.
@@ -304,10 +304,7 @@ final class ActivityWindowController: NSWindowController, NSWindowDelegate, NSTo
     }
     func windowWillClose(_: Notification) {
         detach()
-        let otherWindows = NSApp.windows.contains {
-            $0 !== window && $0.isVisible && $0.styleMask.contains(.titled) && $0.level == .normal
-        }
-        if !otherWindows { NSApp.setActivationPolicy(.accessory) }
+        AuxiliaryWindowActivation.closing(window, coordinator: activation)
     }
 
     // MARK: Data

@@ -99,11 +99,22 @@ final class PaletteController: NSObject, NSTableViewDataSource, NSTableViewDeleg
         return table
     }
 
-    /// Shows the palette over the top of `parent`, the search focused.
+    /// Computes the palette's frame over `parentFrame`, clamped to the best visible display.
+    static func frame(over parentFrame: NSRect, screens: [NSRect], preferred: NSRect?) -> NSRect {
+        let origin = NSPoint(
+            x: parentFrame.midX - Self.size.width / 2,
+            y: parentFrame.maxY - Self.size.height - min(120, parentFrame.height / 6))
+        return WindowFrameClamp.clamped(
+            NSRect(origin: origin, size: Self.size), screens: screens, preferred: preferred)
+    }
+
+    /// Shows the palette over the top of `parent`, clamped to the visible screen area, with the search focused.
     func show(over parent: NSWindow) {
-        let frame = parent.frame
-        panel.setFrameOrigin(
-            NSPoint(x: frame.midX - Self.size.width / 2, y: frame.maxY - Self.size.height - min(120, frame.height / 6)))
+        let target = Self.frame(
+            over: parent.frame, screens: WindowFrameClamp.screenVisibleFrames(),
+            preferred: parent.screen?.visibleFrame ?? NSScreen.main?.visibleFrame)
+        panel.setFrame(target, display: false)
+        WindowFrameClamp.track(panel)
         parent.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)

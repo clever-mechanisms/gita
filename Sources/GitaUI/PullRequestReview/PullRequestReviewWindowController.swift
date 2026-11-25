@@ -8,6 +8,8 @@ final class PullRequestReviewWindowController: NSWindowController, NSWindowDeleg
     private(set) weak var controller: PullRequestReviewController?
     private let hostView = ThemedBackgroundView()
     var onClose: ((PullRequestReviewView) -> Void)?
+    /// Activation policy coordinator; replaceable in tests.
+    var activation = ActivationPolicyCoordinator.shared
 
     init(controller: PullRequestReviewController, title: String) {
         self.controller = controller
@@ -37,12 +39,13 @@ final class PullRequestReviewWindowController: NSWindowController, NSWindowDeleg
 
     func show() {
         attachReviewView()
-        if NSApp.activationPolicy() == .accessory { NSApp.setActivationPolicy(.regular) }
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window {
+            AuxiliaryWindowActivation.show(window, coordinator: activation)
+        }
     }
 
     func windowWillClose(_: Notification) {
+        defer { AuxiliaryWindowActivation.closing(window, coordinator: activation) }
         guard let reviewView = controller?.reviewView else { return }
         if reviewView.superview === hostView {
             reviewView.removeFromSuperview()

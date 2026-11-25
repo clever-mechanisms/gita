@@ -30,6 +30,14 @@ struct SettingsRemoteUpdatesTests {
         #expect(controls.statusLabel.toolTip == status)
         #expect(pane.view(for: .remoteUpdates) === pane.remoteUpdatesGroup)
 
+        let rows = pane.remoteUpdatesGroup.settingsDescendants(of: SettingsRow.self)
+        let checkRow = try #require(
+            rows.first { $0.titleLabel.stringValue == String(localized: "Check remotes for new commits") })
+        let fetchRow = try #require(
+            rows.first { $0.titleLabel.stringValue == String(localized: "Fetch automatically") })
+        #expect(checkRow.subtitleLabel == nil && checkRow.help != nil)
+        #expect(fetchRow.subtitleLabel == nil && fetchRow.help != nil)
+
         // Cadence and focus remain available when auto-fetch is also enabled.
         controls.autoFetch.settingsPress()
         #expect(Preference.remoteAutoFetch.bool(recorder.defaults))

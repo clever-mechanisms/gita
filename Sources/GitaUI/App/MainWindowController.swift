@@ -71,6 +71,7 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate 
             window.setFrameTopLeftPoint(window.cascadeTopLeft(from: Self.topLeft(of: neighbor)))
         }
         if savesFrame { window.setFrameAutosaveName(autosaveName) }
+        WindowFrameClamp.track(window)
         open = Open(window: window, tabs: tabs)
         return window
     }
@@ -91,21 +92,9 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate 
     /// Fits the window on its screen and brings it and the app forward.
     func bringToFront() {
         guard let window else { return }
-        if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
-            window.setFrame(Self.fit(window.frame, in: visible), display: true)
-        }
+        WindowFrameClamp.clamp(window)
         activation.windowWillShow()
         window.makeKeyAndOrderFront(nil)
-    }
-
-    /// `frame` moved and shrunk as needed to lie within `visible`.
-    static func fit(_ frame: NSRect, in visible: NSRect) -> NSRect {
-        var fitted = frame
-        fitted.size.width = min(frame.width, visible.width)
-        fitted.size.height = min(frame.height, visible.height)
-        fitted.origin.x = max(visible.minX, min(frame.origin.x, visible.maxX - fitted.width))
-        fitted.origin.y = max(visible.minY, min(frame.origin.y, visible.maxY - fitted.height))
-        return fitted
     }
 
     var isInFront: Bool {
