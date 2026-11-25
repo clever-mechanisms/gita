@@ -69,6 +69,13 @@ struct ActionsOpenInTests {
         #expect(ProductWebsite.host(from: "") == nil)
         #expect(Website.host == Website.defaultHost)
         #expect(Website.home?.host() == Website.defaultHost)
+        #expect(
+            Website.changelog?.absoluteString
+                == "https://getgita.app/changelog?utm_source=gita&utm_medium=app&utm_campaign=about&utm_content=release_notes"
+        )
+        #expect(
+            Website.support?.absoluteString
+                == "https://getgita.app/support?utm_source=gita&utm_medium=app&utm_campaign=about&utm_content=support")
         #expect(Website.repository?.absoluteString == "https://github.com/clever-mechanisms/gita")
         #expect(BugReport.issues == "https://github.com/clever-mechanisms/gita/issues/new")
         #expect(Website.url("x", campaign: "c", content: "d")?.path() == "/x")

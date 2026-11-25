@@ -34,7 +34,10 @@ public enum ReviewSkill: String, Sendable, CaseIterable, Hashable {
             )
         case .caveman: URL(string: "https://github.com/JuliusBrussee/caveman/tree/main/skills/caveman-review")
         case .builtIn:
-            URL(string: "https://github.com/rolottr/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md")
+            URL(
+                string:
+                    "https://github.com/clever-mechanisms/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md"
+            )
         }
     }
 

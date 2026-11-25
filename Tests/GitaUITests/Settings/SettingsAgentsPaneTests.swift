@@ -148,7 +148,7 @@ struct SettingsAgentsPaneTests {
         pane.openReviewSkill()
         #expect(
             recorder.openedURLs.last?.absoluteString
-                == "https://github.com/rolottr/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md")
+                == "https://github.com/clever-mechanisms/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md")
 
         recorder.defaults.set("retired-skill", forKey: Preference.reviewSkill.rawValue)
         pane.refresh()

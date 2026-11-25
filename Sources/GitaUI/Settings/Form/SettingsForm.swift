@@ -20,7 +20,7 @@ enum SettingsForm {
         return label
     }
 
-    /// Short right-hand value ("rolottr", "2 working"), secondary colour.
+    /// Short right-hand value ("octocat", "2 working"), secondary colour.
     static func note(_ text: String = "") -> NSTextField {
         let note = label(text, color: Theme.secondaryText, font: Theme.body)
         note.alignment = .right

@@ -33,4 +33,14 @@ public enum ProductWebsite {
         ]
         return components.url
     }
+
+    /// UTM-tagged `/changelog` URL on the product host.
+    public static func changelog(host: String?, campaign: String = "about", content: String = "release_notes") -> URL? {
+        url(host: host, path: "changelog", campaign: campaign, content: content)
+    }
+
+    /// UTM-tagged `/support` URL on the product host.
+    public static func support(host: String?, campaign: String = "about", content: String = "support") -> URL? {
+        url(host: host, path: "support", campaign: campaign, content: content)
+    }
 }

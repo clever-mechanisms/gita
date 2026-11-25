@@ -19,6 +19,8 @@ enum Website {
         ProductWebsite.url(host: host, path: path, campaign: campaign, content: content)
     }
     static var home: URL? { url(campaign: "about", content: "website") }
+    static var changelog: URL? { ProductWebsite.changelog(host: host) }
+    static var support: URL? { ProductWebsite.support(host: host) }
 }
 
 /// Gitā's issue tracker on GitHub: a bug report opens a new issue whose body already carries this copy's version line.

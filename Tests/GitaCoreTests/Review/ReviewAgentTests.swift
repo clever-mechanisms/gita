@@ -236,7 +236,7 @@ private struct ReviewFixture {
     #expect(ReviewSkill.default == .mattPocock)
     // Gitā's own skill keeps its saved value; its folder is `gita-review`, published in the Gitā repository.
     #expect(ReviewSkill.builtIn.file(in: folder).path.hasSuffix("ReviewSkills/gita-review/SKILL.md"))
-    #expect(ReviewSkill.builtIn.sourceURL?.path.hasPrefix("/rolottr/gita/") == true)
+    #expect(ReviewSkill.builtIn.sourceURL?.path.hasPrefix("/clever-mechanisms/gita/") == true)
     for skill in ReviewSkill.allCases {
         let file = skill.file(in: folder)
         let text = try String(contentsOf: file, encoding: .utf8)

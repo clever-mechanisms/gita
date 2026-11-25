@@ -1,0 +1,37 @@
+Gitā — Third-Party Open-Source Notices
+======================================
+
+1. Sparkle 2
+   URL: https://sparkle-project.org
+   License: MIT License and external licenses (full text in Sparkle-LICENSE.txt)
+   Used for signed, Ed25519-verified in-app updates via https://getgita.app/appcast.xml.
+
+2. xterm.js and @xterm/addon-fit
+   URL: https://github.com/xtermjs/xterm.js
+   License: MIT License (full text in xterm-LICENSE.txt and Resources/Terminal/xterm/)
+   Powers the built-in repository terminal.
+
+3. Bundled Code Fonts
+   Licenses: SIL Open Font License 1.1 and MIT License (full license text alongside
+   each font family in Resources/Fonts/)
+   Includes Atkinson Hyperlegible Mono, Cascadia Code, DM Mono, Fira Code, Fira Mono,
+   Geist Mono, Hack, IBM Plex Mono, Inconsolata, Intel One Mono, JetBrains Mono,
+   Martian Mono, Noto Sans Mono, Red Hat Mono, Roboto Mono, Source Code Pro, and
+   Victor Mono.
+
+4. LobeHub Icons and GitHub Octicons
+   URL: https://github.com/lobehub/lobe-icons
+   URL: https://github.com/primer/octicons
+   License: MIT License (full text in Resources/AgentMarks/LICENSE)
+   Used for AI agent and GitHub marks.
+
+5. Simple Icons
+   URL: https://github.com/simple-icons/simple-icons
+   License: CC0 1.0 Universal (full text in Resources/ProviderMarks/LICENSE.md)
+   Used for GitLab and Bitbucket remote provider marks.
+
+6. Bundled Review Skills
+   Licenses: MIT License and Apache License 2.0 (full license and notice texts
+   alongside each skill in Resources/ReviewSkills/)
+   Includes Matt Pocock Review (MIT), Thermo-Nuclear Review (MIT), and
+   Caveman Review (Apache 2.0).
