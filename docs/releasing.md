@@ -8,7 +8,7 @@ Keychain (`SecItem*` and `import Security` are blocked by the quality gate).
 
 - Bump `MARKETING_VERSION` in [Config/Product.xcconfig](../Config/Product.xcconfig).
 - Historical tags (`0.1.0`, `0.2.0`, `0.2.1`) used bare version numbers; releases going forward use `v<version>`
-  (for example, `v0.3.0`), matching the GitHub Release enclosure URL recorded in `.release.txt`:
+  (for example, `v0.2.2`), matching the GitHub Release enclosure URL recorded in `.release.txt`:
   `https://github.com/clever-mechanisms/gita/releases/download/v<version>/Gita-<version>-macos.zip`.
 
 ## Building and notarizing a release
