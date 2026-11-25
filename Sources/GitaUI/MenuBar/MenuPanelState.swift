@@ -86,4 +86,6 @@ struct MenuPanelState: Equatable {
     var problemDetail: Problem?
     var checkedAt: Date?
     var isRefreshing = false
+    /// Non-nil while Sparkle has a pending scheduled update waiting for the user's attention.
+    var pendingUpdateVersion: String?
 }

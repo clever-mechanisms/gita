@@ -119,4 +119,43 @@ import Testing
         controller.activeModelChanged(pendingModel)
         #expect(pendingModel.section == .history)
     }
+
+    @Test func statusItemControllerObservesPendingUpdateAndClearsOnAttentionOrFinish() {
+        UITestSupport.bootstrap()
+        let suite = "GitaUITests.StatusItemUpdate.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite) ?? .standard
+        defer { defaults.removePersistentDomain(forName: suite) }
+        Preference.registerDefaults(in: defaults)
+
+        let activeModel = AppModel(defaults: defaults)
+        let host = MockStatusItemHost(model: activeModel)
+        let updater = AppUpdater(activateApp: {}, presentUnavailable: {})
+        let statusBar = NSStatusBar()
+        let item = statusBar.statusItem(withLength: NSStatusItem.variableLength)
+        let controller = StatusItemController(statusItem: item, host: host, defaults: defaults, updater: updater)
+        _ = controller
+
+        let initialLook = StatusItemLook(
+            agents: AgentSummary(), attention: [], showsCount: true, showsDot: true, pendingUpdateVersion: nil)
+        #expect(!initialLook.icon.dot)
+        #expect(initialLook.toolTip == "Gitā")
+
+        let pendingLook = StatusItemLook(
+            agents: AgentSummary(), attention: [], showsCount: true, showsDot: true, pendingUpdateVersion: "0.2.3")
+        #expect(pendingLook.icon.dot)
+        #expect(pendingLook.toolTip == "Gitā, Version 0.2.3 is available")
+
+        updater.handleScheduledUpdatePresentation(handledBySparkle: false, version: "0.2.3")
+        #expect(item.button?.toolTip?.contains("Version 0.2.3 is available") == true)
+
+        updater.clearPendingVersion()
+        #expect(item.button?.toolTip?.contains("Version 0.2.3 is available") == false)
+
+        updater.handleScheduledUpdatePresentation(handledBySparkle: false, version: "0.2.4")
+        #expect(item.button?.toolTip?.contains("Version 0.2.4 is available") == true)
+        updater.standardUserDriverWillFinishUpdateSession()
+        #expect(updater.pendingVersion == nil)
+        #expect(updater.availableVersion == nil)
+        #expect(item.button?.toolTip?.contains("Version 0.2.4 is available") == false)
+    }
 }

@@ -21,6 +21,7 @@ struct MenuPanelStateBuilder {
         var snapshot: RepositorySnapshot?
         var hasConflicts = false
         var isRefreshing = false
+        var pendingUpdateVersion: String?
     }
 
     /// The repositories in some workspace's tabs, and every monitored repository's display name. The monitor also
@@ -60,7 +61,7 @@ struct MenuPanelStateBuilder {
             repositories: repositories, workspaces: MenuPanelState.Workspace.ordered(shell.workspaces),
             attention: attention(shell, repositories: repositories, names: names), sessions: sessions, names: names,
             feed: activity.feed(sessions: sessions, names: names), problem: problem?.text, problemDetail: problem,
-            checkedAt: checked, isRefreshing: shell.isRefreshing)
+            checkedAt: checked, isRefreshing: shell.isRefreshing, pendingUpdateVersion: shell.pendingUpdateVersion)
     }
 
     private func repository(_ status: RepositoryStatus, snapshot: RepositorySnapshot?) -> MenuPanelState.Repository {

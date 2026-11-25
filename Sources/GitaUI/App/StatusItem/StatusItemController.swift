@@ -41,13 +41,16 @@ final class StatusItemController {
     private var activityObserver: UUID?
     private var agentObserver: UUID?
     private var workspaceObserver: UUID?
+    private var updaterObserver: UUID?
     private var preferenceObserver: NSObjectProtocol?
     private let defaults: UserDefaults
+    private let updater: AppUpdater
 
-    init(statusItem: NSStatusItem, host: StatusItemHost, defaults: UserDefaults) {
+    init(statusItem: NSStatusItem, host: StatusItemHost, defaults: UserDefaults, updater: AppUpdater = .shared) {
         self.statusItem = statusItem
         self.host = host
         self.defaults = defaults
+        self.updater = updater
         let button = statusItem.button
         button?.target = self
         button?.action = #selector(togglePanel)
@@ -57,6 +60,7 @@ final class StatusItemController {
         activityObserver = ProviderActivity.shared.observe(changed)
         agentObserver = AgentMonitor.shared.observe { _ in changed() }
         workspaceObserver = WorkspaceMonitor.shared.observe { _ in changed() }
+        updaterObserver = updater.observe(changed)
         preferenceObserver = NotificationCenter.default.addObserver(
             forName: .gitaPreferenceChanged, object: nil, queue: .main
         ) { [weak self] note in
@@ -74,6 +78,7 @@ final class StatusItemController {
         if let activityObserver { ProviderActivity.shared.removeObserver(activityObserver) }
         if let agentObserver { AgentMonitor.shared.removeObserver(agentObserver) }
         if let workspaceObserver { WorkspaceMonitor.shared.removeObserver(workspaceObserver) }
+        if let updaterObserver { updater.removeObserver(updaterObserver) }
         statusItem.statusBar?.removeStatusItem(statusItem)
     }
 
@@ -90,29 +95,31 @@ final class StatusItemController {
             host.commands.pushNow()
         }
         let statuses = WorkspaceMonitor.shared.statuses
+        let pendingUpdateVersion = updater.pendingVersion
         let shell = MenuPanelStateBuilder.Shell(
             statuses: statuses.isEmpty ? MenuPanelStateBuilder.placeholders(host.panelRepositoryURLs) : statuses,
             workspaces: host.panelWorkspaces, snapshot: model.snapshot, hasConflicts: model.hasConflicts,
-            isRefreshing: model.isLoading || model.isMutating)
+            isRefreshing: model.isLoading || model.isMutating, pendingUpdateVersion: pendingUpdateVersion)
         let builder = MenuPanelStateBuilder(activity: .shared, agents: .shared)
         // Without a panel on screen only the icon is shown: it needs no more than what waits for the user.
         guard let controller = session?.controller else {
-            updateIcon(builder.attention(shell))
+            updateIcon(builder.attention(shell), pendingUpdateVersion: pendingUpdateVersion)
             return
         }
         let state = builder.build(shell)
-        updateIcon(state.attention)
+        updateIcon(state.attention, pendingUpdateVersion: state.pendingUpdateVersion)
         guard state != session?.state else { return }
         session?.state = state
         controller.update(state)
     }
 
-    private func updateIcon(_ attention: [PanelAttention.Item]) {
+    private func updateIcon(_ attention: [PanelAttention.Item], pendingUpdateVersion: String?) {
         guard let button = statusItem.button else { return }
         let next = StatusItemLook(
             agents: AgentMonitor.shared.summary, attention: attention,
             showsCount: Preference.menuBarShowsWorkingCount.bool(defaults),
-            showsDot: Preference.menuBarShowsAttentionDot.bool(defaults))
+            showsDot: Preference.menuBarShowsAttentionDot.bool(defaults),
+            pendingUpdateVersion: pendingUpdateVersion)
         guard next != look else { return }
         if next.icon != look?.icon { button.image = MenuIcon.image(for: next.icon) }
         if next.toolTip != look?.toolTip {

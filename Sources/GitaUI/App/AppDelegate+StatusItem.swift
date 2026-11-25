@@ -20,7 +20,8 @@ extension AppDelegate: StatusItemHost {
             push: { [weak self] url in self?.statusItem?.push(url) },
             reveal: { [weak self] session in self?.reveal(session) },
             openWorkspace: { [weak self] id in self?.openWorkspace(id) },
-            newWorkspace: { [weak self] in self?.newWorkspace() })
+            newWorkspace: { [weak self] in self?.newWorkspace() },
+            installUpdate: { [weak self] in self?.installAvailableUpdate() })
     }
 
     /// Every workspace as the panel lists it: in the front window, in another window, resting (a window's own

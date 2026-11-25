@@ -27,7 +27,7 @@ enum Website {
 enum BugReport {
     static let issues = "https://github.com/clever-mechanisms/gita/issues/new"
 
-    static func url(summary: String = AppInfo.summary) -> URL? {
+    static func url(summary: String = AppInfo.bugReportSummary) -> URL? {
         var components = URLComponents(string: issues)
         let body = "**What happened**\n\n\n**Steps to reproduce**\n\n\n---\n" + summary
         components?.queryItems = [URLQueryItem(name: "body", value: body)]

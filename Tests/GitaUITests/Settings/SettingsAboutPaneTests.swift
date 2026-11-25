@@ -53,7 +53,7 @@ struct SettingsAboutPaneTests {
             #expect(opened.absoluteString.hasPrefix(prefix))
             if id == "about.issuesLink" {
                 let body = URLComponents(url: opened, resolvingAgainstBaseURL: false)?.queryItems?.first?.value
-                #expect(body?.hasSuffix(AppInfo.summary) == true)
+                #expect(body?.hasSuffix(AppInfo.bugReportSummary) == true)
             }
         }
     }

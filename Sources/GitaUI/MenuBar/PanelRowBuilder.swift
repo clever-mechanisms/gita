@@ -10,9 +10,23 @@ struct PanelRowBuilder {
 
     func rows(_ page: PanelPage) -> [PanelRow] {
         switch page {
-        case .inbox: attentionRows() + agentRows() + workspaceRows()
+        case .inbox: updateRows() + attentionRows() + agentRows() + workspaceRows()
         case .activity: feedRows()
         }
+    }
+
+    func updateRows() -> [PanelRow] {
+        guard let version = state.pendingUpdateVersion else { return [] }
+        let title = String(localized: "Version \(version) is available")
+        let subtitle = String(localized: "Software updates")
+        let actionTitle = String(localized: "Install Update")
+        let chip = PanelChip(title: actionTitle, style: .accent, action: .installUpdate, label: actionTitle)
+        return [
+            PanelRow(
+                id: "update:available", kind: .attention, lead: .symbol("arrow.down.circle.fill", .accentText),
+                title: title, subtitle: subtitle, chips: [chip], action: .installUpdate,
+                label: "\(title), \(actionTitle)")
+        ]
     }
 
     func name(for url: URL) -> String { state.names[ProviderActivity.key(url)] ?? url.lastPathComponent }

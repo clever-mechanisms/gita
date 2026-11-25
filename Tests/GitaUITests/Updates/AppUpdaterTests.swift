@@ -56,7 +56,7 @@ struct AppUpdaterTests {
         return env
     }
 
-    @Test func doesNotStartInDevHeadlessOrUnsignedBuilds() {
+    @Test func doesNotStartInDevHeadlessOrUnsignedBuilds() async {
         let driver = FakeUpdaterDriver()
         var unavailableCalls = 0
         var activateCalls = 0
@@ -66,9 +66,9 @@ struct AppUpdaterTests {
             activateApp: { activateCalls += 1 },
             presentUnavailable: { unavailableCalls += 1 })
 
-        updater.start(environment: Self.makeEnvironment(isDevelopment: true, startsServices: true))
+        await updater.start(environment: Self.makeEnvironment(isDevelopment: true, startsServices: true))?.value
         #expect(!updater.isEnabled)
-        updater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: false))
+        await updater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: false))?.value
         #expect(!updater.isEnabled)
 
         let unsignedUpdater = AppUpdater(
@@ -76,7 +76,8 @@ struct AppUpdaterTests {
             officialBuildCheck: { _ in false },
             activateApp: { activateCalls += 1 },
             presentUnavailable: { unavailableCalls += 1 })
-        unsignedUpdater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: true))
+        await unsignedUpdater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: true))?
+            .value
         #expect(!unsignedUpdater.isEnabled)
         #expect(driver.startCalls == 0)
 
@@ -86,7 +87,7 @@ struct AppUpdaterTests {
         #expect(driver.checkCalls == 0)
     }
 
-    @Test func startsOnceOnOfficialBuildAndSyncsKVOWithoutFeedbackLoops() {
+    @Test func startsOnceOnOfficialBuildAndSyncsKVOWithoutFeedbackLoops() async {
         let driver = FakeUpdaterDriver()
         let initialCheckDate = Date(timeIntervalSince1970: 1_700_000_000)
         driver.lastUpdateCheckDate = initialCheckDate
@@ -100,8 +101,11 @@ struct AppUpdaterTests {
         defer { updater.removeObserver(token) }
 
         let env = Self.makeEnvironment(isDevelopment: false, startsServices: true)
-        updater.start(environment: env)
-        updater.start(environment: env)
+        let firstTask = updater.start(environment: env)
+        let secondTask = updater.start(environment: env)
+        #expect(firstTask != nil && secondTask != nil)
+        await firstTask?.value
+        await updater.start(environment: env)?.value
         #expect(updater.isEnabled)
         #expect(driver.startCalls == 1)
         #expect(updater.canCheckForUpdates)
@@ -125,14 +129,38 @@ struct AppUpdaterTests {
         #expect(driver.automaticDownloadWrites.isEmpty)
     }
 
-    @Test func manualCheckAndInstallTransitionsAndCycleResults() {
+    @Test func queuedManualCheckRunsAfterAsyncOfficialBuildCheckFinishes() async {
+        let driver = FakeUpdaterDriver()
+        var activateCalls = 0
+        let updater = AppUpdater(
+            driverFactory: { _ in driver },
+            officialBuildCheck: { _ in
+                try? await Task.sleep(for: .milliseconds(20))
+                return true
+            },
+            activateApp: { activateCalls += 1 },
+            presentUnavailable: {})
+
+        let startTask = updater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: true))
+        #expect(!updater.isEnabled)
+        updater.checkForUpdates()
+        #expect(driver.checkCalls == 0)
+
+        await startTask?.value
+        #expect(updater.isEnabled)
+        #expect(activateCalls == 1)
+        #expect(driver.checkCalls == 1)
+        #expect(updater.state == .checking)
+    }
+
+    @Test func manualCheckAndInstallTransitionsAndCycleResults() async {
         let driver = FakeUpdaterDriver()
         let updater = AppUpdater(
             driverFactory: { _ in driver },
             officialBuildCheck: { _ in true },
             activateApp: {},
             presentUnavailable: {})
-        updater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: true))
+        await updater.start(environment: Self.makeEnvironment(isDevelopment: false, startsServices: true))?.value
 
         updater.checkForUpdates()
         #expect(updater.state == .checking)
@@ -209,21 +237,30 @@ struct AppUpdaterTests {
 
         updater.standardUserDriverDidReceiveUserAttention(forUpdate: item)
         #expect(updater.pendingVersion == nil)
+        #expect(updater.availableVersion == "1.5.0")
 
         updater.updater(spu, didFindValidUpdate: item)
         #expect(updater.pendingVersion == item.displayVersionString)
+        #expect(updater.availableVersion == item.displayVersionString)
         updater.standardUserDriverWillFinishUpdateSession()
         #expect(updater.pendingVersion == nil)
+        #expect(updater.availableVersion == nil)
+        #expect(updater.state == .idle)
 
         updater.updaterDidNotFindUpdate(spu)
         #expect(updater.state == .upToDate)
 
         let error = NSError(domain: "Test", code: 42, userInfo: [NSLocalizedDescriptionKey: "Network failed"])
         updater.updater(spu, failedToDownloadUpdate: item, error: error)
+        #expect(updater.state == .upToDate)
         updater.updater(spu, didAbortWithError: error)
+        #expect(updater.state == .upToDate)
         let noUpdate = NSError(domain: SUSparkleErrorDomain, code: Int(SUError.noUpdateError.rawValue))
         updater.updater(spu, didAbortWithError: noUpdate)
+        #expect(updater.state == .upToDate)
         updater.updater(spu, didFinishUpdateCycleFor: .updates, error: nil)
+        #expect(updater.state == .upToDate)
+        #expect(updater.lastUpdateCheckDate == spu.lastUpdateCheckDate)
     }
 
     @Test func sparkleUpdaterDriverExposesKVOPropertiesWithoutStarting() {

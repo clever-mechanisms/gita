@@ -81,8 +81,8 @@ Local builds are ad-hoc signed. A distributable build signs with your Developer 
 timestamp, no entitlements) and is notarized and stapled:
 
 ```sh
-xcrun notarytool store-credentials gita-notary   # once: stores your notary credentials in your keychain
-GITA_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" GITA_NOTARY_PROFILE=gita-notary \
+xcrun notarytool store-credentials notary        # once: stores your notary credentials in your keychain
+GITA_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" GITA_NOTARY_PROFILE=notary \
   CONFIG=release ARCH=universal scripts/build.sh
 ```
 

@@ -11,6 +11,7 @@ set -euo pipefail
 ROOT=${0:A:h:h}
 ALLOW_UNNOTARIZED=0
 EXPECTED_ARCH=universal
+EXPECTED_VERSION=""
 TEAM_ID=${TEAM_ID:-PCZ6F8Q9DZ}
 
 while (( $# > 0 )); do
@@ -24,8 +25,13 @@ while (( $# > 0 )); do
       EXPECTED_ARCH="$2"
       shift 2
       ;;
+    --expected-version)
+      [[ $# -ge 2 ]] || { echo "Missing value after --expected-version" >&2; exit 2; }
+      EXPECTED_VERSION="$2"
+      shift 2
+      ;;
     -h|--help)
-      echo "Usage: scripts/verify-zip.sh [--allow-unnotarized] [--arch universal|arm64|x86_64] <zip>"
+      echo "Usage: scripts/verify-zip.sh [--allow-unnotarized] [--arch universal|arm64|x86_64] [--expected-version <v>] <zip>"
       exit 0
       ;;
     *)
@@ -68,6 +74,14 @@ BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$PLIST" 2>/dev/null) || fail
 VERSION=$(plutil -extract CFBundleShortVersionString raw "$PLIST" 2>/dev/null) || fail "missing CFBundleShortVersionString"
 BUILD=$(plutil -extract CFBundleVersion raw "$PLIST" 2>/dev/null) || fail "missing CFBundleVersion"
 [[ -n "$VERSION" && -n "$BUILD" ]] || fail "empty version ($VERSION) or build ($BUILD)"
+if [[ -z "$EXPECTED_VERSION" && -f "$ROOT/Config/Product.xcconfig" ]]; then
+  EXPECTED_VERSION=$(sed -nE 's/^[[:space:]]*MARKETING_VERSION[[:space:]]*=[[:space:]]*(.*)$/\1/p' \
+    "$ROOT/Config/Product.xcconfig" | tail -1 | sed -E 's/[[:space:]]+$//')
+fi
+if [[ -n "$EXPECTED_VERSION" ]]; then
+  [[ "$VERSION" == "$EXPECTED_VERSION" ]] \
+    || fail "CFBundleShortVersionString ($VERSION) != expected MARKETING_VERSION ($EXPECTED_VERSION)"
+fi
 echo "    Bundle: $BUNDLE_ID $VERSION ($BUILD)"
 
 echo "==> Code signature"
@@ -121,6 +135,13 @@ echo "==> Localizations"
 LPROJ_COUNT=$(find "$EXTRACTED_APP/Contents/Resources" -maxdepth 1 -type d -name '*.lproj' | wc -l | tr -d ' ')
 (( LPROJ_COUNT >= 19 )) || fail "expected >= 19 .lproj directories, found $LPROJ_COUNT"
 echo "    $LPROJ_COUNT .lproj bundles"
+
+echo "==> Build-path leak scan"
+for bin in "$APP_BIN" "$HELPER_BIN"; do
+  LEAKS=$(strings -a "$bin" | grep -F "/Users/" || true)
+  [[ -z "$LEAKS" ]] || fail "raw /Users/ path found in $bin: $(printf '%s' "$LEAKS" | head -n 1)"
+done
+echo "    0 raw /Users/ paths in Gita and gita-agent"
 
 echo "==> Updater guard"
 [[ -x "$ROOT/scripts/check-updater.sh" ]] || fail "required guard missing or not executable: scripts/check-updater.sh"

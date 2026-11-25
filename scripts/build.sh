@@ -4,7 +4,7 @@
 #   CONFIG=debug scripts/build.sh                   debug build
 #   CONFIG=release ARCH=universal scripts/build.sh  Apple Silicon + Intel
 #   PACKAGE_ZIP=1 scripts/build.sh                  also create build/Gita-<version>-macos.zip + .sha256 + verify-zip.sh
-#   GITA_SIGN_IDENTITY="Developer ID Application: …" GITA_NOTARY_PROFILE=gita-notary \
+#   GITA_SIGN_IDENTITY="Developer ID Application: …" GITA_NOTARY_PROFILE=notary \
 #     CONFIG=release ARCH=universal scripts/build.sh
 #     signs with Developer ID, notarizes, staples, creates Gita-<version>-macos.zip + .sha256 + .release.txt,
 #     runs verify-zip.sh, signs with Sparkle's shared EdDSA key, and reveals the ZIP in Finder (unless NO_REVEAL=1).
@@ -82,7 +82,7 @@ SOURCE_REVISION=unknown
 SOURCE_DIRTY=false
 if [[ "$(git rev-parse --show-toplevel 2>/dev/null || true)" == "$(pwd -P)" ]]; then
   SOURCE_REVISION=$(git rev-parse --verify HEAD 2>/dev/null || echo unknown)
-  CHANGES=$(git status --porcelain -- Sources Resources Package.swift Config scripts 2>/dev/null || echo unknown)
+  CHANGES=$(git status --porcelain -- Sources Resources Package.swift Package.resolved Config scripts 2>/dev/null || echo unknown)
   [[ -z "$CHANGES" ]] || SOURCE_DIRTY=true
 fi
 
@@ -300,12 +300,12 @@ if (( PACKAGE_ZIP )); then
     ED_SIGNATURE=$("$SPARKLE_BIN/sign_update" -p "$ARCHIVE")
     "$SPARKLE_BIN/sign_update" --verify "$ARCHIVE" "$ED_SIGNATURE" \
       || { printf 'Sparkle EdDSA signature verification failed for %s\n' "$ARCHIVE" >&2; exit 1; }
-    if [[ -x "$SPARKLE_BIN/generate_keys" ]]; then
-      PUBLIC_KEY=$("$SPARKLE_BIN/generate_keys" -p)
-      APP_KEY=$(plutil -extract SUPublicEDKey raw "$APP/Contents/Info.plist")
-      [[ "$PUBLIC_KEY" == "$APP_KEY" ]] \
-        || { printf 'Keychain EdDSA public key (%s) does not match SUPublicEDKey (%s)\n' "$PUBLIC_KEY" "$APP_KEY" >&2; exit 1; }
-    fi
+    [[ -x "$SPARKLE_BIN/generate_keys" ]] \
+      || { printf 'Sparkle generate_keys not found or not executable in %s\n' "$SPARKLE_BIN" >&2; exit 1; }
+    PUBLIC_KEY=$("$SPARKLE_BIN/generate_keys" -p)
+    APP_KEY=$(plutil -extract SUPublicEDKey raw "$APP/Contents/Info.plist")
+    [[ "$PUBLIC_KEY" == "$APP_KEY" ]] \
+      || { printf 'Keychain EdDSA public key (%s) does not match SUPublicEDKey (%s)\n' "$PUBLIC_KEY" "$APP_KEY" >&2; exit 1; }
 
     DOWNLOAD_URL="https://github.com/clever-mechanisms/gita/releases/download/v${VERSION_RAW}/${ARCHIVE_NAME}"
     cat > "$RELEASE_TXT" <<EOF

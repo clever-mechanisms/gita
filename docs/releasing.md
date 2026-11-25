@@ -25,7 +25,7 @@ Keychain (`SecItem*` and `import Security` are blocked by the quality gate).
 
    ```sh
    GITA_SIGN_IDENTITY="Developer ID Application: … (PCZ6F8Q9DZ)" \
-   GITA_NOTARY_PROFILE=gita-notary \
+   GITA_NOTARY_PROFILE=notary \
    CONFIG=release ARCH=universal \
    scripts/build.sh
    ```

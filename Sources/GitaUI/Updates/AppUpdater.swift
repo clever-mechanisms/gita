@@ -79,12 +79,14 @@ final class AppUpdater: NSObject {
 
     private var driver: (any UpdaterDriver)?
     private var driverObservation: AnyCancellable?
+    private var startTask: Task<Void, Never>?
     private var hasAttemptedStart = false
+    private var pendingManualCheck = false
     private var isSyncingFromDriver = false
     private var observers: [UUID: @MainActor () -> Void] = [:]
 
     private let driverFactory: @MainActor (AppUpdater) -> any UpdaterDriver
-    private let officialBuildCheck: (URL) -> Bool
+    private let officialBuildCheck: @Sendable (URL) async -> Bool
     private let feedOverrideProvider: @Sendable () -> String?
     private let activateApp: @MainActor () -> Void
     private let presentUnavailable: @MainActor () -> Void
@@ -125,7 +127,9 @@ final class AppUpdater: NSObject {
         driverFactory: @escaping @MainActor (AppUpdater) -> any UpdaterDriver = { updater in
             SparkleUpdaterDriver(updaterDelegate: updater, userDriverDelegate: updater)
         },
-        officialBuildCheck: @escaping (URL) -> Bool = { UpdateFeedPolicy.isOfficialBuild(bundleURL: $0) },
+        officialBuildCheck: @escaping @Sendable (URL) async -> Bool = { bundleURL in
+            await UpdateFeedPolicy.isOfficialBuildAsync(bundleURL: bundleURL)
+        },
         feedOverrideProvider: @escaping @Sendable () -> String? = {
             UserDefaults.standard.string(forKey: UpdateFeedPolicy.feedOverrideKey)
         },
@@ -141,33 +145,66 @@ final class AppUpdater: NSObject {
     }
 
     /// Starts Sparkle once on official signed Developer ID builds; never starts in dev, test, or headless runs.
-    func start(environment: AppEnvironment = .current) {
-        guard !isEnabled else { return }
-        hasAttemptedStart = true
-        guard !environment.isDevelopment, environment.startsServices, officialBuildCheck(environment.bundleURL) else {
+    /// Runs the `codesign` team-ID check off the main actor so launch never blocks the UI thread.
+    @discardableResult
+    func start(environment: AppEnvironment = .current) -> Task<Void, Never>? {
+        if isEnabled { return nil }
+        if let startTask { return startTask }
+        guard !environment.isDevelopment, environment.startsServices, environment.bundleURL.pathExtension == "app"
+        else {
+            hasAttemptedStart = true
             Self.log.notice("Not a signed release build: automatic updates are off")
-            return
+            return nil
         }
-        let driver = driverFactory(self)
-        self.driver = driver
-        driverObservation = driver.observeChanges { [weak self] snapshot in
-            self?.applyDriverSnapshot(snapshot)
+        let bundleURL = environment.bundleURL
+        let check = officialBuildCheck
+        let task = Task { [weak self] in
+            let isOfficial = await check(bundleURL)
+            self?.finishStart(isOfficial: isOfficial)
         }
-        driver.startUpdater()
-        isEnabled = true
-        Self.log.info("Sparkle updater started for \(UpdateFeedPolicy.productionFeedURLString, privacy: .public)")
-        applyDriverSnapshot(
-            UpdaterDriverSnapshot(
-                canCheckForUpdates: driver.canCheckForUpdates,
-                automaticallyChecksForUpdates: driver.automaticallyChecksForUpdates,
-                automaticallyDownloadsUpdates: driver.automaticallyDownloadsUpdates))
-        lastUpdateCheckDate = driver.lastUpdateCheckDate
-        notifyObservers()
+        startTask = task
+        return task
+    }
+
+    private func finishStart(isOfficial: Bool) {
+        startTask = nil
+        hasAttemptedStart = true
+        let runManualCheck = pendingManualCheck
+        pendingManualCheck = false
+        guard !isEnabled else { return }
+        if isOfficial {
+            let driver = driverFactory(self)
+            self.driver = driver
+            driverObservation = driver.observeChanges { [weak self] snapshot in
+                self?.applyDriverSnapshot(snapshot)
+            }
+            driver.startUpdater()
+            isEnabled = true
+            Self.log.info("Sparkle updater started for \(UpdateFeedPolicy.productionFeedURLString, privacy: .public)")
+            applyDriverSnapshot(
+                UpdaterDriverSnapshot(
+                    canCheckForUpdates: driver.canCheckForUpdates,
+                    automaticallyChecksForUpdates: driver.automaticallyChecksForUpdates,
+                    automaticallyDownloadsUpdates: driver.automaticallyDownloadsUpdates))
+            lastUpdateCheckDate = driver.lastUpdateCheckDate
+            notifyObservers()
+        } else {
+            Self.log.notice("Not a signed release build: automatic updates are off")
+        }
+        if runManualCheck { performManualCheck() }
     }
 
     /// Menu, Settings, and About "Check for Updates…" action.
     func checkForUpdates() {
-        if !hasAttemptedStart { start() }
+        if !hasAttemptedStart && startTask == nil { _ = start() }
+        if startTask != nil {
+            pendingManualCheck = true
+            return
+        }
+        performManualCheck()
+    }
+
+    private func performManualCheck() {
         activateApp()
         guard isEnabled, let driver else {
             presentUnavailable()
@@ -210,6 +247,23 @@ final class AppUpdater: NSObject {
         guard pendingVersion != nil else { return }
         pendingVersion = nil
         notifyObservers()
+    }
+
+    func finishUpdateSession() {
+        var changed = false
+        if pendingVersion != nil {
+            pendingVersion = nil
+            changed = true
+        }
+        if availableVersion != nil {
+            availableVersion = nil
+            changed = true
+        }
+        if case .available = state {
+            state = .idle
+            changed = true
+        }
+        if changed { notifyObservers() }
     }
 
     func handleScheduledUpdatePresentation(handledBySparkle: Bool, version: String) {
@@ -320,6 +374,6 @@ extension AppUpdater: SPUStandardUserDriverDelegate {
     }
 
     nonisolated func standardUserDriverWillFinishUpdateSession() {
-        MainActor.assumeIsolated { clearPendingVersion() }
+        MainActor.assumeIsolated { finishUpdateSession() }
     }
 }

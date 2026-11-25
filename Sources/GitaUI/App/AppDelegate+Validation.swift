@@ -71,7 +71,12 @@ extension AppDelegate {
         if menuItem.action == #selector(blameSelectedFile) {
             return repositoryController?.canBlameSelectedFile == true
         }
-        if menuItem.action == #selector(checkForUpdates) { return updater.canRunUpdateAction }
+        if menuItem.action == #selector(checkForUpdates) {
+            menuItem.title =
+                updater.pendingVersion.map { String(localized: "Install Update \($0)…") }
+                ?? String(localized: "Check for Updates…")
+            return updater.canRunUpdateAction
+        }
         return true
     }
 

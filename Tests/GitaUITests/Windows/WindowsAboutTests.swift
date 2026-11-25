@@ -39,7 +39,7 @@ struct WindowsAboutTests {
         }
     }
 
-    @Test func showsHeroLocationUpdateControlsAndHidesAcknowledgementsWhenAbsent() throws {
+    @Test func showsHeroLocationUpdateControlsAndHidesAcknowledgementsWhenAbsent() async throws {
         UITestSupport.bootstrap()
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("GitaUITests-" + UUID().uuidString))
         defer { pasteboard.releaseGlobally() }
@@ -54,7 +54,7 @@ struct WindowsAboutTests {
             isDevelopment: false, defaults: .standard, arguments: [], bundle: .main,
             startsServices: true, statusBar: .system)
         env.bundleURL = URL(fileURLWithPath: "/Applications/Gita.app")
-        updater.start(environment: env)
+        await updater.start(environment: env)?.value
 
         let view = AboutContentView(
             configuration: AboutConfiguration(
@@ -94,7 +94,7 @@ struct WindowsAboutTests {
         #expect(view.isFlipped)
     }
 
-    @Test func statusTextFormatsAllUpdaterStates() {
+    @Test func statusTextFormatsAllUpdaterStates() async {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let recent = now.addingTimeInterval(-300)
         let driver = AboutTestUpdaterDriver()
@@ -107,7 +107,7 @@ struct WindowsAboutTests {
             isDevelopment: false, defaults: .standard, arguments: [], bundle: .main,
             startsServices: true, statusBar: .system)
         env.bundleURL = URL(fileURLWithPath: "/Applications/Gita.app")
-        updater.start(environment: env)
+        await updater.start(environment: env)?.value
 
         #expect(AboutContentView.statusText(for: updater, now: now).isEmpty)
 
@@ -146,6 +146,25 @@ struct WindowsAboutTests {
             AppInfo.location(
                 of: URL(fileURLWithPath: "/private/var/folders/ab/cd/T/AppTranslocation/1234/d/Gita.app"),
                 home: "/Users/dev") == String(localized: "Temporary copy (App Translocation)"))
+
+        #expect(AppInfo.bugReportSummary.hasSuffix(AppInfo.bugReportLocation))
+        #expect(
+            AppInfo.bugReportLocation(of: URL(fileURLWithPath: "/Applications/Gita.app"), home: "/Users/dev")
+                == "/Applications")
+        #expect(
+            AppInfo.bugReportLocation(of: URL(fileURLWithPath: "/Users/dev/Applications/Gita.app"), home: "/Users/dev")
+                == "~")
+        #expect(
+            AppInfo.bugReportLocation(of: URL(fileURLWithPath: "/Users/dev/Gita.app"), home: "/Users/dev") == "~")
+        #expect(
+            AppInfo.bugReportLocation(
+                of: URL(fileURLWithPath: "/Volumes/PrivateSSD/Apps/Gita.app"), home: "/Users/dev") == "external volume")
+        #expect(
+            AppInfo.bugReportLocation(
+                of: URL(fileURLWithPath: "/private/var/folders/ab/cd/T/AppTranslocation/1234/d/Gita.app"),
+                home: "/Users/dev") == "App Translocation")
+        #expect(
+            AppInfo.bugReportLocation(of: URL(fileURLWithPath: "/opt/custom/Gita.app"), home: "/Users/dev") == "other")
 
         let emptyBundleDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("GitaTestEmpty-\(UUID().uuidString).bundle", isDirectory: true)

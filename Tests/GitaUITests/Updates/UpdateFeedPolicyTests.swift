@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import os
 
 @testable import GitaUI
 
@@ -120,5 +121,65 @@ struct UpdateFeedPolicyTests {
         #expect(UpdateFeedPolicy.readTeamIdentifier(of: tempDir) == nil)
         // Also exercise a real signed system binary to verify successful exit handling.
         _ = UpdateFeedPolicy.readTeamIdentifier(of: URL(fileURLWithPath: "/bin/ls"))
+    }
+
+    @Test func officialBuildCacheAvoidsRepeatedLookupsPerPath() {
+        let cache = UpdateFeedPolicy.OfficialBuildCache()
+        let firstApp = URL(fileURLWithPath: "/Applications/Gita.app")
+        let secondApp = URL(fileURLWithPath: "/Applications/Other.app")
+        let nonApp = URL(fileURLWithPath: "/usr/local/bin/Gita")
+        var calls = 0
+
+        #expect(
+            !cache.resolve(bundleURL: nonApp) { _ in
+                calls += 1
+                return UpdateFeedPolicy.teamIdentifier
+            })
+        #expect(calls == 0)
+
+        #expect(
+            cache.resolve(bundleURL: firstApp) { _ in
+                calls += 1
+                return UpdateFeedPolicy.teamIdentifier
+            })
+        #expect(
+            cache.resolve(bundleURL: firstApp) { _ in
+                calls += 1
+                return nil
+            })
+        #expect(calls == 1)
+
+        #expect(
+            !cache.resolve(bundleURL: secondApp) { _ in
+                calls += 1
+                return "WRONGTEAM1"
+            })
+        #expect(calls == 2)
+    }
+
+    @MainActor
+    @Test func asyncOfficialBuildCheckRunsOffTheMainThread() async {
+        let appURL = URL(fileURLWithPath: "/Applications/Gita.app")
+        let offMain = OSAllocatedUnfairLock(initialState: false)
+        let official = await UpdateFeedPolicy.isOfficialBuildAsync(bundleURL: appURL) { _ in
+            offMain.withLock { $0 = !Thread.isMainThread }
+            return UpdateFeedPolicy.teamIdentifier
+        }
+        #expect(official)
+        #expect(offMain.withLock { $0 })
+    }
+
+    @Test func runSubprocessTerminatesWedgedProcessesAndHandlesLaunchFailures() {
+        let start = Date()
+        let result = UpdateFeedPolicy.runSubprocess(
+            executableURL: URL(fileURLWithPath: "/bin/sleep"), arguments: ["10"], timeout: 0.1)
+        let elapsed = Date().timeIntervalSince(start)
+        #expect(result == nil)
+        #expect(elapsed < 2.0)
+
+        #expect(
+            UpdateFeedPolicy.runSubprocess(
+                executableURL: URL(fileURLWithPath: "/nonexistent/gita-missing-binary"), arguments: [], timeout: 0.1)
+                == nil)
     }
 }

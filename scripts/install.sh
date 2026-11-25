@@ -196,6 +196,7 @@ try:
 
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     moved = []
+    installing = False
     try:
         for index, path in enumerate(existing_candidates):
             backup = backups_dir / f'Gita-{stamp}-{index}.app'
@@ -208,11 +209,16 @@ try:
             unregister(backup)
             moved.append((path, backup))
 
+        installing = True
         shutil.move(str(stage), str(destination))
         verify(destination)
     except BaseException:
-        if destination.exists() and not stage.exists():
-            shutil.move(str(destination), str(stage))
+        if installing and destination.exists():
+            if not stage.exists():
+                shutil.move(str(destination), str(stage))
+            else:
+                unregister(destination)
+                shutil.rmtree(destination)
         for path, backup in reversed(moved):
             if backup.exists():
                 shutil.move(str(backup), str(path))

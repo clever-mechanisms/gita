@@ -18,11 +18,17 @@ enum AppInfo {
             "Intel"
         #endif
     }
-    /// The folder this copy runs from, for support. A quarantined download that was copied rather than moved runs
-    /// from a temporary copy macOS makes (App Translocation).
+    /// The folder this copy runs from, for local display in About. A quarantined download that was copied rather than
+    /// moved runs from a temporary copy macOS makes (App Translocation).
     static var location: String { location(of: Bundle.main.bundleURL, home: realHome) }
-    /// One line for a bug report: app, version, build, macOS, architecture, location.
-    static var summary: String {
+    /// Privacy-safe install location category for public GitHub bug reports (never leaks volume or folder names).
+    static var bugReportLocation: String { bugReportLocation(of: Bundle.main.bundleURL, home: realHome) }
+    /// One line for Copy Version Info: app, version, build, macOS, architecture, location.
+    static var summary: String { formattedSummary(location: location) }
+    /// One line for a public GitHub bug report: app, version, build, macOS, architecture, location category.
+    static var bugReportSummary: String { formattedSummary(location: bugReportLocation) }
+
+    private static func formattedSummary(location: String) -> String {
         "Gitā \(version) (\(build)\(revision.map { ", \($0)" } ?? "")) · \(system) · \(architecture) · \(location)"
     }
 
@@ -32,6 +38,17 @@ enum AppInfo {
         let folder = bundle.standardizedFileURL.deletingLastPathComponent().path
         if !home.isEmpty, folder == home || folder.hasPrefix(home + "/") { return "~" + folder.dropFirst(home.count) }
         return folder
+    }
+
+    /// Categorizes install locations for public GitHub bug reports without leaking raw volume or folder names.
+    static func bugReportLocation(of bundle: URL, home: String) -> String {
+        let path = bundle.standardizedFileURL.path
+        if path.contains("/AppTranslocation/") { return "App Translocation" }
+        let folder = bundle.standardizedFileURL.deletingLastPathComponent().path
+        if folder == "/Applications" || folder.hasPrefix("/Applications/") { return "/Applications" }
+        if !home.isEmpty, folder == home || folder.hasPrefix(home + "/") { return "~" }
+        if folder == "/Volumes" || folder.hasPrefix("/Volumes/") { return "external volume" }
+        return "other"
     }
 
     static func thirdPartyNoticesURL(in bundle: Bundle = .main) -> URL? {

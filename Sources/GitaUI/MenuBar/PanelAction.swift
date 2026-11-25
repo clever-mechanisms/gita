@@ -20,6 +20,8 @@ enum PanelAction: Hashable {
     case newWorkspace
     /// The list turns into what happened lately.
     case showActivity
+    /// Brings Sparkle's window forward to install a pending update.
+    case installUpdate
 
     /// The web address the action opens, for ⌘C.
     var link: String? {

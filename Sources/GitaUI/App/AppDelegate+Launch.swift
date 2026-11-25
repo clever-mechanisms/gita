@@ -47,7 +47,7 @@ extension AppDelegate {
         MainToolbar.host = self
         statusItem = StatusItemController(
             statusItem: environment.statusBar.statusItem(withLength: NSStatusItem.variableLength),
-            host: self, defaults: defaults)
+            host: self, defaults: defaults, updater: updater)
         if environment.startsServices { startServices() }
         NSApp.appearance = AppearanceChoice(stored: Preference.appearance.int(defaults)).appearance
         observeActiveModel(model)

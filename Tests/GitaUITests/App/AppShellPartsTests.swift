@@ -293,17 +293,24 @@ struct AppSmallPartsTests {
         #expect(WindowFrameClamp.clamped(inside, in: visible) == inside)
     }
 
-    @Test func theActivationPolicyFollowsTheTitledWindows() {
+    private final class MiniaturizedTestWindow: NSWindow {
+        var simulatedMiniaturized = false
+        override var isMiniaturized: Bool { simulatedMiniaturized }
+    }
+
+    @Test func theActivationPolicyFollowsTheTitledWindows() async {
         UITestSupport.bootstrap()
         let policies = AppBox<[NSApplication.ActivationPolicy]>([])
         let activations = AppBox(0)
+        let center = NotificationCenter()
         let other = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
         other.isReleasedWhenClosed = false
         let closing = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
         closing.isReleasedWhenClosed = false
         let windows = AppBox([closing])
         let coordinator = ActivationPolicyCoordinator(
-            setPolicy: { policies.value.append($0) }, activate: { activations.value += 1 }, windows: { windows.value })
+            setPolicy: { policies.value.append($0) }, activate: { activations.value += 1 }, windows: { windows.value },
+            notificationCenter: center)
         coordinator.windowWillShow()
         #expect(policies.value == [.regular])
         #expect(activations.value == 1)
@@ -311,6 +318,39 @@ struct AppSmallPartsTests {
         #expect(policies.value.last == .accessory)
         windows.value.append(other)
         #expect(!ActivationPolicyCoordinator.keepsRegular(windows.value, closing: closing))
+
+        // Miniaturized titled windows keep `.regular` when Settings closes (so their Dock tile stays).
+        let minimized = MiniaturizedTestWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.titled, .miniaturizable],
+            backing: .buffered, defer: true)
+        minimized.isReleasedWhenClosed = false
+        minimized.simulatedMiniaturized = true
+        let settings = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.titled, .closable],
+            backing: .buffered, defer: true)
+        settings.isReleasedWhenClosed = false
+        windows.value = [minimized, settings]
+        policies.value.removeAll()
+        coordinator.windowWillShow()
+        coordinator.windowWillClose(settings)
+        #expect(ActivationPolicyCoordinator.keepsRegular(windows.value, closing: settings))
+        #expect(policies.value == [.regular])
+
+        // Foreign titled windows (e.g. Sparkle update alert / status windows) closing last restore `.accessory`.
+        let foreignSparkle = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180), styleMask: [.titled, .closable],
+            backing: .buffered, defer: true)
+        foreignSparkle.isReleasedWhenClosed = false
+        foreignSparkle.orderFront(nil)
+        windows.value = [foreignSparkle]
+        policies.value.removeAll()
+        coordinator.windowWillShow()
+        coordinator.windowWillClose(settings)
+        #expect(policies.value == [.regular])
+        foreignSparkle.orderOut(nil)
+        center.post(name: NSWindow.willCloseNotification, object: foreignSparkle)
+        await appWaitUntil { policies.value.last == .accessory }
+        #expect(policies.value == [.regular, .accessory])
     }
 
     @Test func alertsGoThroughThePresenter() {

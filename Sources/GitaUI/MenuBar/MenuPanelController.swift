@@ -259,7 +259,7 @@ final class MenuPanelController: NSViewController {
             rebuild()
         case .showActivity: show(.activity)
         case .showRepository, .showProviderPage, .showTab, .push, .reveal, .openRepository, .openWorkspace,
-            .newWorkspace:
+            .newWorkspace, .installUpdate:
             ask(action)
         }
     }
@@ -275,6 +275,7 @@ final class MenuPanelController: NSViewController {
         case .openRepository: actions.openRepository()
         case .openWorkspace(let id): actions.openWorkspace(id)
         case .newWorkspace: actions.newWorkspace()
+        case .installUpdate: actions.installUpdate()
         case .openURL, .copy, .toggle, .showActivity: break
         }
     }

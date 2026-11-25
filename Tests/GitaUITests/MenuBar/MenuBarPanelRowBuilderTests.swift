@@ -36,6 +36,25 @@ import Testing
         #expect(!rows[0].isSelectable)
     }
 
+    @Test func pendingUpdateAppearsAsTopCardAndHidesWhenCleared() throws {
+        var state = MenuPanelState()
+        #expect(builder(state).updateRows().isEmpty)
+
+        state.pendingUpdateVersion = "0.2.3"
+        let rows = builder(state).rows(.inbox)
+        #expect(rows.first?.id == "update:available")
+        let row = try #require(rows.first)
+        #expect(row.kind == .attention)
+        #expect(row.title == "Version 0.2.3 is available")
+        #expect(row.subtitle == "Software updates")
+        #expect(row.action == .installUpdate)
+        #expect(row.chips.map(\.title) == ["Install Update"])
+        #expect(row.chips.first?.style == .accent)
+        #expect(row.chips.first?.action == .installUpdate)
+        #expect(row.lead == .symbol("arrow.down.circle.fill", .accentText))
+        #expect(builder(state).rows(.activity).allSatisfy { $0.id != "update:available" })
+    }
+
     @Test func everyKindOfItemIsACardWithOneChip() throws {
         let page = try #require(URL(string: "https://github.com/owner/app/pull/482"))
         let state = MenuPanelState(attention: [

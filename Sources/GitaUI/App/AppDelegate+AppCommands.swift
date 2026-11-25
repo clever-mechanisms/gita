@@ -144,7 +144,16 @@ extension AppDelegate {
 
     @objc func checkForUpdates() {
         statusItem?.closePanel()
-        updater.checkForUpdates()
+        if updater.pendingVersion != nil {
+            updater.installAvailableUpdate()
+        } else {
+            updater.checkForUpdates()
+        }
+    }
+
+    func installAvailableUpdate() {
+        statusItem?.closePanel()
+        updater.installAvailableUpdate()
     }
 
     @objc func findInHistory() {

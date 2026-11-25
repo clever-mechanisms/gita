@@ -28,7 +28,8 @@ import Testing
                 push: { self.calls.append("push:" + $0.lastPathComponent) },
                 reveal: { self.calls.append("reveal:" + $0.id) },
                 openWorkspace: { self.calls.append("workspace:" + $0) },
-                newWorkspace: { self.calls.append("newWorkspace") })
+                newWorkspace: { self.calls.append("newWorkspace") },
+                installUpdate: { self.calls.append("installUpdate") })
         }
 
         func controller() -> (MenuPanelController, NSWindow) {
@@ -92,7 +93,7 @@ import Testing
 
     // MARK: State
 
-    @Test func showsTheInboxOfTheState() {
+    @Test func showsTheInboxOfTheState() throws {
         let recorder = Recorder()
         let (controller, _) = recorder.controller()
         #expect(controller.list.rows.map(\.id) == ["calm"])
@@ -121,6 +122,17 @@ import Testing
         #expect(button(controller.view, "panel.refresh")?.isEnabled == false)
         button(controller.view, "panel.refresh")?.performClick(nil)
         #expect(recorder.calls.isEmpty)
+
+        var withUpdate = MenuPanelState(pendingUpdateVersion: "0.2.3")
+        controller.update(withUpdate)
+        let updateRow = try #require(rowView(controller, "update:available"))
+        #expect(updateRow.row.title == "Version 0.2.3 is available")
+        updateRow.chipViews.first?.performClick(nil)
+        #expect(recorder.calls == ["installUpdate"])
+
+        withUpdate.pendingUpdateVersion = nil
+        controller.update(withUpdate)
+        #expect(rowView(controller, "update:available") == nil)
     }
 
     @Test func refreshTextIsTimeTodayAndDateOtherwise() {

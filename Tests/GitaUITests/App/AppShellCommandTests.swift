@@ -227,8 +227,9 @@ struct AppShellCommandTests {
 
         let item = try #require(shell.menuItem(#selector(AppDelegate.checkForUpdates)))
         #expect(shell.app.validateMenuItem(item))
+        #expect(item.title == String(localized: "Check for Updates…"))
 
-        updater.start(environment: releaseEnv)
+        await updater.start(environment: releaseEnv)?.value
         #expect(shell.app.validateMenuItem(item))
 
         driver.emit(canCheck: false, autoCheck: true, autoDownload: false)
@@ -236,9 +237,17 @@ struct AppShellCommandTests {
 
         updater.recordFoundVersion("0.2.3")
         #expect(shell.app.validateMenuItem(item))
+        #expect(item.title == String(localized: "Install Update 0.2.3…"))
 
         shell.app.checkForUpdates()
         #expect(driver.checkCalls == 1)
+
+        shell.app.installAvailableUpdate()
+        #expect(driver.checkCalls == 2)
+
+        updater.clearPendingVersion()
+        #expect(shell.app.validateMenuItem(item))
+        #expect(item.title == String(localized: "Check for Updates…"))
 
         shell.app.showSetupGuide()
         #expect(!shell.app.validateMenuItem(item))

@@ -17,4 +17,5 @@ struct MenuPanelActions {
     /// A workspace, by id.
     var openWorkspace: @MainActor (String) -> Void = { _ in }
     var newWorkspace: @MainActor () -> Void = {}
+    var installUpdate: @MainActor () -> Void = {}
 }
