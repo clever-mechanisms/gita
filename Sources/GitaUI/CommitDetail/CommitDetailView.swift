@@ -10,6 +10,7 @@ final class CommitDetailView: NSView {
         var commit: GitCommit?
         var message: String?
         var committer: String?
+        var signature: CommitSignatureInfo?
         var stash: GitStash?
         var signals: [ProviderItem]
         var production: ProviderItem?

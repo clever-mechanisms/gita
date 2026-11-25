@@ -157,6 +157,9 @@ struct MainMenu {
             String(localized: "Manage Remotes…"), #selector(RepositoryCommandResponder.manageRemotes), in: repo,
             symbol: "externaldrive.connected.to.line.below")
         item(
+            String(localized: "Submodules & Git LFS…"), #selector(AppDelegate.showSubmodulesAndLFS), in: repo,
+            symbol: "shippingbox")
+        item(
             String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
             in: repo,
             symbol: "globe")

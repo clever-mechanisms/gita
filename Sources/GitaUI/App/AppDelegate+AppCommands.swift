@@ -163,6 +163,29 @@ extension AppDelegate {
 
     @objc func showActivity() { ActivityWindowController.shared.show(model: model) }
 
+    @objc func showSubmodulesAndLFS() { openSubmodulesAndLFS(initialTab: nil) }
+
+    func openSubmodulesAndLFS(initialTab: SubmodulesLFSPresenter.Tab?) {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = root.standardizedFileURL.path
+        let controller: SubmodulesLFSWindowController
+        if let existing = submodulesLFSWindows[key] {
+            controller = existing
+        } else {
+            controller = SubmodulesLFSWindowController(
+                repositoryRoot: root, service: service,
+                onOpenInTab: { [weak self] url in self?.openRepositoryTab(url) },
+                onRevealInFinder: { [weak self] url in self?.environment.system.revealInFinder(url) }
+            )
+            submodulesLFSWindows[key] = controller
+        }
+        controller.show(initialTab: initialTab)
+    }
+
     /// View › a page (⌥⌘1…); Worktrees & Agents opens or closes the right-hand pane.
     @objc func navigate(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let section = Section(rawValue: raw) else { return }

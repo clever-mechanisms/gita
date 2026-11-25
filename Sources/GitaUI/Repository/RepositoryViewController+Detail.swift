@@ -169,11 +169,13 @@ extension RepositoryViewController {
         let details = model.commitDetails?.commit.id == commit?.id ? model.commitDetails : nil
         commitDetail.update(
             .init(
-                commit: commit, message: details?.message, committer: details?.committer, stash: model.selectedStash,
+                commit: commit, message: details?.message, committer: details?.committer,
+                signature: commit.flatMap { commitSignatureCache[$0.id] }, stash: model.selectedStash,
                 signals: signals, production: signals.contains { $0.kind == .deployment } ? production : nil,
                 vercel: model.vercelContext, productionBehind: model.productionBehind,
                 productionBranch: model.productionBranch, vercelSignals: model.vercelSignals,
                 vercelDashboard: model.vercelDashboard))
+        loadCommitSignatureIfNeeded(for: commit)
     }
 
     func selectDetailTab(_ tab: DetailTab) {

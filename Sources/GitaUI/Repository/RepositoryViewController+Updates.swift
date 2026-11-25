@@ -45,6 +45,7 @@ extension RepositoryViewController {
         }
         reconcileAmend()
         showCommitField()
+        commitEcosystemRepositoryChanged()
         sheets.repositoryChanged(to: model.service)
         historyControls.search.stringValue = model.searchQuery
         unpushed.update(model.snapshot)
@@ -101,6 +102,7 @@ extension RepositoryViewController {
         pagePane.isHidden = panes.showsHistoryPane
         if section != .history { sidebarSelection = nil }
         commitFooter.isHidden = !panes.showsCommitFooter
+        if section == .changes { refreshCommitSigningAndTemplateIfNeeded() }
         if panes.showsHistoryPane {
             updateHistoryScope()
             // A section switch changes no row content: reload the rows only when the zoom changed; the panes always

@@ -34,6 +34,8 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
     let descriptionButton = PartsButton(
         [.symbol("text.alignleft", color: Theme.secondaryText, size: 11)], background: .hover,
         accessibility: String(localized: "Add description"))
+    let signingRow = CommitSigningSettingsRow()
+    let assistController = CommitMessageAssistController()
     let bannerBox = FillView(color: Theme.needsInput.withAlphaComponent(0.12))
     let bannerLabel = Deck.wrapping("", font: Theme.caption, color: Theme.needsInputText)
 
@@ -151,14 +153,16 @@ final class CommitFooterView: NSView, NSTextFieldDelegate, NSTextViewDelegate {
             view.widthAnchor.constraint(equalTo: composerStack.widthAnchor).isActive = true
         }
         let splitCommit = Deck.hstack([commitButton, commitMenuButton], spacing: 1)
-        let actions = Deck.hstack([recentButton, descriptionButton, Deck.spacer(), splitCommit], spacing: 4)
-        let column = Deck.vstack([bannerBox, composerBox, actions], spacing: Metrics.composerSpacing)
+        let actions = Deck.hstack(
+            [recentButton, descriptionButton, assistController.button, Deck.spacer(), splitCommit], spacing: 4)
+        let column = Deck.vstack([bannerBox, signingRow, composerBox, actions], spacing: Metrics.composerSpacing)
         let container = Deck.vstack([topSeparator, column], spacing: 0)
         Deck.pin(container, in: self)
         topSeparator.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
         column.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
         column.edgeInsets = Metrics.padding
         bannerBox.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
+        signingRow.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
         composerBox.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
         actions.widthAnchor.constraint(equalTo: column.widthAnchor, constant: -16).isActive = true
     }

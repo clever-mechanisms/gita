@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var commandResponders: [ObjectIdentifier: RepositoryCommandResponder] = [:]
     /// The open command palette, if any; see `AppDelegate+Palette`.
     var palette: PaletteController?
+    /// Open Submodules & Git LFS utility windows keyed by standardized repository root path.
+    var submodulesLFSWindows: [String: SubmodulesLFSWindowController] = [:]
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment

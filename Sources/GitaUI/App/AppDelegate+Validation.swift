@@ -71,6 +71,9 @@ extension AppDelegate {
         if menuItem.action == #selector(blameSelectedFile) {
             return repositoryController?.canBlameSelectedFile == true
         }
+        if menuItem.action == #selector(showSubmodulesAndLFS) {
+            return model.snapshot != nil && model.service != nil
+        }
         if menuItem.action == #selector(checkForUpdates) {
             menuItem.title =
                 updater.pendingVersion.map { String(localized: "Install Update \($0)…") }

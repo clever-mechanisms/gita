@@ -148,6 +148,10 @@ extension RepositoryViewController {
                     stagedCount: stagedCount, hasHead: snapshot?.head != nil, mode: amend.mode,
                     amendCommitID: source?.id, upstreamName: source?.upstream, message: commitFooter.message)))
         refreshRecentMessagesIfNeeded()
+        updateCommitMessageAssistAvailability()
+        if commitSigningRowState.isMutating && !model.isMutating {
+            refreshCommitSigningAndTemplateIfNeeded(force: true)
+        }
         let stash = model.selectedStash != nil
         detailBar.showStash(stash, enabled: !model.isMutating && stash)
     }

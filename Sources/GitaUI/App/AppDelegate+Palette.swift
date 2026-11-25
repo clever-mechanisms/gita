@@ -25,6 +25,10 @@ extension AppDelegate {
         #selector(Tab.reveal): ["open folder", "show in finder"],
         #selector(Tab.switchBranch): ["checkout"],
         #selector(Tab.stash): ["save changes"],
+        #selector(showSubmodulesAndLFS): [
+            "submodule", "submodules", "lfs", "git lfs", "locks", "large files", "manage submodules",
+            "manage git lfs",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).
@@ -73,11 +77,28 @@ extension AppDelegate {
 
     /// What only the window's buttons offer: Create PR…, Stage all and Commit staged.
     private func windowCommands() -> [PaletteItem] {
-        (repositoryController?.paletteActions() ?? []).map { action in
+        var items = (repositoryController?.paletteActions() ?? []).map { action in
             PaletteItems.command(
                 action.item, group: String(localized: "Repository"), keywords: action.keywords,
                 isEnabled: action.item.isEnabled)
         }
+        let hasRepo = model.snapshot != nil && model.service != nil
+        let submodules = MenuAction(String(localized: "Manage Submodules"), symbol: "shippingbox") { [weak self] in
+            self?.openSubmodulesAndLFS(initialTab: .submodules)
+        }
+        let lfs = MenuAction(String(localized: "Manage Git LFS"), symbol: "externaldrive.badge.checkmark") {
+            [weak self] in
+            self?.openSubmodulesAndLFS(initialTab: .lfs)
+        }
+        items.append(
+            PaletteItems.command(
+                submodules, group: String(localized: "Repository"),
+                keywords: ["submodule", "submodules", "init", "sync", "update"], isEnabled: hasRepo))
+        items.append(
+            PaletteItems.command(
+                lfs, group: String(localized: "Repository"),
+                keywords: ["lfs", "git lfs", "locks", "large files", "unlock"], isEnabled: hasRepo))
+        return items
     }
 
     /// What only the toolbar offers: the sidebar, and Open in ▾ (Finder, the terminal, the editor, Vercel).

@@ -21,7 +21,7 @@ enum CommitMessageColumn {
         guard let commit = input.commit else { return [] }
         let message = ParsedCommitMessage(
             (input.message ?? commit.subject).trimmingCharacters(in: .whitespacesAndNewlines))
-        var views: [NSView] = [header(commit, committer: input.committer)]
+        var views: [NSView] = [header(commit, committer: input.committer, signature: input.signature)]
         views.append(wrapping(message.subject, font: subjectFont, color: Theme.text))
         if !message.body.isEmpty { views.append(wrapping(message.body, font: Theme.body, color: Theme.text)) }
         views += message.trailers.map { Deck.label($0, font: Theme.body, color: Theme.secondaryText) }
@@ -46,14 +46,14 @@ enum CommitMessageColumn {
         return meta.joined(separator: " · ")
     }
 
-    private static func header(_ commit: GitCommit, committer: String?) -> NSView {
+    private static func header(_ commit: GitCommit, committer: String?, signature: CommitSignatureInfo?) -> NSView {
         let avatar = AvatarView(name: commit.author, email: commit.email, size: Metrics.avatar)
         let name = Deck.label(commit.author, font: Theme.bodyEmphasis)
         name.toolTip = commit.email.isEmpty ? nil : commit.email
         let subtitle = Deck.caption(subtitle(commit, committer: committer))
         subtitle.toolTip = references(commit.decorations).joined(separator: "\n")
         // The author's email beside the name (selectable, so it can be copied); truncates in the middle if narrow.
-        var nameLine: NSView = name
+        var nameItems: [NSView] = [name]
         if !commit.email.isEmpty {
             let email = Deck.label(commit.email, font: Theme.body, color: Theme.secondaryText)
             email.isSelectable = true
@@ -61,8 +61,16 @@ enum CommitMessageColumn {
             email.toolTip = commit.email
             email.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             name.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
-            nameLine = Deck.hstack([name, email], spacing: 6)
+            nameItems.append(email)
         }
+        if let signature, signature.isSigned {
+            let badge = SignatureBadgeView()
+            badge.update(signature)
+            badge.setContentHuggingPriority(.required, for: .horizontal)
+            badge.setContentCompressionResistancePriority(.required, for: .horizontal)
+            nameItems.append(badge)
+        }
+        let nameLine: NSView = nameItems.count > 1 ? Deck.hstack(nameItems, spacing: 6) : name
         return Deck.hstack([avatar, Deck.vstack([nameLine, subtitle], spacing: 1)], spacing: 10)
     }
 

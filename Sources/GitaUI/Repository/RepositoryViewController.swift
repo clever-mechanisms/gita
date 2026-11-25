@@ -102,6 +102,12 @@ final class RepositoryViewController: NSViewController {
     var pendingConflictPath: String?
     /// Commit ID navigated to from `BlameView.onSelectCommit` so `showDiff` keeps blame open across that selection.
     var blameNavigatedCommitID: String?
+    var commitSignatureCache: [String: CommitSignatureInfo] = [:]
+    var commitSignatureTask: Task<Void, Never>?
+    var commitSigningTask: Task<Void, Never>?
+    var commitSigningRowState = CommitSigningRowState()
+    var loadedSigningRepoPath: String?
+    var appliedTemplateRepoPaths: Set<String> = []
     lazy var detailLoader: ProviderDetailLoader = { [weak self] item, force in
         guard let self, let target = item.target, let root = self.model.snapshot?.root, let service = self.model.service
         else { return nil }
@@ -126,6 +132,7 @@ final class RepositoryViewController: NSViewController {
         buildHistory()
         wireSidebar()
         wireFileLists()
+        wireCommitEcosystem()
         wireDetail()
         wireHistoryPower()
         wireHistoryDrag()
@@ -147,6 +154,7 @@ final class RepositoryViewController: NSViewController {
                 })
         }
         observe(WindowAgents.didChange) { $0.agentsChanged() }
+        observe(ReviewLauncher.changed) { $0.updateCommitMessageAssistAvailability() }
         observe(.gitaCodeFontChanged) { $0.codeFontChanged() }
         observe(.gitaInterfaceFontChanged) {
             $0.codeFontChanged()
@@ -183,6 +191,7 @@ final class RepositoryViewController: NSViewController {
         hoverPrefetchTask = nil
         mediaLoadTask?.cancel()
         mediaLoadTask = nil
+        detachCommitEcosystem()
         for token in notificationObservations { NotificationCenter.default.removeObserver(token) }
         notificationObservations = []
         if let workspaceObservation { WorkspaceMonitor.shared.removeObserver(workspaceObservation) }
