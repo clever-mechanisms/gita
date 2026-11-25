@@ -38,12 +38,23 @@ struct ProviderFailure: Error, Sendable, Hashable {
     }
 
     /// A `gita-gh` command whose account is no longer signed in to `gh`.
-    static func signedOut(_ login: GitHubLogin) -> Self {
-        Self(
+    static func signedOut(_ account: GitHubAccountID) -> Self {
+        if let profile = account.profile {
+            let path = profile.displayPath
+            return Self(
+                status: .signInRequired,
+                diagnostic: String(
+                    localized: """
+                        The GitHub account \(account.login.value) is not signed in (\(path)). Run \
+                        GH_CONFIG_DIR=\(path) gh auth login in Terminal, then refresh.
+                        """))
+        }
+        return Self(
             status: .signInRequired,
             diagnostic: String(
                 localized: """
-                    The GitHub account \(login.value) is not signed in. Run gh auth login in Terminal, then refresh.
+                    The GitHub account \(account.login.value) is not signed in. Run gh auth login in Terminal, then \
+                    refresh.
                     """))
     }
 

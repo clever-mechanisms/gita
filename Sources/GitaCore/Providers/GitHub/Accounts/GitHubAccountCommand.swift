@@ -33,7 +33,9 @@ struct ProviderCommand: Sendable {
     var arguments: [String]
     var environment: ChildEnvironmentPolicy
     /// Set for a `gita-gh` command: its exit 78 means this account is not signed in.
-    var account: GitHubLogin?
+    var account: GitHubAccountID?
+    /// Set when a named `GH_CONFIG_DIR` profile could not be resolved; executor fails immediately as signed out.
+    var missingProfile = false
 
     init(_ tool: ProviderTool, _ arguments: [String]) {
         self.tool = tool
@@ -43,13 +45,40 @@ struct ProviderCommand: Sendable {
     }
 
     /// `gh` as `account`: unchanged for the active account, through `gita-gh` for a named one.
-    static func gh(_ arguments: [String], as account: GitHubAccountUse) -> Self {
+    static func gh(
+        _ arguments: [String], as account: GitHubAccountUse,
+        configDirectories: GitHubConfigDirectories = .none
+    ) -> Self {
         var command = Self(.gh, arguments)
-        guard case .named(let login) = account else { return command }
+        guard case .named(let login, let profile) = account else { return command }
+        let id = GitHubAccountID(login, profile: profile)
         command.executable = GitHubAccountCommand.shell
         command.arguments = GitHubAccountCommand.arguments(login: login, gh: arguments)
-        command.environment = .tool(removing: GitHubAccountCommand.removedVariables)
-        command.account = login
+        command.account = id
+        var added: [String: String] = [:]
+        if let profile {
+            guard let resolved = configDirectories.resolve(profile), GitHubConfigDirectories.isValidPath(resolved)
+            else {
+                command.missingProfile = true
+                command.environment = .tool(removing: GitHubAccountCommand.removedVariables)
+                return command
+            }
+            added["GH_CONFIG_DIR"] = resolved
+        }
+        command.environment = .tool(removing: GitHubAccountCommand.removedVariables, adding: added)
+        return command
+    }
+
+    /// `gh auth status` against the default config (`nil`) or one resolved `GH_CONFIG_DIR` profile.
+    static func ghAuthStatus(
+        profile: GitHubConfigProfile?, configDirectories: GitHubConfigDirectories = .none
+    ) -> Self? {
+        var command = Self(.gh, GitHubAccounts.arguments)
+        if let profile {
+            guard let resolved = configDirectories.resolve(profile), GitHubConfigDirectories.isValidPath(resolved)
+            else { return nil }
+            command.environment = .tool(removing: [], adding: ["GH_CONFIG_DIR": resolved])
+        }
         return command
     }
 }

@@ -20,9 +20,16 @@ extension PullRequestReviewService {
                 message: String(
                     localized: "GitHub didn’t say which account loaded this pull request. Refresh and try again."))
         }
-        let accounts = (try? await GitHubAccounts.list(executor, root: root)) ?? []
-        guard let account = GitHubAccounts.writer(viewer, among: accounts) else {
-            return Outcome(succeeded: false, message: ProviderFailure.signedOut(viewer).diagnostic)
+        let account: GitHubAccountUse
+        if let profile = conversation.viewerProfile {
+            // Profile-loaded pull requests write directly through that profile without re-probing all configs.
+            account = .named(viewer, profile: profile)
+        } else {
+            let accounts = (try? await GitHubAccounts.list(executor, root: root, configDirectories: .none)) ?? []
+            guard let resolved = GitHubAccounts.writer(viewer, among: accounts) else {
+                return Outcome(succeeded: false, message: ProviderFailure.signedOut(GitHubAccountID(viewer)).diagnostic)
+            }
+            account = resolved
         }
         let file: URL
         do {
@@ -32,7 +39,9 @@ extension PullRequestReviewService {
         }
         defer { try? FileManager.default.removeItem(at: file) }
         let arguments = ["api", "graphql", "--hostname", "github.com", "--method", "POST", "--input", file.path]
-        switch await executor.run(.gh(arguments, as: account), in: root, limits: .action) {
+        switch await executor.run(
+            .gh(arguments, as: account, configDirectories: configDirectories), in: root, limits: .action
+        ) {
         case .failure(let failure): return Outcome(succeeded: false, message: failure.diagnostic)
         case .success(let result):
             if let problem = Self.problem(result, field: field) { return Outcome(succeeded: false, message: problem) }

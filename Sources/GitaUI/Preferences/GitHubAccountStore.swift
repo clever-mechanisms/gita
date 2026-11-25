@@ -2,7 +2,8 @@ import Foundation
 import GitaCore
 
 /// The `gh` account each GitHub repository is read as, by `GitHubRemote.sourceID`: one the user chose, or one Gita
-/// found that could see the repository. Stored as `automatic:<login>` or `chosen:<login>`; logins only, never a token.
+/// found that could see the repository. Stored as `automatic:<login>` or `chosen:<login>` (with optional
+/// `@<gh-profile>` for accounts in a sibling `GH_CONFIG_DIR`); logins and profile names only, never tokens.
 struct GitHubAccountStore {
     struct Assignment: Equatable, Sendable {
         var sourceID: String
@@ -17,6 +18,7 @@ struct GitHubAccountStore {
 
     private static let automaticPrefix = "automatic:"
     private static let chosenPrefix = "chosen:"
+    private static let profileSeparator: Character = "@"
 
     func choice(for sourceID: String?) -> GitHubAccountChoice? {
         guard let sourceID, let value = entries[sourceID] else { return nil }
@@ -32,7 +34,7 @@ struct GitHubAccountStore {
 
     /// The account the repository's reads and detail views run as.
     func use(for sourceID: String?) -> GitHubAccountUse {
-        choice(for: sourceID).map { .named($0.login) } ?? .active
+        choice(for: sourceID).map { .named($0.accountID) } ?? .active
     }
 
     /// What a list read learned. A user's choice is never replaced by Gita.
@@ -41,14 +43,15 @@ struct GitHubAccountStore {
         if case .chosen = choice(for: sourceID) { return }
         switch update {
         case .keep: return
-        case .store(let login): set(.automatic(login), sourceID: sourceID)
+        case .store(let login, let profile):
+            set(.automatic(login, profile: profile), sourceID: sourceID)
         case .forget: set(nil, sourceID: sourceID)
         }
     }
 
     /// The user's pick on the GitHub page or in Settings; nil goes back to automatic.
-    func choose(_ login: GitHubLogin?, sourceID: String) {
-        set(login.map(GitHubAccountChoice.chosen), sourceID: sourceID)
+    func choose(_ account: GitHubAccountID?, sourceID: String) {
+        set(account.map(GitHubAccountChoice.chosen), sourceID: sourceID)
     }
 
     /// Clears any stored assignment (chosen or automatic) for `sourceID`.
@@ -73,19 +76,36 @@ struct GitHubAccountStore {
         return sourceID
     }
 
+    /// Encodes a `GitHubAccountID` as `<login>` (default config) or `<login>@<profile>` (sibling `GH_CONFIG_DIR`).
+    static func accountKey(for account: GitHubAccountID) -> String {
+        guard let profile = account.profile else { return account.login.value }
+        return account.login.value + String(profileSeparator) + profile.name
+    }
+
+    /// Decodes a `GitHubAccountID` previously encoded with `accountKey(for:)`.
+    static func accountID(from key: String) -> GitHubAccountID? {
+        if let separator = key.firstIndex(of: profileSeparator) {
+            let loginPart = String(key[..<separator])
+            let profilePart = String(key[key.index(after: separator)...])
+            guard let login = GitHubLogin(loginPart), let profile = GitHubConfigProfile(profilePart) else { return nil }
+            return GitHubAccountID(login, profile: profile)
+        }
+        return GitHubLogin(key).map { GitHubAccountID($0) }
+    }
+
     static func storage(_ choice: GitHubAccountChoice) -> String {
         switch choice {
-        case .automatic(let login): automaticPrefix + login.value
-        case .chosen(let login): chosenPrefix + login.value
+        case .automatic: automaticPrefix + accountKey(for: choice.accountID)
+        case .chosen: chosenPrefix + accountKey(for: choice.accountID)
         }
     }
 
     static func choice(from value: String) -> GitHubAccountChoice? {
         if value.hasPrefix(automaticPrefix) {
-            return GitHubLogin(String(value.dropFirst(automaticPrefix.count))).map(GitHubAccountChoice.automatic)
+            return accountID(from: String(value.dropFirst(automaticPrefix.count))).map(GitHubAccountChoice.automatic)
         }
         if value.hasPrefix(chosenPrefix) {
-            return GitHubLogin(String(value.dropFirst(chosenPrefix.count))).map(GitHubAccountChoice.chosen)
+            return accountID(from: String(value.dropFirst(chosenPrefix.count))).map(GitHubAccountChoice.chosen)
         }
         return nil
     }

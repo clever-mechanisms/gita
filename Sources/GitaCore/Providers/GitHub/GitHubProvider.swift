@@ -4,10 +4,12 @@ import Foundation
 /// avatars, all through the installed `gh` session.
 struct GitHubProvider: Sendable {
     let executor: ProviderCommandExecutor
+    var configDirectories: GitHubConfigDirectories = .none
 
     /// The runs and pull requests of `remote`, read as the stored account or else `gh`'s active one. When that
     /// account cannot see the repository and none was chosen by the user, the other signed-in accounts are tried
-    /// (the remote's login hint first) and the first that sees it reads the list; the listing says which to store.
+    /// (the remote's login hint and matching `GH_CONFIG_DIR` profile first) and the first that sees it reads the
+    /// list; the listing says which to store.
     func listing(
         root: URL, remoteURL: String?, remote: GitHubRemote?, choice: GitHubAccountChoice?
     ) async -> GitHubListing {
@@ -18,46 +20,78 @@ struct GitHubProvider: Sendable {
                     .github, status: .notGitHub,
                     diagnostic: String(localized: "This integration supports github.com remotes.")))
         }
-        let account: GitHubAccountUse = choice.map { .named($0.login) } ?? .active
+        let account: GitHubAccountUse = choice.map { .named($0.accountID) } ?? .active
         let first = await read(root: root, repository: remote.repository, as: account)
         if Task.isCancelled { return GitHubListing(report: ProviderReport(.github, failure: .cancelled)) }
-        guard first.accountFailed(as: account) else { return first.listing() }
-        if case .chosen(let login) = choice {
-            return first.listing(diagnostic: GitHubAccountText.chosenFailed(login, failure: first.pullRequestFailure))
+        let defaultSignedOut = account == .active && first.pullRequestFailure?.status == .signInRequired
+        let accountFailed = first.accountFailed(as: account)
+        guard accountFailed || defaultSignedOut else { return first.listing() }
+        if case .chosen = choice, let chosen = choice?.accountID {
+            return first.listing(diagnostic: GitHubAccountText.chosenFailed(chosen, failure: first.pullRequestFailure))
         }
-        return await resolve(root: root, remote: remote, after: first, failed: choice?.login)
+        let profiles = configDirectories.discover()
+        guard accountFailed || !profiles.isEmpty else { return first.listing() }
+        return await resolve(
+            root: root, remote: remote, after: first, failed: choice?.accountID, profiles: profiles,
+            defaultSignedOut: defaultSignedOut)
     }
 
     /// Tries the other signed-in accounts after `first` failed as `failed` (nil: the active account).
     private func resolve(
-        root: URL, remote: GitHubRemote, after first: Read, failed: GitHubLogin?
+        root: URL, remote: GitHubRemote, after first: Read, failed: GitHubAccountID?,
+        profiles: [GitHubConfigProfile], defaultSignedOut: Bool
     ) async -> GitHubListing {
-        guard let accounts = try? await GitHubAccounts.list(executor, root: root) else { return first.listing() }
-        let active = accounts.first(where: \.isActive)?.login
+        guard
+            let accounts = try? await GitHubAccounts.list(
+                executor, root: root, configDirectories: configDirectories, profiles: profiles)
+        else { return first.listing() }
+        let active = accounts.first { $0.profile == nil && $0.isActive }?.id
         let tried = failed ?? active
-        var needsSSO = first.pullRequestFailure?.access == .ssoRequired ? tried : nil
-        let candidates = GitHubAccounts.candidates(
-            accounts, excluding: Set([tried].compactMap { $0 }), hint: remote.loginHint, active: active)
-        for login in candidates {
-            switch await visibility(root: root, repository: remote.repository, as: login) {
+        var needsSSO = first.pullRequestFailure?.access == .ssoRequired ? tried?.login : nil
+        let allCandidates = GitHubAccounts.candidates(
+            accounts, excluding: Set([tried].compactMap { $0 }), hint: remote.loginHint, sshAlias: remote.sshAlias,
+            active: active)
+        let candidates: [GitHubAccountID]
+        if defaultSignedOut {
+            guard !allCandidates.isEmpty else { return first.listing() }
+            candidates = Self.unambiguousProfileCandidates(allCandidates, remote: remote)
+            if candidates.isEmpty { return first.listing() }
+        } else {
+            candidates = allCandidates
+        }
+        for candidate in candidates {
+            switch await visibility(root: root, repository: remote.repository, as: candidate) {
             case .success:
-                let read = await read(root: root, repository: remote.repository, as: .named(login))
-                return read.listing(update: .store(login))
-            case .failure(let failure) where failure.access == .ssoRequired: needsSSO = needsSSO ?? login
+                let read = await read(root: root, repository: remote.repository, as: .named(candidate))
+                return read.listing(update: .store(candidate))
+            case .failure(let failure) where failure.access == .ssoRequired: needsSSO = needsSSO ?? candidate.login
             case .failure(let failure) where Read.isAccountFailure(failure, named: true): continue
             case .failure: return first.listing() // timeout, network, rate limit: never decide on a blip
             }
         }
-        let diagnostic = GitHubAccountText.noAccess(
-            accounts.filter(\.isSignedIn).map(\.login).sorted(), repository: remote.repository, needsSSO: needsSSO)
+        if defaultSignedOut { return first.listing() }
+        let signedIn = Array(Set(accounts.filter(\.isSignedIn).map(\.login))).sorted()
+        let diagnostic = GitHubAccountText.noAccess(signedIn, repository: remote.repository, needsSSO: needsSSO)
         return first.listing(diagnostic: diagnostic, update: failed == nil ? .keep : .forget)
     }
 
+    /// When default `gh` is signed out, only fall back automatically if one profile is explicitly hinted by the remote
+    /// or there is a single signed-in profile overall; avoids binding public repos to an arbitrary identity.
+    private static func unambiguousProfileCandidates(
+        _ candidates: [GitHubAccountID], remote: GitHubRemote
+    ) -> [GitHubAccountID] {
+        let targeted = candidates.filter { id in
+            (remote.loginHint.map { id.login.matches($0.value) } ?? false) || id.matchesSSHAlias(remote.sshAlias)
+        }
+        if targeted.count == 1 { return targeted }
+        return candidates.count == 1 ? candidates : []
+    }
+
     private func visibility(
-        root: URL, repository: GitHubRepository, as login: GitHubLogin
+        root: URL, repository: GitHubRepository, as account: GitHubAccountID
     ) async -> Result<Void, ProviderFailure> {
         let response: Result<GitHubGraphQLEnvelope<GitHubVisibleRepository>, ProviderFailure> = await graphQL(
-            GitHubQueries.repositoryVisible, repository: repository, as: .named(login), root: root)
+            GitHubQueries.repositoryVisible, repository: repository, as: .named(account), root: root)
         return response.flatMap { envelope in
             envelope.repository?.nameWithOwner?.lowercased() == repository.nameWithOwner.lowercased()
                 ? .success(()) : .failure(.github(.notVisible))
@@ -131,7 +165,9 @@ struct GitHubProvider: Sendable {
             "run", "list", "--repo", "github.com/" + repository.nameWithOwner, "--limit", "30", "--json",
             GitHubQueries.runFields,
         ]
-        return await executor.execute(.gh(arguments, as: account), in: root).flatMap { data in
+        return await executor.execute(
+            .gh(arguments, as: account, configDirectories: configDirectories), in: root
+        ).flatMap { data in
             Result { try GitHubWorkflowParser.runs(data, repository: repository) }
                 .mapError { _ in ProviderFailure.unsupportedResponse(.gh) }
         }
@@ -178,7 +214,9 @@ struct GitHubProvider: Sendable {
                 "api", "graphql", "--hostname", "github.com", "--method", "POST", "-f", "query=" + query,
                 "-f", "owner=" + repository.owner, "-f", "name=" + repository.name,
             ] + variables
-        return await executor.run(.gh(arguments, as: account), in: root, limits: limits).flatMap { result in
+        return await executor.run(
+            .gh(arguments, as: account, configDirectories: configDirectories), in: root, limits: limits
+        ).flatMap { result in
             let envelope = try? JSONDecoder().decode(GitHubGraphQLEnvelope<Repository>.self, from: result.stdout)
             if let problem = envelope?.accessProblem { return .failure(.github(problem)) }
             let partialData = result.exitCode == 1 && envelope?.hasErrors == true && envelope?.repository != nil

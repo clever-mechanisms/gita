@@ -6,6 +6,8 @@ import Foundation
 public struct GitHubRemote: Sendable, Hashable {
     let repository: GitHubRepository
     public let loginHint: GitHubLogin?
+    /// The SSH host alias that resolved to github.com (e.g. `github-sqligrp`), nil for direct github.com remotes.
+    public let sshAlias: String?
 
     /// Hosted identity, the same for every spelling of the remote.
     public var sourceID: String { repository.sourceID }
@@ -16,12 +18,13 @@ public struct GitHubRemote: Sendable, Hashable {
     /// `ssh://git@ssh.github.com:443/o/r`); SSH host aliases need `GitHubRemoteResolver`.
     init?(address: RemoteAddress) {
         guard address.isGitHubHost, let repository = GitHubRepository(path: address.path) else { return nil }
-        self.init(repository: repository, loginHint: address.loginHint)
+        self.init(repository: repository, loginHint: address.loginHint, sshAlias: nil)
     }
 
-    init(repository: GitHubRepository, loginHint: GitHubLogin?) {
+    init(repository: GitHubRepository, loginHint: GitHubLogin?, sshAlias: String? = nil) {
         self.repository = repository
         self.loginHint = loginHint
+        self.sshAlias = sshAlias
     }
 
     /// The lower-cased host of a remote URL or scp-like SSH target; nil when `remote` is not a remote address.
@@ -112,7 +115,7 @@ public struct GitHubRemoteResolver: Sendable {
         guard address.mayBeGitHubAlias, let repository = GitHubRepository(path: address.path),
             let host = await ssh.hostName(of: address.host), RemoteAddress.isGitHub(host, transport: .ssh)
         else { return nil }
-        return GitHubRemote(repository: repository, loginHint: nil)
+        return GitHubRemote(repository: repository, loginHint: nil, sshAlias: address.host)
     }
 }
 

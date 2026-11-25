@@ -14,7 +14,7 @@ extension RepositoryViewController {
             if self.model.section != .deployments { self.model.readGitHubAccounts(again: true) }
             self.model.refreshProviders()
         }
-        providerPage.onChooseAccount = { [weak self] login in self?.model.chooseGitHubAccount(login) }
+        providerPage.onChooseAccount = { [weak self] account in self?.model.chooseGitHubAccount(account) }
         wirePullRequestWorkspace()
         commitDetail.loader = detailLoader
         commitDetail.onSelectCommit = { [weak self] id in self?.selectCommit(id: id) }

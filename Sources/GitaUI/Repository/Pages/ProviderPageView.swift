@@ -11,8 +11,8 @@ final class ProviderPageView: NSView {
 
     let list = ProviderDisclosureList()
     var onRefresh: (() -> Void)?
-    /// The account picker's choice: a login, or nil for Automatic.
-    var onChooseAccount: ((GitHubLogin?) -> Void)?
+    /// The account picker's choice: an account, or nil for Automatic.
+    var onChooseAccount: ((GitHubAccountID?) -> Void)?
     /// Launches Terminal with `gh auth login`; tests replace this to avoid opening Terminal.
     var onAddAccount: (() -> Void)?
     private let accountPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -118,7 +118,7 @@ final class ProviderPageView: NSView {
             return
         }
         guard let accounts, accountPopUp.indexOfSelectedItem != accounts.selectedIndex else { return }
-        onChooseAccount?(accounts.login(at: accountPopUp.indexOfSelectedItem))
+        onChooseAccount?(accounts.account(at: accountPopUp.indexOfSelectedItem))
     }
 
     func triggerAddAccount() {

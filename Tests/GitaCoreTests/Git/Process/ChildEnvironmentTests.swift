@@ -114,6 +114,26 @@ private actor PolicyRecorder: CommandRunning {
         #expect(SetupTool.github.environment == .tool)
     }
 
+    @Test func ghHonorsInheritedConfigDirForDefaultAndOverridesForProfile() {
+        let withConfigDir = Self.inherited.merging(["GH_CONFIG_DIR": "/tmp/gh-custom"]) { $1 }
+        let defaultGh = ChildEnvironment.make(
+            policy: ProviderTool.gh.environment, editors: nil, inherited: withConfigDir)
+        #expect(defaultGh["GH_CONFIG_DIR"] == "/tmp/gh-custom")
+
+        let profilePolicy = ChildEnvironmentPolicy.tool(
+            removing: [], adding: ["GH_CONFIG_DIR": "/tmp/gh-client"])
+        let profileGh = ChildEnvironment.make(policy: profilePolicy, editors: nil, inherited: withConfigDir)
+        #expect(profileGh["GH_CONFIG_DIR"] == "/tmp/gh-client")
+
+        var invalidValue = CommandRequest(executable: "gh", arguments: ["auth", "status"])
+        invalidValue.environment = .tool(removing: [], adding: ["GH_CONFIG_DIR": "/tmp/bad\0dir"])
+        #expect(!invalidValue.isValid)
+
+        var emptyKey = CommandRequest(executable: "gh", arguments: ["auth", "status"])
+        emptyKey.environment = .tool(removing: [], adding: ["": "/tmp/gh"])
+        #expect(!emptyKey.isValid)
+    }
+
     @Test func gitServiceAndProviderCommandsPassTheirPolicy() async throws {
         let recorder = PolicyRecorder()
         let root = FileManager.default.temporaryDirectory
@@ -123,7 +143,7 @@ private actor PolicyRecorder: CommandRunning {
         _ = await executor.run(.vercel, ["whoami"], in: root)
         _ = await executor.run(.gh, ["auth", "status"], in: root)
         #expect(await recorder.policies["vercel"] == ProviderTool.vercel.environment)
-        #expect(await recorder.policies["gh"] == .tool)
+        #expect(await recorder.policies["gh"] == ProviderTool.gh.environment)
         #expect(CommandRequest(executable: "anything", arguments: []).environment == .tool)
     }
 }

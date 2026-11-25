@@ -220,7 +220,7 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         let store = GitHubAccountStore(defaults: defaults)
         let assignments = store.allAssignments()
         let listed = accounts.last?.githubAccounts ?? []
-        let signedInLogins = listed.filter(\.isSignedIn).map(\.login).sorted()
+        let signedInAccounts = listed.filter(\.isSignedIn).map(\.id).sorted()
         var rows: [SettingsRow] = []
 
         if accounts.last == nil && accounts.isChecking && assignments.isEmpty {
@@ -231,12 +231,13 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
             for section in sections {
                 rows.append(accountRow(for: section))
                 for repo in section.repositories {
-                    rows.append(assignmentRow(for: repo, signedInLogins: signedInLogins, missingLogin: nil))
+                    rows.append(assignmentRow(for: repo, signedInAccounts: signedInAccounts, missingAccount: nil))
                 }
             }
             for repo in orphaned {
                 rows.append(
-                    assignmentRow(for: repo, signedInLogins: signedInLogins, missingLogin: repo.choice.login))
+                    assignmentRow(
+                        for: repo, signedInAccounts: signedInAccounts, missingAccount: repo.choice.accountID))
             }
             if rows.isEmpty {
                 let add = SettingsForm.button(String(localized: "Add account…"), symbol: "plus") { [weak self] in
@@ -255,42 +256,44 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
     private func accountRow(for section: IntegrationsPresenter.AccountSection) -> SettingsRow {
         let status = SettingsStatus()
         status.set(section.statusText, color: section.statusColor, tooltip: section.tooltip)
-        let count = section.repositories.count
-        let subtitle =
-            count == 0
-            ? String(localized: "No assigned repositories")
-            : String(localized: "\(count) assigned repositories")
         var accessories: [NSView] = [status]
         if !section.account.isSignedIn {
+            let profile = section.account.profile
             let signIn = SettingsForm.button(String(localized: "Sign in…"), symbol: "person.badge.key") { [weak self] in
-                self?.triggerAddGitHubAccount()
+                self?.triggerAddGitHubAccount(profile: profile)
             }
             accessories.append(signIn)
         }
-        let row = SettingsRow(section.account.login.value, accessories, subtitle: subtitle)
-        row.setAccessibilityIdentifier("settings.github.account." + section.account.login.value)
+        let row = SettingsRow(section.title, accessories, subtitle: section.subtitle)
+        let key = GitHubAccountStore.accountKey(for: section.account.id)
+        row.setAccessibilityIdentifier("settings.github.account." + key)
         return row
     }
 
     private func assignmentRow(
-        for repo: IntegrationsPresenter.RepositoryAssignment, signedInLogins: [GitHubLogin],
-        missingLogin: GitHubLogin?
+        for repo: IntegrationsPresenter.RepositoryAssignment, signedInAccounts: [GitHubAccountID],
+        missingAccount: GitHubAccountID?
     ) -> SettingsRow {
         let popup = ActionPopUpButton { [weak self] control in
-            let login = control.selectedValue.flatMap { $0.isEmpty ? nil : GitHubLogin($0) }
-            self?.changeAssignment(sourceID: repo.sourceID, login: login)
+            let account = control.selectedValue.flatMap { $0.isEmpty ? nil : GitHubAccountStore.accountID(from: $0) }
+            self?.changeAssignment(sourceID: repo.sourceID, account: account)
         }
         popup.controlSize = .small
         popup.widthAnchor.constraint(equalToConstant: 150).isActive = true
         popup.setAccessibilityLabel(String(localized: "Account for \(repo.displayName)"))
         popup.setAccessibilityIdentifier("settings.github.assignment." + repo.sourceID)
         popup.addItem(String(localized: "Automatic"), value: "")
-        for login in signedInLogins { popup.addItem(login.value, value: login.value) }
+        let allForLabels = signedInAccounts + [missingAccount].compactMap { $0 }
+        for account in signedInAccounts {
+            let title = GitHubAccountPicker.displayTitle(for: account, among: allForLabels)
+            popup.addItem(title, value: GitHubAccountStore.accountKey(for: account))
+        }
         if repo.isChosen {
-            if !popup.select(value: repo.choice.login.value) {
-                let title = String(localized: "\(repo.choice.login.value) (signed out)")
-                popup.addItem(title, value: repo.choice.login.value)
-                popup.select(value: repo.choice.login.value)
+            let key = GitHubAccountStore.accountKey(for: repo.choice.accountID)
+            if !popup.select(value: key) {
+                let label = GitHubAccountPicker.displayTitle(for: repo.choice.accountID, among: allForLabels)
+                popup.addItem(String(localized: "\(label) (signed out)"), value: key)
+                popup.select(value: key)
             }
         } else {
             popup.selectItem(at: 0)
@@ -304,8 +307,11 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         accountAssignmentControls[repo.sourceID] = (popup, reset)
 
         let subtitle: String =
-            if let missingLogin {
-                String(localized: "Assigned to \(missingLogin.value) (not signed in)")
+            if let missingAccount {
+                String(
+                    localized:
+                        "Assigned to \(GitHubAccountPicker.displayTitle(for: missingAccount, among: allForLabels)) (not signed in)"
+                )
             } else if repo.isChosen {
                 String(localized: "Chosen for this repository")
             } else {
@@ -316,8 +322,8 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         return row
     }
 
-    private func changeAssignment(sourceID: String, login: GitHubLogin?) {
-        GitHubAccountStore(defaults: defaults).choose(login, sourceID: sourceID)
+    private func changeAssignment(sourceID: String, account: GitHubAccountID?) {
+        GitHubAccountStore(defaults: defaults).choose(account, sourceID: sourceID)
         environment.app.activeModel()?.gitHubAccountAssignmentChanged(for: sourceID)
         rebuildGitHubAccounts()
     }
@@ -328,7 +334,7 @@ final class IntegrationsSettingsPane: SettingsPaneContent {
         rebuildGitHubAccounts()
     }
 
-    private func triggerAddGitHubAccount() {
-        environment.system.addGitHubAccount()
+    private func triggerAddGitHubAccount(profile: GitHubConfigProfile? = nil) {
+        environment.system.addGitHubAccount(profile)
     }
 }

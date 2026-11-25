@@ -7,13 +7,17 @@ public struct ProviderService: Sendable {
     let vercelProvider: VercelProvider
     let orcaProvider: OrcaProvider
 
-    public init(runner: any CommandRunning = CommandRunner()) {
-        self.init(runner: runner, platformCache: .shared, clock: { Date() })
+    public init(runner: any CommandRunning = CommandRunner(), configDirectories: GitHubConfigDirectories? = nil) {
+        let resolved = configDirectories ?? (runner is CommandRunner ? .system : .none)
+        self.init(runner: runner, configDirectories: resolved, platformCache: .shared, clock: { Date() })
     }
 
-    init(runner: any CommandRunning, platformCache: VercelPlatformCache, clock: @escaping @Sendable () -> Date) {
+    init(
+        runner: any CommandRunning, configDirectories: GitHubConfigDirectories = .none,
+        platformCache: VercelPlatformCache, clock: @escaping @Sendable () -> Date
+    ) {
         let executor = ProviderCommandExecutor(runner: runner)
-        githubProvider = GitHubProvider(executor: executor)
+        githubProvider = GitHubProvider(executor: executor, configDirectories: configDirectories)
         vercelProvider = VercelProvider(executor: executor, platformCache: platformCache, clock: clock)
         orcaProvider = OrcaProvider(executor: executor)
     }
@@ -42,7 +46,8 @@ public struct ProviderService: Sendable {
 
     /// The accounts `gh` is signed in to on github.com; throws when `gh` is missing or its answer can't be read.
     public func githubAccounts(root: URL) async throws -> [GitHubAccount] {
-        try await GitHubAccounts.list(githubProvider.executor, root: root)
+        try await GitHubAccounts.list(
+            githubProvider.executor, root: root, configDirectories: githubProvider.configDirectories)
     }
 
     /// The deployment list plus gated context and signals. `previous` is the last published Vercel report.

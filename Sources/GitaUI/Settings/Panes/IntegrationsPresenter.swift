@@ -22,6 +22,8 @@ enum IntegrationsPresenter {
 
     struct AccountSection: Equatable {
         var account: GitHubAccount
+        var title: String
+        var subtitle: String
         var statusText: String
         var statusColor: NSColor
         var tooltip: String?
@@ -76,16 +78,14 @@ enum IntegrationsPresenter {
         return AccountRow(value: account.value, color: accountColor(account.status), tooltip: account.tooltip)
     }
 
-    /// Groups stored repository assignments under every `gh` account (signed-in active first, then signed-in, then
-    /// expired), returning any assignments whose login is no longer reported by `gh` under `orphaned`.
+    /// Groups stored repository assignments under every `gh` account (signed-in default active first, then other
+    /// signed-in accounts, then expired), returning any assignments whose identity is not reported by `gh` under
+    /// `orphaned`.
     static func githubSections(
         accounts: [GitHubAccount], assignments: [GitHubAccountStore.Assignment]
     ) -> (sections: [AccountSection], orphaned: [RepositoryAssignment]) {
-        let ordered = accounts.sorted { lhs, rhs in
-            if lhs.isSignedIn != rhs.isSignedIn { return lhs.isSignedIn }
-            if lhs.isActive != rhs.isActive { return lhs.isActive }
-            return lhs.login < rhs.login
-        }
+        let ordered = accounts.sorted(by: GitHubAccount.isOrderedBefore)
+        let allIDs = ordered.map(\.id)
         let mapped = assignments.map { item in
             RepositoryAssignment(
                 sourceID: item.sourceID, displayName: GitHubAccountStore.displayName(for: item.sourceID),
@@ -93,30 +93,51 @@ enum IntegrationsPresenter {
         }
         var matchedIDs = Set<String>()
         let sections = ordered.map { account in
-            let repos = mapped.filter { $0.choice.login.value.lowercased() == account.login.value.lowercased() }
+            let repos = mapped.filter { $0.choice.accountID == account.id }
             for repo in repos { matchedIDs.insert(repo.sourceID) }
-            let statusText: String
-            let statusColor: NSColor
-            let tooltip: String?
-            if !account.isSignedIn {
-                statusText = String(localized: "Session expired")
-                statusColor = Theme.needsInput
-                tooltip = String(localized: "Sign in again with gh auth login --hostname github.com.")
-            } else if account.isActive {
-                statusText = String(localized: "Active")
-                statusColor = Theme.success
-                tooltip = nil
-            } else {
-                statusText = String(localized: "Signed in")
-                statusColor = Theme.success
-                tooltip = nil
-            }
-            return AccountSection(
-                account: account, statusText: statusText, statusColor: statusColor, tooltip: tooltip,
-                repositories: repos)
+            return makeSection(account: account, allIDs: allIDs, repositories: repos)
         }
         let orphaned = mapped.filter { !matchedIDs.contains($0.sourceID) }
         return (sections, orphaned)
+    }
+
+    private static func makeSection(
+        account: GitHubAccount, allIDs: [GitHubAccountID], repositories: [RepositoryAssignment]
+    ) -> AccountSection {
+        let title = GitHubAccountPicker.displayTitle(for: account.id, among: allIDs)
+        let count = repositories.count
+        let repoSummary =
+            count == 0
+            ? String(localized: "No assigned repositories")
+            : String(localized: "\(count) assigned repositories")
+        let subtitle: String =
+            if let profile = account.profile {
+                profile.displayPath + " · " + repoSummary
+            } else {
+                repoSummary
+            }
+        let (statusText, statusColor, tooltip) = accountStatus(for: account)
+        return AccountSection(
+            account: account, title: title, subtitle: subtitle, statusText: statusText, statusColor: statusColor,
+            tooltip: tooltip, repositories: repositories)
+    }
+
+    private static func accountStatus(for account: GitHubAccount) -> (String, NSColor, String?) {
+        if !account.isSignedIn {
+            let tooltip: String
+            if let profile = account.profile {
+                let path = profile.displayPath
+                tooltip = String(
+                    localized: "Sign in again with GH_CONFIG_DIR=\(path) gh auth login --hostname github.com.")
+            } else {
+                tooltip = String(localized: "Sign in again with gh auth login --hostname github.com.")
+            }
+            return (String(localized: "Session expired"), Theme.needsInput, tooltip)
+        }
+        if account.isActive && account.profile == nil {
+            return (String(localized: "Active"), Theme.success, nil)
+        }
+        return (String(localized: "Signed in"), Theme.success, nil)
     }
 
     /// "1 needs input · 2 working" for one tool's sessions, most urgent first.

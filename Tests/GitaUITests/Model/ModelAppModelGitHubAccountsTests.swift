@@ -35,12 +35,12 @@ struct ModelAppModelGitHubAccountsTests {
         try await harness.settle { model.githubAccountPicker != nil }
 
         let picker = try #require(model.githubAccountPicker)
-        #expect(picker.logins.map(\.value) == ["rolottr"])
+        #expect(picker.accounts.map(\.login.value) == ["rolottr"])
         #expect(picker.titles == [String(localized: "Automatic (\("rolottr"))"), "rolottr"])
 
         let rolottr = try #require(GitHubLogin("rolottr"))
         let sourceID = try #require(model.snapshot?.github?.sourceID)
-        model.chooseGitHubAccount(rolottr)
+        model.chooseGitHubAccount(GitHubAccountID(rolottr))
         try await harness.settle { !model.providers.full.isRunning }
 
         let store = GitHubAccountStore(defaults: harness.defaults)

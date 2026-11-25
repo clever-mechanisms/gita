@@ -64,13 +64,15 @@ enum ReviewFixtures {
         ]
     }
 
-    static func envelope(_ pullRequest: [String: Any]?, repository: String = "org/repo") -> Data {
+    static func envelope(
+        _ pullRequest: [String: Any]?, repository: String = "org/repo", viewer: String = "me"
+    ) -> Data {
         var repo: [String: Any] = [
             "nameWithOwner": repository, "viewerPermission": "MAINTAIN", "viewerDefaultMergeMethod": "REBASE",
             "mergeCommitAllowed": true, "squashMergeAllowed": false, "rebaseMergeAllowed": true,
         ]
         repo["pullRequest"] = pullRequest ?? NSNull()
-        return json(["data": ["viewer": ["login": "me"], "repository": repo]])
+        return json(["data": ["viewer": ["login": viewer], "repository": repo]])
     }
 
     static let diff = """

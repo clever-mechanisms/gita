@@ -18,8 +18,8 @@ struct ProviderPageTests {
 
     @Test func alwaysShowsAccountPickerOnGitHubPagesEvenWithZeroOrOneAccount() throws {
         let page = ProviderPageView(frame: NSRect(x: 0, y: 0, width: 640, height: 400))
-        let one = try #require(Self.rolottr)
-        let singlePicker = GitHubAccountPicker(logins: [one], choice: nil, viewer: nil)
+        let one = GitHubAccountID(try #require(Self.rolottr))
+        let singlePicker = GitHubAccountPicker(accounts: [one], choice: nil, viewer: nil)
         let prState = ProviderPageState(section: .pullRequests, signals: [], reports: [], accounts: singlePicker)
         page.update(prState, vercel: nil)
 
@@ -30,7 +30,7 @@ struct ProviderPageTests {
         #expect(popup.itemTitles.contains(String(localized: "Add account…")))
 
         // Zero signed-in accounts still shows status + Add account… on Workflows.
-        let zeroPicker = GitHubAccountPicker(logins: [], choice: nil, viewer: nil)
+        let zeroPicker = GitHubAccountPicker(accounts: [], choice: nil, viewer: nil)
         let wfState = ProviderPageState(section: .workflows, signals: [], reports: [], accounts: zeroPicker)
         page.update(wfState, vercel: nil)
         #expect(!popup.isHidden)
@@ -46,16 +46,17 @@ struct ProviderPageTests {
 
     @Test func choosingAccountAndAddAccountTriggerCallbacksAndRefreshOnReturn() throws {
         let page = ProviderPageView(frame: NSRect(x: 0, y: 0, width: 640, height: 400))
-        let one = try #require(Self.rolottr)
-        let two = try #require(Self.work)
-        var chosen: [GitHubLogin?] = []
+        let one = GitHubAccountID(try #require(Self.rolottr))
+        let workProfile = try #require(GitHubConfigProfile("gh-work"))
+        let two = GitHubAccountID(try #require(Self.work), profile: workProfile)
+        var chosen: [GitHubAccountID?] = []
         var added = 0
         var refreshed = 0
         page.onChooseAccount = { chosen.append($0) }
         page.onAddAccount = { added += 1 }
         page.onRefresh = { refreshed += 1 }
 
-        let picker = GitHubAccountPicker(logins: [one, two], choice: .automatic(one), viewer: "rolottr")
+        let picker = GitHubAccountPicker(accounts: [one, two], choice: .automatic(one), viewer: "rolottr")
         page.update(ProviderPageState(section: .pullRequests, signals: [], reports: [], accounts: picker), vercel: nil)
 
         let popup = try #require(popUp(in: page))
@@ -86,6 +87,19 @@ struct ProviderPageTests {
         let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
         let mode = attributes[.posixPermissions] as? Int
         #expect(mode == 0o700)
+
+        let profile = try #require(GitHubConfigProfile("gh-work"))
+        let dirs = GitHubConfigDirectories(
+            discover: { [profile] },
+            resolve: { $0 == profile ? "/Users/example/.config/\($0.name)" : nil })
+        let profileScript = try #require(GitHubAccountLogin.scriptText(profile: profile, configDirectories: dirs))
+        #expect(profileScript.contains("GH_CONFIG_DIR='/Users/example/.config/gh-work' exec gh auth login"))
+        let missingProfile = try #require(GitHubConfigProfile("gh-gone"))
+        #expect(GitHubAccountLogin.scriptText(profile: missingProfile, configDirectories: dirs) == nil)
+        let quoteDirs = GitHubConfigDirectories(
+            discover: { [profile] },
+            resolve: { $0 == profile ? "/Users/o'malley/.config/\($0.name)" : nil })
+        #expect(GitHubAccountLogin.scriptText(profile: profile, configDirectories: quoteDirs) == nil)
     }
 
     @Test func openTerminalLaunchesTerminalOrGhosttyAndHandlesMissingFolderOrApp() throws {
