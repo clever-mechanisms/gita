@@ -82,11 +82,17 @@ Gitā has no account and stores no credentials. Provider data comes from the CLI
 ```sh
 scripts/build.sh                              # release build into build/app.noindex/Gita.app
 CONFIG=release ARCH=universal scripts/build.sh  # Apple Silicon + Intel
+PACKAGE_ZIP=1 scripts/build.sh                # also build build/Gita-<version>-macos.zip + .sha256 and verify it
 scripts/install.sh                            # installs to /Applications/Gita.app and opens it
+scripts/check-one-copy.sh                     # verifies a single /Applications/Gita.app install
+scripts/perf.sh idle                          # measures idle CPU %, RSS MiB and wakeups
 ```
 
-Requires Xcode 26 or later (Swift 6.2). The app has no third-party package dependencies; the built-in terminal's
-xterm.js is bundled as a resource with its license.
+Requires Xcode 26 or later (Swift 6.2). Release archives ship as universal `Gita-<version>-macos.zip` bundles with
+automatic [Sparkle 2](https://sparkle-project.org) updates verified by EdDSA from
+`https://getgita.app/appcast.xml` (no telemetry, no account or license key). The built-in terminal's xterm.js is
+bundled as a resource with its license. See [docs/releasing.md](docs/releasing.md) for signing, notarization and
+release verification.
 
 ⌘K opens the command palette: one search over every menu command, the branches, pull requests, workflow runs,
 deployments, repositories, commits and Settings panes. Type a few words (a slip such as "psuh" still finds Push), Tab
@@ -138,7 +144,7 @@ without stopping to ask. Review only branches you trust, as you would before run
 | Matt Pocock Review | [mattpocock/skills › code-review](https://github.com/mattpocock/skills/blob/main/skills/engineering/code-review/SKILL.md) | Matt Pocock | MIT |
 | Thermo-Nuclear Review | [cursor/plugins › thermos](https://github.com/cursor/plugins/blob/main/thermos/skills/thermo-nuclear-code-quality-review/SKILL.md) | Cursor | MIT |
 | Caveman Review | [JuliusBrussee/caveman › caveman-review](https://github.com/JuliusBrussee/caveman/tree/main/skills/caveman-review) | Julius Brussee | Apache-2.0 |
-| Gitā Review | [rolottr/gita › gita-review](https://github.com/rolottr/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md) | Gitā | MIT |
+| Gitā Review | [clever-mechanisms/gita › gita-review](https://github.com/clever-mechanisms/gita/blob/main/Resources/ReviewSkills/gita-review/SKILL.md) | Gitā | MIT |
 
 ## License
 

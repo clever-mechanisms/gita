@@ -160,6 +160,30 @@ struct WindowsActivityTests {
             toolbar, itemForItemIdentifier: NSToolbarItem.Identifier("other"), willBeInsertedIntoToolbar: true)
         #expect(unknown == nil)
     }
+
+    @Test func showAndCloseManageDockPolicyAndClampAutosavedOffscreenFrame() throws {
+        let harness = try WindowsActivityHarness()
+        let originalScreens = WindowFrameClamp.screenVisibleFrames
+        defer { WindowFrameClamp.screenVisibleFrames = originalScreens }
+        let visible = NSRect(x: 0, y: 25, width: 1_280, height: 775)
+        WindowFrameClamp.screenVisibleFrames = { [visible] }
+
+        var policies: [NSApplication.ActivationPolicy] = []
+        var activations = 0
+        let window = harness.window
+        defer { window.orderOut(nil) }
+        window.setFrame(NSRect(x: 3_400, y: 2_000, width: 760, height: 480), display: false)
+        harness.controller.activation = ActivationPolicyCoordinator(
+            setPolicy: { policies.append($0) }, activate: { activations += 1 }, windows: { [window] })
+
+        harness.controller.show(model: harness.model)
+        #expect(policies == [.regular])
+        #expect(activations == 1)
+        #expect(visible.contains(window.frame))
+
+        harness.controller.windowWillClose(Notification(name: NSWindow.willCloseNotification, object: window))
+        #expect(policies == [.regular, .accessory])
+    }
 }
 
 @Suite("Windows activity entries")

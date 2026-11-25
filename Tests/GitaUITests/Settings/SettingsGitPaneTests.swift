@@ -166,7 +166,7 @@ struct SettingsGitPaneTests {
         #expect(cards.map(\.titleLabel.stringValue) == [String(localized: "Pull"), String(localized: "Merge")])
         #expect(cards.allSatisfy { $0.help != nil })
         let helps = pane.view.settingsDescendants(of: SettingsHelpButton.self)
-        #expect(helps.count == 3)
+        #expect(helps.count == 5)
         let help = try #require(helps.last)
         #expect(help.toolTip == help.explanation)
         #expect(help.accessibilityHelp() == help.explanation)

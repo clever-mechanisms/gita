@@ -142,7 +142,7 @@ final class RemoteUpdatesControls {
             [
                 SettingsRow(
                     String(localized: "Check remotes for new commits"), [checkRemotes],
-                    subtitle: String(
+                    help: String(
                         localized:
                             """
                             Asks each remote which branch tips moved (git ls-remote). Downloads nothing and \
@@ -151,7 +151,7 @@ final class RemoteUpdatesControls {
                     )),
                 SettingsRow(
                     String(localized: "Fetch automatically"), [autoFetch],
-                    subtitle: String(
+                    help: String(
                         localized:
                             """
                             Downloads commits and updates remote-tracking branches (origin/…) only. Your \

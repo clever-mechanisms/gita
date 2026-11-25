@@ -287,10 +287,10 @@ struct AppSmallPartsTests {
 
     @Test func aWindowFrameIsFittedOnItsScreen() {
         let visible = NSRect(x: 0, y: 0, width: 1_000, height: 800)
-        let fitted = MainWindowController.fit(NSRect(x: 900, y: -50, width: 1_200, height: 600), in: visible)
+        let fitted = WindowFrameClamp.clamped(NSRect(x: 900, y: -50, width: 1_200, height: 600), in: visible)
         #expect(fitted == NSRect(x: 0, y: 0, width: 1_000, height: 600))
         let inside = NSRect(x: 10, y: 10, width: 100, height: 100)
-        #expect(MainWindowController.fit(inside, in: visible) == inside)
+        #expect(WindowFrameClamp.clamped(inside, in: visible) == inside)
     }
 
     @Test func theActivationPolicyFollowsTheTitledWindows() {

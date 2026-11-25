@@ -6,7 +6,8 @@ import AppKit
 @MainActor
 final class ActivationPolicyCoordinator {
     static let shared = ActivationPolicyCoordinator(
-        setPolicy: { NSApp.setActivationPolicy($0) }, activate: { NSApp.activate() }, windows: { NSApp.windows })
+        setPolicy: { if NSApp.activationPolicy() != $0 { NSApp.setActivationPolicy($0) } },
+        activate: { NSApp.activate() }, windows: { NSApp.windows })
 
     private let setPolicy: @MainActor (NSApplication.ActivationPolicy) -> Void
     private let activate: @MainActor () -> Void
@@ -34,7 +35,7 @@ final class ActivationPolicyCoordinator {
     }
 
     /// Whether another visible, titled, normal-level window stays open (panels and the menu bar panel do not count).
-    static func keepsRegular(_ windows: [NSWindow], closing: NSWindow) -> Bool {
+    static func keepsRegular(_ windows: [NSWindow], closing: NSWindow?) -> Bool {
         windows.contains { $0 !== closing && $0.isVisible && $0.styleMask.contains(.titled) && $0.level == .normal }
     }
 }

@@ -1,21 +1,21 @@
 import AppKit
 
-/// Gita runs as a menu bar accessory until a window is open. The Settings, Activity and About windows show the
-/// app in the Dock and the menu bar while they are open, and hand it back to the menu bar when the last titled
-/// window closes.
+/// Gita runs as a menu bar accessory until a window is open. Auxiliary windows (Settings, About, Activity, Pull Request
+/// Review) show the app in the Dock and menu bar while open, clamp to the visible screen area, and hand the app back to
+/// the menu bar when the last normal titled window closes.
 @MainActor
 enum AuxiliaryWindowActivation {
-    /// Brings `window` to the front as a regular app.
-    static func show(_ window: NSWindow, application: NSApplication = .shared) {
-        if application.activationPolicy() == .accessory { application.setActivationPolicy(.regular) }
+    /// Clamps `window` onto a visible screen, tracks display changes, and brings it forward as a regular app.
+    static func show(_ window: NSWindow, coordinator: ActivationPolicyCoordinator = .shared) {
+        WindowFrameClamp.clamp(window)
+        WindowFrameClamp.track(window)
+        coordinator.windowWillShow()
         window.makeKeyAndOrderFront(nil)
-        application.activate()
     }
+
     /// `window` is closing: back to the menu bar unless another normal titled window stays visible.
-    static func closing(_ window: NSWindow?, application: NSApplication = .shared) {
-        if !hasOtherWindows(than: window, in: application.windows) { application.setActivationPolicy(.accessory) }
-    }
-    static func hasOtherWindows(than window: NSWindow?, in windows: [NSWindow]) -> Bool {
-        windows.contains { $0 !== window && $0.isVisible && $0.styleMask.contains(.titled) && $0.level == .normal }
+    static func closing(_ window: NSWindow?, coordinator: ActivationPolicyCoordinator = .shared) {
+        guard let window else { return }
+        coordinator.windowWillClose(window)
     }
 }

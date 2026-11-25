@@ -24,6 +24,11 @@ jobs:
         run: |
           brew install swiftlint
           scripts/install-periphery.sh
+      - name: Shell script syntax
+        run: |
+          for s in scripts/*.sh; do
+            zsh -n "$s"
+          done
       - name: Quality gate
         run: scripts/quality.sh
       - name: Reports
