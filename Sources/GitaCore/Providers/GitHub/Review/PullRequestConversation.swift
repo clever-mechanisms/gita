@@ -2,7 +2,7 @@ import Foundation
 
 /// What the in-place review shows of one pull request: its description, the submitted reviews and comments in time
 /// order, the inline review threads, and what the signed-in account may do.
-public struct PullRequestConversation: Sendable {
+public struct PullRequestConversation: Sendable, Equatable {
     /// GitHub's node id, which review mutations name.
     public var nodeID: String
     public var body: String

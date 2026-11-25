@@ -37,17 +37,33 @@ final class PullRequestReviewController {
         _ item: ProviderItem, root: URL, service: PullRequestReviewService = .init()
     ) -> PullRequestReviewController? {
         guard let target = item.target, case .pullRequest = target else { return nil }
+        let preview = Self.preview(for: item)
         if let controller = live[target] {
             if controller.root == root {
                 controller.state.windowTitle = Self.windowTitle(for: item)
+                controller.state.preview = preview
                 return controller
             }
             controller.retire()
         }
-        let controller = PullRequestReviewController(target: target, root: root, service: service)
+        let controller = PullRequestReviewController(target: target, root: root, service: service, preview: preview)
         controller.state.windowTitle = Self.windowTitle(for: item)
         live[target] = controller
         return controller
+    }
+
+    /// Warms a pull request review in the background (e.g. on row hover) when not already loaded for this checkout.
+    static func prefetch(_ item: ProviderItem, root: URL, service: PullRequestReviewService = .init()) {
+        guard let target = item.target, case .pullRequest = target else { return }
+        if let existing = live[target], existing.root == root { return }
+        _ = review(item, root: root, service: service)
+    }
+
+    private static func preview(for item: ProviderItem) -> PullRequestReviewState.Preview? {
+        guard let pr = item.pullRequest else { return nil }
+        return PullRequestReviewState.Preview(
+            number: pr.number, title: PullRequestColumns.title(item.title, number: pr.number), author: pr.author,
+            branch: item.branch, status: PullRequestColumns.status(pr))
     }
 
     private static func windowTitle(for item: ProviderItem) -> String {
@@ -57,10 +73,14 @@ final class PullRequestReviewController {
         return item.title
     }
 
-    init(target: ProviderTarget, root: URL, service: PullRequestReviewService) {
+    init(
+        target: ProviderTarget, root: URL, service: PullRequestReviewService,
+        preview: PullRequestReviewState.Preview? = nil
+    ) {
         self.target = target
         self.root = root
         self.service = service
+        state.preview = preview
         bind()
         render()
         load()
@@ -79,7 +99,7 @@ final class PullRequestReviewController {
         popOutWindow = nil
         loadTask?.cancel()
         loadTask = nil
-        if state.load == .loading {
+        if state.isLoading {
             state.load = .idle
             render()
         }
@@ -130,7 +150,7 @@ final class PullRequestReviewController {
         ReviewActions(
             reply: { [weak self] thread in self?.startReply(to: thread) },
             sendReply: { [weak self] thread, text in
-                self?.send { service, root, conversation in
+                self?.send(status: String(localized: "Sending reply…")) { service, root, conversation in
                     await service.reply(text, to: thread, conversation: conversation, root: root)
                 }
             },
@@ -180,10 +200,14 @@ final class PullRequestReviewController {
         windowController.show()
         onPopOut?()
     }
+}
 
+extension PullRequestReviewController {
     // MARK: Reading
 
-    func load() {
+    /// Reads the conversation first so it renders as soon as GraphQL answers, while changed files stream in beside it.
+    /// `includeDiff: false` refreshes only the conversation (used after comments, replies and thread resolution).
+    func load(includeDiff: Bool = true) {
         guard !isRetired else { return }
         loadTask?.cancel()
         state.load = .loading
@@ -192,24 +216,53 @@ final class PullRequestReviewController {
         let root = root
         let target = target
         let account = GitHubAccountStore(defaults: defaults).use(for: target.githubSourceID)
+        let fetchDiff = includeDiff || state.snapshot?.diff == nil
         loadTask = Task { [weak self] in
-            let result = await service.load(root: root, target: target, as: account)
-            // A newer read or `retire` cancels on the main actor, so a read they replaced stops here.
-            guard let self, !Task.isCancelled else { return }
-            self.loadTask = nil
-            switch result {
-            case .success(let snapshot): self.state.loaded(snapshot)
-            case .failure(let failure): self.state.load = .failed(failure.message)
+            if fetchDiff {
+                await self?.loadConversationAndDiff(service: service, root: root, target: target, account: account)
+            } else {
+                await self?.loadConversationOnly(service: service, root: root, target: target, account: account)
             }
-            self.render()
         }
+    }
+
+    private func loadConversationAndDiff(
+        service: PullRequestReviewService, root: URL, target: ProviderTarget, account: GitHubAccountUse
+    ) async {
+        let result = await service.load(root: root, target: target, as: account) { [weak self] conversation in
+            await MainActor.run {
+                guard let self, !Task.isCancelled else { return }
+                self.state.loadedConversation(conversation, awaitingDiff: true)
+                self.render()
+            }
+        }
+        guard !Task.isCancelled else { return }
+        loadTask = nil
+        switch result {
+        case .success(let snapshot): state.loaded(snapshot)
+        case .failure(let failure): state.load = .failed(failure.message)
+        }
+        render()
+    }
+
+    private func loadConversationOnly(
+        service: PullRequestReviewService, root: URL, target: ProviderTarget, account: GitHubAccountUse
+    ) async {
+        let conversationResult = await service.loadConversation(root: root, target: target, as: account)
+        guard !Task.isCancelled else { return }
+        loadTask = nil
+        switch conversationResult {
+        case .success(let conversation): state.loadedConversation(conversation, awaitingDiff: false)
+        case .failure(let failure): state.load = .failed(failure.message)
+        }
+        render()
     }
 
     // MARK: Writing
 
     func submit() {
         guard state.canSubmit, let conversation = state.conversation else { return }
-        state.isSending = true
+        state.writeActivity = .sending(String(localized: "Submitting review…"))
         render()
         let draft = state.draft
         let service = service
@@ -219,7 +272,7 @@ final class PullRequestReviewController {
             guard let self else { return }
             self.state.submitted(outcome)
             self.render()
-            if outcome.succeeded { self.load() }
+            if outcome.succeeded { self.load(includeDiff: false) }
         }
     }
 
@@ -236,7 +289,9 @@ final class PullRequestReviewController {
 
     func merge(_ method: PullRequestMergeMethod) {
         guard state.canMerge else { return }
-        send { service, root, conversation in await service.merge(method, conversation: conversation, root: root) }
+        send(status: String(localized: "Merging pull request…"), reloadDiff: true) { service, root, conversation in
+            await service.merge(method, conversation: conversation, root: root)
+        }
     }
 
     /// "Comment" under a line: that comment alone, sent now; the pending review is left as it is.
@@ -244,7 +299,9 @@ final class PullRequestReviewController {
         guard let path = state.selectedFile?.path, let anchor = LineComment.anchor(line) else { return }
         let single = PullRequestReviewDraft(
             verdict: .comment, comments: [LineComment(path: path, line: anchor.line, side: anchor.side, body: text)])
-        send { service, root, conversation in await service.submit(single, conversation: conversation, root: root) }
+        send(status: String(localized: "Sending comment…")) { service, root, conversation in
+            await service.submit(single, conversation: conversation, root: root)
+        }
     }
 
     /// Opens the reply box under a thread on the Conversation page.
@@ -264,13 +321,17 @@ final class PullRequestReviewController {
         state.replyingTo = nil
         render()
         guard let thread, let text else { return }
-        send { service, root, conversation in
+        send(status: String(localized: "Sending reply…")) { service, root, conversation in
             await service.reply(text, to: thread, conversation: conversation, root: root)
         }
     }
 
     private func setResolved(_ resolved: Bool, thread: ReviewThread) {
-        send { service, root, conversation in
+        let status =
+            resolved
+            ? String(localized: "Resolving conversation…")
+            : String(localized: "Reopening conversation…")
+        send(status: status) { service, root, conversation in
             await service.setResolved(resolved, thread: thread, conversation: conversation, root: root)
         }
     }
@@ -279,19 +340,19 @@ final class PullRequestReviewController {
     private typealias Write =
         @Sendable (PullRequestReviewService, URL, PullRequestConversation) async -> PullRequestReviewService.Outcome
 
-    private func send(_ write: @escaping Write) {
+    private func send(status: String, reloadDiff: Bool = false, _ write: @escaping Write) {
         guard state.canWrite, let conversation = state.conversation else { return }
-        state.isSending = true
+        state.writeActivity = .sending(status)
         render()
         let service = service
         let root = root
         Task { [weak self] in
             let outcome = await write(service, root, conversation)
             guard let self else { return }
-            self.state.isSending = false
+            self.state.writeActivity = .idle
             self.state.notice = .init(text: outcome.message, isError: !outcome.succeeded)
             self.render()
-            if outcome.succeeded { self.load() }
+            if outcome.succeeded { self.load(includeDiff: reloadDiff) }
         }
     }
 }

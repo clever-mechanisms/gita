@@ -4,13 +4,33 @@ import GitaCore
 /// §8 Full-height PR Review workspace hosting `providerPage` (`listHost`) and `PullRequestReviewView` (`detailHost`)
 /// with `< 1,100 pt` icon collapse, `< 900 pt` inline fallback, `← PRs` back button, and `⤢ Window` pop-out return.
 extension RepositoryViewController {
+    private static let hoverPrefetchDelay: TimeInterval = 0.18
+
     func wirePullRequestWorkspace() {
         providerPage.list.onSelectionChange = { [weak self] item in
             self?.pullRequestSelectionChanged(item)
         }
+        providerPage.list.onHoverItem = { [weak self] item in
+            self?.schedulePullRequestPrefetch(for: item)
+        }
         prWorkspace.onLayoutChanged = { [weak self] _ in
             self?.syncPullRequestWorkspaceMode()
         }
+    }
+
+    private func schedulePullRequestPrefetch(for item: ProviderItem?) {
+        hoverPrefetchTask?.cancel()
+        hoverPrefetchTask = nil
+        guard model.section == .pullRequests, let item, item.kind == .pullRequest, let root = model.snapshot?.root
+        else { return }
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.model.section == .pullRequests, self.model.snapshot?.root == root else { return }
+                PullRequestReviewController.prefetch(item, root: root)
+            }
+        }
+        hoverPrefetchTask = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.hoverPrefetchDelay, execute: work)
     }
 
     func pullRequestSelectionChanged(_ item: ProviderItem?) {
@@ -43,6 +63,7 @@ extension RepositoryViewController {
         if !isPullRequests || !splitDetail || selected == nil {
             if prWorkspace.activeReview != nil { prWorkspace.clearReview() }
             providerPage.list.usesSplitDetail = splitDetail
+            providerPage.setSplitDetail(false)
             providerPage.setCompact(false)
             return
         }
@@ -54,7 +75,9 @@ extension RepositoryViewController {
             if prWorkspace.activeReview !== controller.reviewView {
                 prWorkspace.showReview(controller.reviewView, isPoppedOut: poppedOut)
             }
-            providerPage.setCompact(prWorkspace.layoutState.collapsesListToIcons)
+            let showsDetail = prWorkspace.layoutState.showsDetail
+            providerPage.setSplitDetail(showsDetail)
+            providerPage.setCompact(showsDetail && prWorkspace.layoutState.collapsesListToIcons)
         }
     }
 

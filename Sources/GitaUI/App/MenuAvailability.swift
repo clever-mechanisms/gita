@@ -101,7 +101,11 @@ struct MenuAvailability {
     }
 
     private func isHistoryCommandEnabled(_ command: MenuCommand) -> Bool {
-        guard gate.hasMainWindow, section == .history else { return false }
+        guard gate.hasMainWindow else { return false }
+        if command == .toggleHistoryDetails { return section == .history }
+        guard section == .history || section == .pullRequests || section == .workflows || section == .deployments else {
+            return false
+        }
         switch command {
         case .zoomIn: return HistoryZoom.canZoomIn(zoomPercent)
         case .zoomOut: return HistoryZoom.canZoomOut(zoomPercent)

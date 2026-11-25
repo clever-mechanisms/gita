@@ -6,8 +6,16 @@ import GitaCore
 /// review in place under them (clicks in the expanded part never collapse the row).
 @MainActor
 final class ProviderDisclosureRow: RowView {
+    private static let baseHeaderHeight: CGFloat = 30
+    private static let dateToolTipFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("MMMdjmm")
+        return formatter
+    }()
+
     let item: ProviderItem
     let openURL: URL?
+    let zoomScale: CGFloat
     private let chevron = NSImageView()
     private var detail: ProviderDetailView?
     private weak var review: NSView?
@@ -16,9 +24,18 @@ final class ProviderDisclosureRow: RowView {
     private let body = Deck.vstack([], spacing: 0)
     var loader: ProviderDetailLoader?
     var onToggle: (() -> Void)?
+    var onHoverChange: ((Bool) -> Void)?
+    /// True when clicking a row opens a side-by-side review instead of expanding an inline accordion.
     var isSplitDetail = false {
         didSet {
             guard isSplitDetail != oldValue else { return }
+            applyRowModeLayout()
+        }
+    }
+    /// True while the side-by-side detail pane is open beside the list, narrowing rows to icon, number and title.
+    var isNarrowSplit = false {
+        didSet {
+            guard isNarrowSplit != oldValue else { return }
             applyRowModeLayout()
         }
     }
@@ -29,20 +46,21 @@ final class ProviderDisclosureRow: RowView {
         }
     }
     private var headerBar: NSStackView?
-    private var splitHiddenViews: [NSView] = []
+    private var narrowHiddenViews: [NSView] = []
     private var compactHiddenViews: [NSView] = []
-    private static let headerHeight: CGFloat = 30
+    var headerHeight: CGFloat { (Self.baseHeaderHeight * zoomScale).rounded() }
 
-    init(item: ProviderItem, openURL: URL? = nil) {
+    init(item: ProviderItem, openURL: URL? = nil, zoomScale: CGFloat = 1) {
         self.item = item
         self.openURL = openURL ?? item.url
+        self.zoomScale = zoomScale
         super.init(frame: .zero)
         bottomSeparator = Theme.separator.withAlphaComponent(0.6)
         onClick = { [weak self] in self?.onToggle?() }
         let statusText = Self.statusText(item)
         let header = Deck.hstack(headerViews(statusText: statusText), spacing: 10)
         header.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
-        header.heightAnchor.constraint(equalToConstant: Self.headerHeight).isActive = true
+        header.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
         headerBar = header
         body.edgeInsets = NSEdgeInsets(top: 2, left: 58, bottom: 12, right: 18)
         let column = Deck.vstack([header, body], spacing: 0)
@@ -58,58 +76,66 @@ final class ProviderDisclosureRow: RowView {
 
     private func headerViews(statusText: String) -> [NSView] {
         if let pr = item.pullRequest, item.kind == .pullRequest { return pullRequestViews(pr) }
-        let icon = Deck.icon(Self.symbol(item), size: 12, color: Self.color(item))
-        icon.widthAnchor.constraint(equalToConstant: 16).isActive = true
-        chevron.widthAnchor.constraint(equalToConstant: 10).isActive = true
-        let title = Deck.label(item.title, font: Theme.body)
-        let branch = Deck.label(item.branch ?? "", font: Theme.mono, color: Theme.secondaryText)
-        let status = Deck.label(statusText, font: Theme.caption, color: Self.color(item))
+        let scale = zoomScale
+        let icon = Deck.icon(Self.symbol(item), size: (12 * scale).rounded(), color: Self.color(item))
+        icon.widthAnchor.constraint(equalToConstant: PullRequestColumns.iconWidth(scale)).isActive = true
+        chevron.widthAnchor.constraint(equalToConstant: PullRequestColumns.chevronWidth(scale)).isActive = true
+        let title = Deck.label(item.title, font: TextLines.system(12 * scale))
+        let branch = Deck.label(item.branch ?? "", font: TextLines.monospaced(11 * scale), color: Theme.secondaryText)
+        let status = Deck.label(statusText, font: TextLines.system(11 * scale), color: Self.color(item))
         let time = Deck.label(
-            item.date.map { DeckFormat.relative($0) } ?? "", font: Theme.caption, color: Theme.secondaryText)
+            item.date.map { DeckFormat.relative($0) } ?? "", font: TextLines.system(11 * scale),
+            color: Theme.secondaryText)
+        time.toolTip = item.date.map(Self.dateToolTipFormatter.string(from:))
         for view in [branch, status, time] {
             view.setContentCompressionResistancePriority(.defaultHigh - 1, for: .horizontal)
         }
-        branch.widthAnchor.constraint(lessThanOrEqualToConstant: 200).isActive = true
-        status.widthAnchor.constraint(equalToConstant: 150).isActive = true
-        time.widthAnchor.constraint(equalToConstant: 92).isActive = true
+        branch.widthAnchor.constraint(lessThanOrEqualToConstant: (200 * scale).rounded()).isActive = true
+        status.widthAnchor.constraint(equalToConstant: (150 * scale).rounded()).isActive = true
+        time.widthAnchor.constraint(equalToConstant: (92 * scale).rounded()).isActive = true
         let actions = Deck.hstack(actionViews(), spacing: 6)
-        actions.widthAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
+        actions.widthAnchor.constraint(greaterThanOrEqualToConstant: (96 * scale).rounded()).isActive = true
         return [chevron, icon, title, Deck.spacer(), branch, status, time, actions]
     }
-    /// Number, title, branch, status, author and updated, at `PullRequestColumns`' widths.
+
+    /// Number, title, branch, status pill, author, updated and actions at `PullRequestColumns`' scaled widths.
     private func pullRequestViews(_ pr: PullRequestSummary) -> [NSView] {
-        let icon = PullRequestColumns.fixed(Deck.icon(Self.symbol(item), size: 12, color: Self.color(item)), 16)
-        chevron.widthAnchor.constraint(equalToConstant: 10).isActive = true
-        let number = Deck.label("#\(pr.number)", font: Theme.mono, color: Theme.secondaryText)
-        let title = Deck.label(PullRequestColumns.title(item.title, number: pr.number), font: Theme.body)
+        let scale = zoomScale
+        let icon = PullRequestColumns.fixed(
+            Deck.icon(Self.symbol(item), size: (12 * scale).rounded(), color: Self.color(item)),
+            PullRequestColumns.iconWidth(scale))
+        chevron.widthAnchor.constraint(equalToConstant: PullRequestColumns.chevronWidth(scale)).isActive = true
+        let number = Deck.label("#\(pr.number)", font: TextLines.monospaced(11 * scale), color: Theme.secondaryText)
+        let titleWeight: NSFont.Weight = pr.lifecycle == .open && !pr.isDraft ? .medium : .regular
+        let titleColor = pr.lifecycle == .closed ? Theme.secondaryText : Theme.text
+        let title = Deck.label(
+            PullRequestColumns.title(item.title, number: pr.number),
+            font: TextLines.system(12 * scale, weight: titleWeight), color: titleColor)
         title.lineBreakMode = .byTruncatingTail
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         title.toolTip = item.title
-        let branch = Deck.label(item.branch ?? "", font: Theme.mono, color: Theme.secondaryText)
-        branch.lineBreakMode = .byTruncatingMiddle
-        branch.toolTip = item.branch
-        let status = Deck.label(PullRequestColumns.status(pr), font: Theme.caption, color: Self.color(item))
-        status.lineBreakMode = .byTruncatingTail
-        status.toolTip = Self.statusText(item)
+        let branchBox = PullRequestColumns.branchView(item.branch, scale: scale)
+        let statusBox = PullRequestColumns.statusBadge(pr, toolTip: Self.statusText(item), scale: scale)
+        let authorBox = PullRequestColumns.author(pr.author, scale: scale)
         let time = Deck.label(
-            item.date.map { DeckFormat.relative($0) } ?? "", font: Theme.caption, color: Theme.secondaryText)
+            item.date.map { DeckFormat.relative($0) } ?? "", font: TextLines.system(11 * scale),
+            color: Theme.secondaryText)
+        time.toolTip = item.date.map(Self.dateToolTipFormatter.string(from:))
+        let updatedBox = PullRequestColumns.fixed(time, PullRequestColumns.updatedWidth(scale))
         let actions = Deck.hstack(actionViews(), spacing: 6)
-        let branchBox = PullRequestColumns.fixed(branch, PullRequestColumns.branch)
-        let statusBox = PullRequestColumns.fixed(status, PullRequestColumns.status)
-        let authorBox = PullRequestColumns.author(pr.author)
-        let updatedBox = PullRequestColumns.fixed(time, PullRequestColumns.updated)
-        let actionsBox = PullRequestColumns.fixed(actions, PullRequestColumns.actions)
+        let actionsBox = PullRequestColumns.fixed(actions, PullRequestColumns.actionsWidth(scale))
         let spacer = Deck.spacer()
-        splitHiddenViews = [chevron, branchBox, statusBox, authorBox, updatedBox, actionsBox]
+        narrowHiddenViews = [branchBox, statusBox, authorBox, updatedBox, actionsBox]
         compactHiddenViews = [title, spacer]
         return [
-            chevron, icon, PullRequestColumns.fixed(number, PullRequestColumns.number), title, spacer,
+            chevron, icon, PullRequestColumns.fixed(number, PullRequestColumns.numberWidth(scale)), title, spacer,
             branchBox, statusBox, authorBox, updatedBox, actionsBox,
         ]
     }
 
     private func applyRowModeLayout() {
-        for view in splitHiddenViews { view.isHidden = isSplitDetail || isCompact }
+        chevron.isHidden = isSplitDetail || isCompact
+        for view in narrowHiddenViews { view.isHidden = isNarrowSplit || isCompact }
         for view in compactHiddenViews { view.isHidden = isCompact }
         headerBar?.spacing = isCompact ? 4 : 10
         headerBar?.edgeInsets =
@@ -117,6 +143,7 @@ final class ProviderDisclosureRow: RowView {
             ? NSEdgeInsets(top: 0, left: 6, bottom: 0, right: 6)
             : NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
     }
+
     /// Open ↗ on GitHub or the deployment, and Copy for a deployment's URL.
     private func actionViews() -> [NSView] {
         guard let url = Deck.safeWebURL(openURL) else { return [] }
@@ -132,13 +159,24 @@ final class ProviderDisclosureRow: RowView {
         return [open, copy]
     }
 
-    override var hoverRect: NSRect { NSRect(x: 0, y: 0, width: bounds.width, height: Self.headerHeight) }
-    override func acceptsClick(at point: NSPoint) -> Bool { point.y < Self.headerHeight }
+    override var hoverRect: NSRect { NSRect(x: 0, y: 0, width: bounds.width, height: headerHeight) }
+    override func acceptsClick(at point: NSPoint) -> Bool { point.y < headerHeight }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        onHoverChange?(true)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        onHoverChange?(false)
+    }
 
     func setExpanded(_ value: Bool) {
         let expandInline = value && !isSplitDetail
         chevron.setSymbol(
-            expandInline ? "chevron.down" : "chevron.right", size: 9, weight: .semibold, color: Theme.tertiaryText)
+            expandInline ? "chevron.down" : "chevron.right", size: (9 * zoomScale).rounded(), weight: .semibold,
+            color: Theme.tertiaryText)
         isSelected = value && isSplitDetail
         fill = expandInline ? Theme.inset : nil
         setAccessibilityExpanded(expandInline)

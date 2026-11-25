@@ -15,6 +15,11 @@ public struct PullRequestReviewService: Sendable {
         public var conversation: PullRequestConversation
         public var diffRead: DiffRead
 
+        public init(conversation: PullRequestConversation, diffRead: DiffRead) {
+            self.conversation = conversation
+            self.diffRead = diffRead
+        }
+
         public var diff: PullRequestDiff? {
             if case .loaded(let diff) = diffRead { diff } else { nil }
         }
@@ -44,25 +49,54 @@ public struct PullRequestReviewService: Sendable {
     // MARK: Reading
 
     /// Reads as `account`, the account stored for the repository (or `gh`'s active one); the conversation's
-    /// `viewer` then names it, and every write about it runs as that account.
+    /// `viewer` then names it, and every write about it runs as that account. When `onConversation` is supplied, it
+    /// fires as soon as GraphQL answers so the UI can display the conversation while the diff finishes streaming.
     public func load(
-        root: URL, target: ProviderTarget, as account: GitHubAccountUse
+        root: URL, target: ProviderTarget, as account: GitHubAccountUse,
+        onConversation: (@Sendable (PullRequestConversation) async -> Void)? = nil
     ) async -> Result<Snapshot, Failure> {
-        guard case .pullRequest(let name, let number) = target, let repository = GitHubRepository(nameWithOwner: name),
-            (1...Int(Int32.max)).contains(number)
-        else { return .failure(Failure(message: ProviderFailure.invalidIdentity.diagnostic)) }
-        async let conversation = conversation(root: root, repository: repository, number: number, as: account)
-        async let diff = diff(root: root, repository: repository, number: number, as: account)
-        let (conversationResult, diffResult) = await (conversation, diff)
+        let diffTask = Task { await loadDiff(root: root, target: target, as: account) }
+        let conversationResult = await loadConversation(root: root, target: target, as: account)
         switch conversationResult {
-        case .failure(let failure): return .failure(Failure(message: failure.diagnostic))
-        case .success(let value):
-            switch diffResult {
-            case .success(let diff): return .success(Snapshot(conversation: value, diffRead: .loaded(diff)))
-            case .failure(let failure):
-                return .success(Snapshot(conversation: value, diffRead: .failed(problem: failure.diagnostic)))
-            }
+        case .failure(let failure):
+            diffTask.cancel()
+            return .failure(failure)
+        case .success(let conversation):
+            if let onConversation { await onConversation(conversation) }
+            let diffResult = await diffTask.value
+            return .success(Snapshot(conversation: conversation, diffRead: diffResult))
         }
+    }
+
+    /// Reads the conversation metadata, comments, reviews and threads (fast GraphQL call, shown before the diff).
+    public func loadConversation(
+        root: URL, target: ProviderTarget, as account: GitHubAccountUse
+    ) async -> Result<PullRequestConversation, Failure> {
+        guard let (repository, number) = Self.validated(target) else {
+            return .failure(Failure(message: ProviderFailure.invalidIdentity.diagnostic))
+        }
+        return await conversation(root: root, repository: repository, number: number, as: account)
+            .mapError { Failure(message: $0.diagnostic) }
+    }
+
+    private func loadDiff(
+        root: URL, target: ProviderTarget, as account: GitHubAccountUse
+    ) async -> Snapshot.DiffRead {
+        guard let (repository, number) = Self.validated(target) else {
+            return .failed(problem: ProviderFailure.invalidIdentity.diagnostic)
+        }
+        switch await diff(root: root, repository: repository, number: number, as: account) {
+        case .success(let value): return .loaded(value)
+        case .failure(let failure): return .failed(problem: failure.diagnostic)
+        }
+    }
+
+    private static func validated(_ target: ProviderTarget) -> (GitHubRepository, Int)? {
+        guard case .pullRequest(let name, let number) = target,
+            let repository = GitHubRepository(nameWithOwner: name),
+            (1...Int(Int32.max)).contains(number)
+        else { return nil }
+        return (repository, number)
     }
 
     private func conversation(

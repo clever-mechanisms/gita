@@ -1,6 +1,31 @@
 import AppKit
 import GitaCore
 
+private struct ReviewDiffCacheKey: Hashable {
+    var path: String
+    var patch: String
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.path == rhs.path && lhs.patch == rhs.patch }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(patch)
+    }
+}
+
+private struct ReviewDiffParsedFile: Sendable {
+    var lines: [DiffLine]
+    var wordHighlights: [[Range<Int>]]
+    var syntaxTokens: [[SyntaxToken]]
+    var longestLine: Int
+
+    static func parse(patch: String, path: String?) -> Self {
+        let lines = ReviewDiffRows.visible(UnifiedDiff.parse(patch).lines)
+        let highlights = DiffDocumentBuilder.wordHighlights(for: lines)
+        let tokens = SyntaxTokenizer.tokenize(lines: lines, path: path, isBlob: false)
+        let longest = lines.reduce(0) { max($0, $1.text.utf16.count) }
+        return Self(lines: lines, wordHighlights: highlights, syntaxTokens: tokens, longestLine: longest)
+    }
+}
+
 /// A file's diff in the review, laid out like GitHub's: the lines, and between them the discussions, the pending
 /// review's comments and the box being written. Pointing at a line shows a + in its gutter; clicking it (or
 /// double-clicking the line) opens the comment box right under that line. Long lines scroll sideways; the cards keep
@@ -8,7 +33,7 @@ import GitaCore
 @MainActor
 final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     /// What one file's page shows.
-    struct Content {
+    struct Content: Equatable {
         var patch: String
         var path: String
         var threads: [ReviewThread]
@@ -22,6 +47,9 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     }
 
     private static let lineHeight: CGFloat = 21
+    /// Patches beyond this byte size parse off the main actor so switching to huge generated diffs never stalls.
+    private static let asyncParseThreshold = 40_000
+    private static let parseCacheLimit = 64
     /// Room after the line numbers for the + so it never covers the code.
     static let plusLane: CGFloat = 22
     private static let cardInsets = NSEdgeInsets(top: 6, left: 12, bottom: 8, right: 12)
@@ -35,7 +63,10 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private(set) var syntaxTokens: [[SyntaxToken]] = []
     private(set) var rows: [ReviewDiffRow] = []
     private(set) var content: Content?
-    private var parsedPatch: String?
+    private var parsedKey: ReviewDiffCacheKey?
+    private var parseCache: [ReviewDiffCacheKey: ReviewDiffParsedFile] = [:]
+    private var parseTask: Task<Void, Never>?
+    private var resizeWorkItem: DispatchWorkItem?
     var defaults: UserDefaults = Preference.store
     /// The comment or reply box open, if any.
     private(set) var box = ReviewDiffBox.none
@@ -78,28 +109,82 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("ReviewDiffView is built in code") }
 
+    isolated deinit {
+        parseTask?.cancel()
+        resizeWorkItem?.cancel()
+    }
+
     /// Shows a file. A box being written stays open, with its text, while the same file reloads or a write is in
     /// flight (`canSend` holds its buttons meanwhile); another file closes it, and so do new lines under a line
     /// comment's box (its line moved).
     func show(_ content: Content) {
+        let key = ReviewDiffCacheKey(path: content.path, patch: content.patch)
+        if self.content == content, parsedKey == key {
+            editor.canSend = content.canWrite
+            return
+        }
         let sameFile = self.content?.path == content.path
         self.content = content
-        let linesChanged = parsedPatch != content.patch || !sameFile
-        if linesChanged {
-            parseDiff(content.patch, path: content.path)
-        }
-        box = box.kept(showing: content, sameFile: sameFile, linesChanged: linesChanged)
+        let linesChanged = parsedKey != key
         editor.canSend = content.canWrite
+        if linesChanged {
+            loadParsed(key: key, sameFile: sameFile, content: content)
+            return
+        }
+        box = box.kept(showing: content, sameFile: sameFile, linesChanged: false)
         rebuild(keepingScroll: sameFile)
     }
 
-    /// Parses the unified patch and computes intra-line word highlights and syntax tokens.
-    private func parseDiff(_ patch: String, path: String?) {
-        parsedPatch = patch
-        lines = ReviewDiffRows.visible(UnifiedDiff.parse(patch).lines)
-        wordHighlights = DiffDocumentBuilder.wordHighlights(for: lines)
-        syntaxTokens = SyntaxTokenizer.tokenize(lines: lines, path: path, isBlob: false)
-        longestLine = lines.reduce(0) { max($0, $1.text.utf16.count) }
+    private func loadParsed(key: ReviewDiffCacheKey, sameFile: Bool, content: Content) {
+        parseTask?.cancel()
+        parseTask = nil
+        if let cached = parseCache[key] {
+            applyParsed(cached, key: key, sameFile: sameFile, content: content)
+            return
+        }
+        if content.patch.utf8.count <= Self.asyncParseThreshold {
+            let parsed = ReviewDiffParsedFile.parse(patch: content.patch, path: content.path)
+            storeParsed(parsed, for: key)
+            applyParsed(parsed, key: key, sameFile: sameFile, content: content)
+            return
+        }
+        parsedKey = nil
+        lines = []
+        wordHighlights = []
+        syntaxTokens = []
+        longestLine = 0
+        box = .none
+        rebuild(keepingScroll: false)
+        let patch = content.patch
+        let path = content.path
+        parseTask = Task { [weak self] in
+            let parsed = await Task.detached(priority: .userInitiated) {
+                ReviewDiffParsedFile.parse(patch: patch, path: path)
+            }.value
+            guard let self, !Task.isCancelled, self.content?.path == path, self.content?.patch == patch else { return }
+            self.parseTask = nil
+            self.storeParsed(parsed, for: key)
+            if let current = self.content {
+                self.applyParsed(parsed, key: key, sameFile: sameFile, content: current)
+            }
+        }
+    }
+
+    private func storeParsed(_ parsed: ReviewDiffParsedFile, for key: ReviewDiffCacheKey) {
+        if parseCache.count >= Self.parseCacheLimit { parseCache.removeAll(keepingCapacity: true) }
+        parseCache[key] = parsed
+    }
+
+    private func applyParsed(
+        _ parsed: ReviewDiffParsedFile, key: ReviewDiffCacheKey, sameFile: Bool, content: Content
+    ) {
+        parsedKey = key
+        lines = parsed.lines
+        wordHighlights = parsed.wordHighlights
+        syntaxTokens = parsed.syntaxTokens
+        longestLine = parsed.longestLine
+        box = box.kept(showing: content, sameFile: sameFile, linesChanged: true)
+        rebuild(keepingScroll: sameFile)
     }
 
     // MARK: Writing
@@ -183,11 +268,24 @@ final class ReviewDiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         scroll.reflectScrolledClipView(scroll.contentView)
     }
 
-    /// Cards wrap at the new width.
+    /// Keeps the diff column sized smoothly without tearing down rows on every resize frame; coalesces card reflow.
     override func setFrameSize(_ newSize: NSSize) {
-        let widthChanged = newSize.width != frame.width
+        let widthChanged = abs(newSize.width - frame.width) > 0.5
         super.setFrameSize(newSize)
-        if widthChanged, content != nil { rebuild(keepingScroll: true) }
+        guard widthChanged, content != nil else { return }
+        let visible = scroll.contentView.bounds.width
+        table.tableColumns.first?.width =
+            DiffDocumentBuilder.columnWidth(longestLine: longestLine, minimum: visible, fontSize: fontSize)
+            + Self.plusLane
+        let nextCardWidth = max(240, visible - Self.cardInsets.left - Self.cardInsets.right)
+        let hasCards = rows.contains { if case .line = $0 { false } else { true } }
+        guard hasCards, abs(nextCardWidth - cardWidth) >= 2 else { return }
+        resizeWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated { self?.rebuild(keepingScroll: true) }
+        }
+        resizeWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: work)
     }
 
     private func card(for row: ReviewDiffRow) -> NSView? {

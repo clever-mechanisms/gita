@@ -87,6 +87,14 @@ struct AppMenuAvailabilityTests {
         #expect(!state.isEnabled(.zoomOut))
         state.zoomPercent = HistoryZoom.actual
         #expect(!state.isEnabled(.actualSize))
+        state.section = .pullRequests
+        state.zoomPercent = HistoryZoom.actual
+        #expect(state.isEnabled(.zoomIn))
+        #expect(state.isEnabled(.zoomOut))
+        #expect(!state.isEnabled(.actualSize))
+        #expect(!state.isEnabled(.toggleHistoryDetails))
+        state.zoomPercent = 120
+        #expect(state.isEnabled(.actualSize))
         state.section = .changes
         #expect(!state.isEnabled(.zoomIn))
         #expect(!state.isEnabled(.toggleHistoryDetails))

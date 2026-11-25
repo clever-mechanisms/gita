@@ -3,6 +3,10 @@ import Foundation
 /// A pull request's changes as GitHub shows them (head against the merge base), one unified diff per file.
 public struct PullRequestDiff: Sendable, Equatable {
     public var files: [PullRequestFileDiff]
+
+    public init(files: [PullRequestFileDiff]) {
+        self.files = files
+    }
 }
 
 public struct PullRequestFileDiff: Identifiable, Sendable, Equatable {

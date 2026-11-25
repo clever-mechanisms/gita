@@ -152,6 +152,25 @@ struct PullRequestReviewStateTests {
         #expect(state.load == .idle && state.subtitle == before)
     }
 
+    @Test func progressiveConversationThenDiffLoadingAndPreviewHeader() async throws {
+        var state = PullRequestReviewState()
+        state.preview = PullRequestReviewState.Preview(
+            number: 28, title: "Order tabs", author: "octocat", branch: "feat/tabs", status: "Open")
+        state.load = .loading
+        #expect(state.subtitle.contains("#28 Order tabs"))
+        #expect(state.subtitle.contains("feat/tabs"))
+
+        let snapshot = try #require(try await loaded().snapshot)
+        state.loadedConversation(snapshot.conversation, awaitingDiff: true)
+        #expect(state.load == .loadingFiles && state.isLoading && state.isLoadingFiles)
+        #expect(state.canWrite, "conversation is readable and interactive while diff streams in")
+        #expect(state.subtitle.contains(String(localized: "Loading files…")))
+
+        state.loaded(snapshot)
+        #expect(state.load == .idle && !state.isLoading && !state.isLoadingFiles)
+        #expect(state.files.count == 2)
+    }
+
     /// The Conversation page's reply box stays open across a reload while its thread is still there and the pull
     /// request still takes replies.
     @Test func aReloadKeepsTheReplyBoxOnlyUnderAThreadStillThere() async throws {

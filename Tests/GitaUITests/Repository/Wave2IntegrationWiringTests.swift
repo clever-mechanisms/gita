@@ -110,7 +110,9 @@ struct Wave2IntegrationWiringTests {
         fixture.controller.view.layoutSubtreeIfNeeded()
 
         #expect(fixture.controller.providerPage.list.usesSplitDetail)
+        #expect(!fixture.controller.providerPage.isShowingSplitDetail)
         #expect(fixture.controller.providerPage.list.select(item))
+        #expect(fixture.controller.providerPage.isShowingSplitDetail)
         #expect(fixture.controller.prWorkspace.activeReview === reviewController?.reviewView)
         #expect(reviewController?.reviewView.presentation == .page)
         #expect(!fixture.controller.prWorkspace.detailHost.isHidden)

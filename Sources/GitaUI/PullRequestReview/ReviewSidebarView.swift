@@ -42,15 +42,22 @@ final class ReviewSidebarView: NSView, NSTableViewDataSource, NSTableViewDelegat
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("ReviewSidebarView is built in code") }
 
+    private var isLoadingFiles = false
+
     func update(
-        _ rows: [PullRequestReviewState.SidebarRow], selected: PullRequestReviewState.Page, viewedCount: Int? = nil
+        _ rows: [PullRequestReviewState.SidebarRow], selected: PullRequestReviewState.Page, viewedCount: Int? = nil,
+        isLoadingFiles: Bool = false
     ) {
         isUpdating = true
         defer { isUpdating = false }
+        let loadingChanged = self.isLoadingFiles != isLoadingFiles
+        self.isLoadingFiles = isLoadingFiles
         if rows != self.rows {
             self.rows = rows
             updateHeader(viewedCount: viewedCount)
             table.reloadData()
+        } else if loadingChanged {
+            updateHeader(viewedCount: viewedCount)
         }
         if let index = rows.firstIndex(where: { $0.page == selected }), table.selectedRow != index {
             table.selectRowIndexes([index], byExtendingSelection: false)
@@ -59,6 +66,11 @@ final class ReviewSidebarView: NSView, NSTableViewDataSource, NSTableViewDelegat
 
     private func updateHeader(viewedCount: Int? = nil) {
         let fileRows = rows.filter { if case .file = $0.page { true } else { false } }
+        if fileRows.isEmpty, isLoadingFiles {
+            header.stringValue = String(localized: "Loading files…")
+            headerBar.isHidden = isCompact
+            return
+        }
         let viewed = viewedCount ?? fileRows.count(where: \.isViewed)
         header.stringValue = fileRows.isEmpty ? "" : String(localized: "Files (\(viewed)/\(fileRows.count) viewed)")
         headerBar.isHidden = isCompact || fileRows.isEmpty

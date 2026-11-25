@@ -45,22 +45,51 @@ struct PullRequestReviewState {
         var isError: Bool
     }
 
-    /// Reading the pull request: no read running, a read in flight, or how the last one failed. A failed refresh
-    /// keeps the snapshot read before it on screen, and says so in the header.
+    /// Reading the pull request: idle, reading conversation + diff, conversation ready while changed files stream in,
+    /// or how the last read failed. A failed refresh keeps the snapshot read before it on screen.
     enum Load: Equatable {
         case idle
         case loading
+        case loadingFiles
         case failed(String)
     }
 
+    /// A write (review, comment, reply, resolve, merge) in flight, carrying the status label shown in the top bar.
+    enum WriteActivity: Equatable {
+        case idle
+        case sending(String)
+
+        var isSending: Bool {
+            if case .sending = self { true } else { false }
+        }
+
+        var message: String? {
+            if case .sending(let text) = self { text } else { nil }
+        }
+    }
+
+    /// Known summary metadata from the Pull Requests list, displayed immediately before the network read finishes.
+    struct Preview: Equatable {
+        var number: Int
+        var title: String
+        var author: String?
+        var branch: String?
+        var status: String
+    }
+
     var snapshot: PullRequestReviewService.Snapshot?
+    var preview: Preview?
     var page: Page = .conversation
     var draft = PullRequestReviewDraft()
     /// The thread on the Conversation page whose reply box is open.
     var replyingTo: String?
     var load = Load.idle
+    var writeActivity = WriteActivity.idle
     /// A write (a review, a reply, a resolve, a merge) is in flight; its outcome lands in `notice`.
-    var isSending = false
+    var isSending: Bool {
+        get { writeActivity.isSending }
+        set { writeActivity = newValue ? .sending(String(localized: "Sending…")) : .idle }
+    }
     var notice: Notice?
     /// The merge method picked in the Merge button's menu; nil until one is picked.
     var pickedMergeMethod: PullRequestMergeMethod?
@@ -69,7 +98,8 @@ struct PullRequestReviewState {
     /// Optional pull request heading (e.g. "#214 Checkout v2") for window titles and full-height bars.
     var windowTitle = ""
 
-    var isLoading: Bool { load == .loading }
+    var isLoading: Bool { load == .loading || load == .loadingFiles }
+    var isLoadingFiles: Bool { load == .loadingFiles }
     var loadProblem: String? {
         if case .failed(let problem) = load { problem } else { nil }
     }
@@ -81,7 +111,16 @@ struct PullRequestReviewState {
 
     /// "octocat wants to merge feature → main · Open · 3 files".
     var subtitle: String {
-        guard let conversation else { return loadProblem ?? (isLoading ? String(localized: "Loading…") : "") }
+        guard let conversation else {
+            if let problem = loadProblem { return problem }
+            guard isLoading else { return "" }
+            guard let preview else { return String(localized: "Loading…") }
+            var parts = ["#\(preview.number) \(preview.title)"]
+            if let branch = preview.branch, !branch.isEmpty { parts.append(branch) }
+            if let author = preview.author, !author.isEmpty { parts.append(author) }
+            parts.append(preview.status)
+            return parts.joined(separator: " · ")
+        }
         // A refresh that failed leads, in the header's failure colour; what it read before still follows.
         var parts = loadProblem.map { [$0] } ?? []
         if let head = conversation.headBranch {
@@ -92,7 +131,11 @@ struct PullRequestReviewState {
         if let decision = conversation.reviewDecision, conversation.lifecycle == .open {
             parts.append(decision.localizedTitle)
         }
-        if snapshot?.diff != nil { parts.append(String(localized: "\(files.count) files")) }
+        if isLoadingFiles {
+            parts.append(String(localized: "Loading files…"))
+        } else if snapshot?.diff != nil {
+            parts.append(String(localized: "\(files.count) files"))
+        }
         // Only an open pull request is being reviewed.
         if conversation.acceptsReviews, let viewer = conversation.viewer {
             parts.append(String(localized: "Reviewing as \(viewer)"))
@@ -152,7 +195,7 @@ struct PullRequestReviewState {
     // MARK: Writing
 
     /// A pull request that is open, loaded and not mid-send takes new comments.
-    var canWrite: Bool { conversation?.acceptsReviews == true && !isSending && !isLoading }
+    var canWrite: Bool { conversation?.acceptsReviews == true && !isSending && load != .loading }
 
     func isOffered(_ verdict: PullRequestReviewDraft.Verdict) -> Bool {
         guard let conversation, conversation.acceptsReviews else { return false }
@@ -196,10 +239,26 @@ struct PullRequestReviewState {
     mutating func loaded(_ snapshot: PullRequestReviewService.Snapshot) {
         self.snapshot = snapshot
         load = .idle
+        reconcileFiles()
+        reconcileConversation()
+    }
+
+    /// Conversation arrived while changed files are still streaming in (or after a conversation-only reload).
+    mutating func loadedConversation(_ conversation: PullRequestConversation, awaitingDiff: Bool) {
+        let existingDiff = snapshot?.diffRead ?? .loaded(PullRequestDiff(files: []))
+        snapshot = PullRequestReviewService.Snapshot(conversation: conversation, diffRead: existingDiff)
+        load = awaitingDiff ? .loadingFiles : .idle
+        reconcileConversation()
+    }
+
+    private mutating func reconcileFiles() {
         let paths = Set(files.map(\.path))
         draft.comments.removeAll { !paths.contains($0.path) }
         viewedFiles = viewedFiles.intersection(paths)
         if case .file(let path) = page, !paths.contains(path) { page = .conversation }
+    }
+
+    private mutating func reconcileConversation() {
         if !isOffered(draft.verdict) { draft.verdict = .comment }
         if let replyingTo,
             conversation?.acceptsReviews != true
@@ -211,7 +270,7 @@ struct PullRequestReviewState {
 
     /// The review went through: the draft starts over.
     mutating func submitted(_ outcome: PullRequestReviewService.Outcome) {
-        isSending = false
+        writeActivity = .idle
         notice = Notice(text: outcome.message, isError: !outcome.succeeded)
         if outcome.succeeded { draft = PullRequestReviewDraft() }
     }

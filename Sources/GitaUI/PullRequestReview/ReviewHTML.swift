@@ -63,9 +63,11 @@ enum ReviewHTML {
         return (Tag(name: name, isClosing: isClosing, attributes: attributes(String(rest))), length)
     }
 
+    private static let attributePattern = try? NSRegularExpression(
+        pattern: #"([A-Za-z][\w:-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+)"#)
+
     static func attributes(_ text: String) -> [String: String] {
-        guard let pattern = try? NSRegularExpression(pattern: #"([A-Za-z][\w:-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s"'>]+)"#)
-        else { return [:] }
+        guard let pattern = attributePattern else { return [:] }
         var result: [String: String] = [:]
         for match in pattern.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
             guard let nameRange = Range(match.range(at: 1), in: text),

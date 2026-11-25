@@ -85,7 +85,7 @@ extension RepositoryViewController {
         providerPage.update(
             ProviderPageState(
                 section: model.section, signals: model.allSignals, reports: model.reports,
-                accounts: model.githubAccountPicker),
+                accounts: model.githubAccountPicker, viewerLogin: model.providers.viewerLogin),
             vercel: model.vercelContext)
         syncPullRequestWorkspaceMode()
     }
@@ -102,7 +102,7 @@ extension RepositoryViewController {
         } else if item.provider == .vercel {
             model.section = .deployments
         }
-        if !providerPage.list.select(item), let url = Deck.safeWebURL(item.url) { NSWorkspace.shared.open(url) }
+        if !providerPage.reveal(item), let url = Deck.safeWebURL(item.url) { NSWorkspace.shared.open(url) }
     }
 
     // MARK: Worktrees & Agents

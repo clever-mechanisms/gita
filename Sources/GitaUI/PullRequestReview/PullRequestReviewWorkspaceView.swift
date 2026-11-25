@@ -79,6 +79,8 @@ final class PullRequestReviewWorkspaceView: NSView {
             width: effectiveWidth, hasSelection: activeReview != nil, isPoppedOut: isPoppedOut)
         let collapseChanged = next.collapsesListToIcons != layoutState.collapsesListToIcons
         let changed = next != layoutState
+        let needsAttach = next.showsDetail && activeReview?.superview !== detailHost
+        guard changed || needsAttach else { return }
         layoutState = next
         detailHost.isHidden = !next.showsDetail
         if next.showsDetail, let activeReview {

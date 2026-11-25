@@ -86,7 +86,28 @@ enum ReviewMarkdown {
         return target.count == 1 || ["\"", "'", "("].contains(target[1].trimmingCharacters(in: .whitespaces).prefix(1))
     }
 
+    private struct AttributedCacheKey: Hashable {
+        var body: String
+        var fontSize: CGFloat
+        var dark: Bool
+        var theme: Theme.Choice
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.body == rhs.body && lhs.fontSize == rhs.fontSize && lhs.dark == rhs.dark && lhs.theme == rhs.theme
+        }
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(body)
+            hasher.combine(fontSize)
+            hasher.combine(dark)
+            hasher.combine(theme)
+        }
+    }
+    private static var attributedCache: [AttributedCacheKey: NSAttributedString] = [:]
+    private static let attributedCacheLimit = 256
+
     static func attributed(_ body: String, font: NSFont = Theme.body) -> NSAttributedString {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let key = AttributedCacheKey(body: body, fontSize: font.pointSize, dark: dark, theme: Theme.current)
+        if let cached = attributedCache[key] { return cached }
         let result = NSMutableAttributedString()
         var rows: [(cells: [String], header: Bool)] = []
         func line(_ text: NSAttributedString) {
@@ -106,6 +127,8 @@ enum ReviewMarkdown {
             line(attributed(block, font: font))
         }
         flushTable()
+        if attributedCache.count >= attributedCacheLimit { attributedCache.removeAll(keepingCapacity: true) }
+        attributedCache[key] = result
         return result
     }
 

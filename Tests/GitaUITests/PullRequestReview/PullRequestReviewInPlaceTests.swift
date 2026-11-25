@@ -311,4 +311,36 @@ struct PullRequestReviewWindowTests {
         #expect(PullRequestColumns.title("#42 Ship it", number: 42) == "Ship it")
         #expect(PullRequestColumns.title("Ship #42", number: 42) == "Ship #42")
     }
+
+    @Test func prefetchReusesControllerAndLargeDiffsParseAsynchronously() async throws {
+        let root = URL(fileURLWithPath: "/tmp/prefetch-\(UUID().uuidString)")
+        let service = PullRequestReviewService(runner: ReviewTestRunner())
+        PullRequestReviewController.prefetch(ReviewTestRunner.item, root: root, service: service)
+        let fetched = try #require(
+            PullRequestReviewController.review(ReviewTestRunner.item, root: root, service: service))
+        defer { fetched.retire() }
+        try await SetupTestSupport.waitUntil("prefetched review loads") { !fetched.state.isLoading }
+        #expect(fetched.state.files.count == 2)
+
+        let diff = ReviewDiffView(frame: NSRect(x: 0, y: 0, width: 700, height: 400))
+        let hugeLines = (1...1_200).map { "+let generatedLineNumber\($0) = \"value-\($0)-padding-for-async-parse\"" }
+        let hugePatch = "@@ -1,1 +1,1200 @@\n" + hugeLines.joined(separator: "\n") + "\n"
+        let hugeContent = ReviewDiffView.Content(
+            patch: hugePatch, path: "Generated.swift", threads: [], pending: [], viewer: "me",
+            canWrite: true, takesComments: true, inReview: false)
+        diff.show(hugeContent)
+        try await SetupTestSupport.waitUntil("huge diff parsed off main actor") { diff.lines.count >= 1_200 }
+        // Switching away and back hits the parsed-file cache synchronously.
+        let smallContent = ReviewDiffView.Content(
+            patch: "@@ -1,1 +1,1 @@\n-old\n+new\n", path: "Small.swift", threads: [], pending: [], viewer: "me",
+            canWrite: true, takesComments: true, inReview: false)
+        diff.show(smallContent)
+        #expect(diff.lines.count == 3)
+        diff.show(hugeContent)
+        #expect(diff.lines.count >= 1_200, "cached large file displays synchronously on revisit")
+        // Identical content and width resize keep lines intact without tearing down.
+        diff.show(hugeContent)
+        diff.setFrameSize(NSSize(width: 820, height: 400))
+        #expect(diff.lines.count >= 1_200)
+    }
 }

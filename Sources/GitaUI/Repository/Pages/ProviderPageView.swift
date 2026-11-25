@@ -1,14 +1,15 @@
 import AppKit
 import GitaCore
 
-/// A provider page: its symbol and title, the provider's status, the active `gh` account picker, Refresh, then the
-/// expandable list.
+/// A provider page: its symbol and title, the provider's status, the active `gh` account picker, Refresh, an optional
+/// filter bar on Pull Requests, then the zoomable expandable list.
 @MainActor
 final class ProviderPageView: NSView {
     private static let headerHeight: CGFloat = 44
     private static let iconWidth: CGFloat = 18
     static let addAccountTag = -42
 
+    let prFilterBar = PullRequestFilterBar()
     let list = ProviderDisclosureList()
     var onRefresh: (() -> Void)?
     /// The account picker's choice: an account, or nil for Automatic.
@@ -23,8 +24,15 @@ final class ProviderPageView: NSView {
     private let refreshButton: PartsButton
     private let headerBar: NSStackView
     private let headerSpacer = Deck.spacer()
+    private let prFilterLine = Deck.separator()
     private(set) var isCompact = false
+    private(set) var isShowingSplitDetail = false
     private(set) var section: Section?
+    private(set) var prFilter = PullRequestFilter()
+    private var rawItems: [ProviderItem] = []
+    private var baseEmptyMessage = ""
+    private var viewerLogin: String?
+    private var vercel: VercelContext?
     private var awaitingAccountRefresh = false
     private var activeObserver: NSObjectProtocol?
 
@@ -43,7 +51,11 @@ final class ProviderPageView: NSView {
         accountPopUp.setAccessibilityIdentifier("provider.accountPopUp")
         accountPopUp.setAccessibilityLabel(String(localized: "GitHub account"))
         headerBar.edgeInsets = NSEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-        let column = Deck.vstack([headerBar, Deck.separator(), list], spacing: 0)
+        prFilterBar.isHidden = true
+        prFilterLine.isHidden = true
+        prFilterBar.onChange = { [weak self] next in self?.applyPullRequestFilter(next) }
+        list.onClearFilters = { [weak self] in self?.applyPullRequestFilter(PullRequestFilter()) }
+        let column = Deck.vstack([headerBar, Deck.separator(), prFilterBar, prFilterLine, list], spacing: 0)
         Style.fill(column, in: self)
         for row in column.arrangedSubviews {
             row.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
@@ -73,30 +85,99 @@ final class ProviderPageView: NSView {
                 color: state.section == .deployments ? Theme.text : Theme.secondaryText)
         }
         title.stringValue = state.section.localizedTitle
-        list.update(items: state.items, vercel: vercel)
-        list.emptyMessage = state.emptyMessage
+        rawItems = state.items
+        baseEmptyMessage = state.emptyMessage
+        viewerLogin = state.viewerLogin
+        self.vercel = vercel
         status.stringValue = state.status
         status.toolTip = state.statusToolTip
         showAccounts(state.accounts)
+        applyItems()
+    }
+
+    func setZoom(percent: Int) {
+        list.zoomPercent = percent
+    }
+
+    func applyPullRequestFilter(_ next: PullRequestFilter) {
+        prFilter = next
+        if section == .pullRequests { applyItems() }
+    }
+
+    func focusFilterSearch() -> Bool {
+        section == .pullRequests && prFilterBar.focusSearch()
+    }
+
+    /// Selects `item` on the page, resetting active Pull Request filters if they were hiding it.
+    @discardableResult func reveal(_ item: ProviderItem) -> Bool {
+        if list.select(item) { return true }
+        guard section == .pullRequests, prFilter.isActive else { return false }
+        applyPullRequestFilter(PullRequestFilter())
+        return list.select(item)
+    }
+
+    func setSplitDetail(_ active: Bool) {
+        guard isShowingSplitDetail != active else { return }
+        isShowingSplitDetail = active
+        list.isShowingSplitDetail = active
+        prFilterBar.isNarrow = active
+        syncChromeVisibility()
     }
 
     func setCompact(_ compact: Bool) {
         guard isCompact != compact else { return }
         isCompact = compact
-        title.isHidden = compact
-        headerSpacer.isHidden = compact
-        status.isHidden = compact
-        refreshButton.isHidden = compact
-        accountPopUp.isHidden = compact || accounts == nil
+        list.isCompact = compact
+        syncChromeVisibility()
+    }
+
+    private func applyItems() {
+        let isPullRequests = section == .pullRequests
+        if isPullRequests {
+            let presentation = prFilter.apply(to: rawItems)
+            prFilterBar.apply(
+                filter: prFilter, counts: presentation.counts, authors: presentation.authors, viewerLogin: viewerLogin)
+            let groups = presentation.groups.map { group in
+                ProviderDisclosureList.Group(
+                    title: group.kind?.localizedTitle, accent: group.kind.map(Self.groupAccent), items: group.items)
+            }
+            list.emptyMessage = presentation.emptyMessage ?? baseEmptyMessage
+            list.showsClearFilters = presentation.items.isEmpty && prFilter.isActive && !rawItems.isEmpty
+            list.update(groups: groups, vercel: vercel)
+        } else {
+            list.emptyMessage = baseEmptyMessage
+            list.showsClearFilters = false
+            list.update(items: rawItems, vercel: vercel)
+        }
+        syncChromeVisibility()
+    }
+
+    private func syncChromeVisibility() {
+        let hidesHeaderMeta = isCompact || isShowingSplitDetail
+        title.isHidden = isCompact
+        headerSpacer.isHidden = hidesHeaderMeta
+        status.isHidden = hidesHeaderMeta
+        refreshButton.isHidden = hidesHeaderMeta
+        accountPopUp.isHidden = hidesHeaderMeta || accounts == nil
         headerBar.edgeInsets =
-            compact
+            isCompact
             ? NSEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
             : NSEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-        list.isCompact = compact
+        let showsFilterBar = section == .pullRequests && !isCompact && !rawItems.isEmpty
+        prFilterBar.isHidden = !showsFilterBar
+        prFilterLine.isHidden = !showsFilterBar
+    }
+
+    private static func groupAccent(_ kind: PullRequestFilter.GroupKind) -> ProviderDisclosureList.Group.Accent {
+        switch kind {
+        case .open: .open
+        case .merged: .merged
+        case .closed: .closed
+        }
     }
 
     private func showAccounts(_ picker: GitHubAccountPicker?) {
-        accountPopUp.isHidden = isCompact || picker == nil
+        accountPopUp.isHidden = isCompact || isShowingSplitDetail || picker == nil
         guard picker != accounts else { return }
         accounts = picker
         guard let picker else { return }

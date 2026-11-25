@@ -23,13 +23,18 @@ struct ProviderPageState {
     var statusToolTip: String?
     /// The GitHub pages' account picker; nil on Deployments or non-GitHub remotes.
     var accounts: GitHubAccountPicker?
+    /// The signed-in GitHub login, used to highlight "Me" in the Pull Requests author menu.
+    var viewerLogin: String?
 
     init(
-        section: Section, signals: [ProviderItem], reports: [ProviderReport], accounts: GitHubAccountPicker? = nil
+        section: Section, signals: [ProviderItem], reports: [ProviderReport], accounts: GitHubAccountPicker? = nil,
+        viewerLogin: String? = nil
     ) {
         self.section = section
         self.accounts = section == .deployments ? nil : accounts
-        items = signals.filter { Self.lists($0, on: section) }
+        self.viewerLogin = section == .pullRequests ? viewerLogin : nil
+        let filtered = signals.filter { Self.lists($0, on: section) }
+        items = section == .pullRequests ? PullRequestFilter().apply(to: filtered).items : filtered
         let report = reports.first { $0.provider == (section == .deployments ? .vercel : .github) }
         let connected = Self.isConnected(report)
         let empty =

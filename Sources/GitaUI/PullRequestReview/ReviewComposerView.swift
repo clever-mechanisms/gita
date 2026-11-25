@@ -83,7 +83,8 @@ final class ReviewComposerView: NSView, NSTextViewDelegate {
         defer { isApplying = false }
         if text.string != state.draft.body { text.string = state.draft.body }
         placeholder.isHidden = !text.string.isEmpty
-        text.isEditable = state.canWrite
+        // Keep typing uninterrupted while a background refresh runs on an open PR; lock only while sending or closed.
+        text.isEditable = state.conversation?.acceptsReviews == true && !state.isSending
         for verdict in PullRequestReviewDraft.Verdict.allCases {
             // Held while a load or write runs, like the text: the review being sent cannot change under it.
             verdicts.offer(
@@ -93,7 +94,7 @@ final class ReviewComposerView: NSView, NSTextViewDelegate {
         pending.stringValue = state.pendingSummary
         submit.isEnabled = state.canSubmit
         submit.toolTip = state.canWrite ? state.submitProblem : nil
-        let message = state.isSending ? String(localized: "Sending…") : state.notice?.text ?? ""
+        let message = state.writeActivity.message ?? state.notice?.text ?? ""
         notice.stringValue = message
         notice.textColor = state.notice?.isError == true && !state.isSending ? Theme.failure : Theme.secondaryText
         notice.isHidden = message.isEmpty

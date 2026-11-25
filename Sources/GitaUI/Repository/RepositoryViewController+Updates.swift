@@ -96,27 +96,31 @@ extension RepositoryViewController {
 
     private func showPage(_ section: Section) {
         lastPageSection = section
-        updateHistoryScope()
         let panes = SectionPanes(section)
         historyPane.isHidden = !panes.showsHistoryPane
         pagePane.isHidden = panes.showsHistoryPane
         if section != .history { sidebarSelection = nil }
         commitFooter.isHidden = !panes.showsCommitFooter
-        // A section switch changes no row content: reload the rows only when the zoom changed; the panes always
-        // follow the section.
-        if HistoryTableController.rowHeight(percent: model.historyZoomPercent) != historyTable.table.rowHeight {
-            applyHistoryAppearance()
+        if panes.showsHistoryPane {
+            updateHistoryScope()
+            // A section switch changes no row content: reload the rows only when the zoom changed; the panes always
+            // follow the section.
+            if HistoryTableController.rowHeight(percent: model.historyZoomPercent) != historyTable.table.rowHeight {
+                applyHistoryAppearance()
+            } else {
+                historyTable.relayoutColumns()
+                historyTable.updateGraphWidth()
+                historyTable.updateSignalColumn()
+                arrangeSectionPanes()
+            }
+            rebuildSidebar()
+            rebuildSelection()
+            refreshStrip()
         } else {
-            historyTable.relayoutColumns()
-            historyTable.updateGraphWidth()
-            historyTable.updateSignalColumn()
-            arrangeSectionPanes()
+            rebuildSidebar()
+            providerPage.setZoom(percent: model.historyZoomPercent)
+            refreshPage()
         }
-        rebuildSidebar()
-        rebuildSelection()
-        refreshPage()
-        syncPullRequestWorkspaceMode()
-        refreshStrip()
     }
 
     static func openWindow(for section: Section) {
