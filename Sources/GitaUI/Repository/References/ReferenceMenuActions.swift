@@ -11,6 +11,7 @@ struct ReferenceMenuActions {
     var toggleFilter: (BranchFilters.Kind, GitReference) -> Void
     var clearFilters: () -> Void
     var openRemoteBranch: (String) -> Void
+    var viewStacksFromBranch: ((String) -> Void)?
     var open: (URL) -> Void = { Deck.open($0) }
     var copy: (String) -> Void = { Deck.copy($0) }
 }

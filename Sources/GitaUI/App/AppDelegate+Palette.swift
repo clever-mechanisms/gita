@@ -29,6 +29,12 @@ extension AppDelegate {
             "submodule", "submodules", "lfs", "git lfs", "locks", "large files", "manage submodules",
             "manage git lfs",
         ],
+        #selector(showCleanupAssistant): [
+            "cleanup", "prune", "merged branches", "stale branches", "idle worktrees", "clean",
+        ],
+        #selector(showStackedBranches): [
+            "stack", "stacked branches", "restack", "update-refs", "rebase stack",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).

@@ -60,6 +60,7 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
     var onReference: ((GitReference) -> Void)?
     var onStash: ((GitStash) -> Void)?
     var referenceMenu: ((GitReference) -> NSMenu?)?
+    var stashMenu: ((GitStash) -> NSMenu?)?
     /// The Remotes group or one remote: Manage Remotes… and friends.
     var remoteMenu: ((String?) -> NSMenu?)?
     /// A branch row's pin, show-only or hide button.
@@ -189,6 +190,7 @@ final class RepositorySidebarView: NSView, NSSplitViewDelegate, NSTableViewDataS
         paneList.actions.onStash = { [weak self] stash in self?.onStash?(stash) }
         paneList.actions.onFilter = { [weak self] ref, kind in self?.onFilter?(ref, kind) }
         paneList.actions.referenceMenu = { [weak self] ref in self?.referenceMenu?(ref) }
+        paneList.actions.stashMenu = { [weak self] stash in self?.stashMenu?(stash) }
         paneList.actions.remoteMenu = { [weak self] name in self?.remoteMenu?(name) }
         paneList.actions.checkoutMenu = { [weak self] path, isMain in self?.checkoutMenu?(path, isMain) }
         paneList.actions.repositoryMenu = { [weak self] repo in self?.repositoryMenu?(repo) }

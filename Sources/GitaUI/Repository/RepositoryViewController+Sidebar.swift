@@ -16,6 +16,7 @@ extension RepositoryViewController {
             self?.model.selectStash(stash)
         }
         sidebarView.referenceMenu = { [weak self] reference in self?.referenceMenu(reference) }
+        sidebarView.stashMenu = { [weak self] stash in self?.stashContextMenu(for: stash) }
         sidebarView.remoteMenu = { _ in Self.remoteMenu() }
         sidebarView.onFilter = { [weak self] reference, kind in self?.model.toggleBranchFilter(kind, reference) }
         sidebarView.checkoutMenu = { [weak self] path, isMain in self?.checkoutMenu(path: path, isMain: isMain) }

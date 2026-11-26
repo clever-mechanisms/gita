@@ -242,6 +242,12 @@ struct ReferenceMenuBuilder {
             item.representedObject = reference
             menu.add(item, enabled: !isMutating)
         }
+        if reference.kind == .branch, let viewStacks = actions.viewStacksFromBranch {
+            menu.add(
+                MenuAction(String(localized: "View Stacks from Branch…"), symbol: "square.stack.3d.up") {
+                    viewStacks(reference.name)
+                }, enabled: !isMutating)
+        }
         if reference.kind == .tag, let deleteRemote = tagDeleteRemoteItem(reference.name) {
             menu.add(deleteRemote, enabled: !isMutating)
         }

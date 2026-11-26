@@ -28,6 +28,7 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     func openRepositoryTab(_ url: URL) { host?.openRepositoryTab(url) }
     func openAuthorTab(_ author: CommitAuthor, in root: URL) { host?.openAuthorTab(author, in: root) }
     func removeFromRepositoryList(_ paths: [String]) { host?.removeFromRepositoryList(paths) }
+    func openStackedBranches(baseBranch: String?) { host?.openStackedBranches(baseBranch: baseBranch) }
 
     // MARK: Remotes and the working copy
 
@@ -83,6 +84,7 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     }
 
     @objc func stash() {
+        if host?.repositoryController?.presentCreateStashSheet() == true { return }
         prompt(String(localized: "Stash changes"), labels: [String(localized: "Message")], defaults: [""]) {
             [weak self] values in
             self?.model.perform(String(localized: "Stash")) { try await $0.stash(message: values[0]) }

@@ -17,6 +17,7 @@ final class SidebarPaneList: NSObject, NSTableViewDataSource, NSTableViewDelegat
         var onSetRepositoryExpanded: ((RepositorySidebarView.Repository, Bool) -> Void)?
         var onSetGroupExpanded: ((SidebarGroupID, Bool) -> Void)?
         var referenceMenu: ((GitReference) -> NSMenu?)?
+        var stashMenu: ((GitStash) -> NSMenu?)?
         var remoteMenu: ((String?) -> NSMenu?)?
         var checkoutMenu: ((String, Bool) -> NSMenu?)?
         var repositoryMenu: ((RepositorySidebarView.Repository) -> NSMenu?)?
@@ -344,6 +345,7 @@ final class SidebarPaneList: NSObject, NSTableViewDataSource, NSTableViewDelegat
         guard rows.indices.contains(row) else { return nil }
         switch rows[row] {
         case .reference(let reference): return actions.referenceMenu?(reference.reference)
+        case .stash(let stash, _): return actions.stashMenu?(stash)
         case .checkout(let checkout, _, _): return actions.checkoutMenu?(checkout.path, checkout.isMain)
         case .repository(let repository, _):
             return actions.repositoryMenu?(repository) ?? actions.checkoutMenu?(repository.root.path, true)

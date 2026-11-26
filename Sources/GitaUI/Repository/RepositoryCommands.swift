@@ -24,4 +24,9 @@ protocol RepositoryCommands: AnyObject {
     func cherryPick(_ commit: GitCommit)
     func pushTag(_ name: String, to remote: String?)
     func deleteRemoteTag(_ name: String, on remote: String)
+    func openStackedBranches(baseBranch: String?)
+}
+
+extension RepositoryCommands {
+    func openStackedBranches(baseBranch _: String?) {}
 }

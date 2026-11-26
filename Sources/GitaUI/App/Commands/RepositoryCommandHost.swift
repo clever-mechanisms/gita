@@ -20,4 +20,9 @@ protocol RepositoryCommandHost: AnyObject {
     func openRepositoryTab(_ url: URL)
     func openAuthorTab(_ author: CommitAuthor, in root: URL)
     func removeFromRepositoryList(_ paths: [String])
+    func openStackedBranches(baseBranch: String?)
+}
+
+extension RepositoryCommandHost {
+    func openStackedBranches(baseBranch _: String?) {}
 }

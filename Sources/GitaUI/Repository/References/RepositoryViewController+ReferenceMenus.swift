@@ -33,7 +33,8 @@ extension RepositoryViewController {
                 },
                 toggleFilter: { kind, reference in model.toggleBranchFilter(kind, reference) },
                 clearFilters: { model.clearBranchFilters() },
-                openRemoteBranch: { [weak self] remoteRef in self?.openRemoteBranch(remoteRef) }
+                openRemoteBranch: { [weak self] remoteRef in self?.openRemoteBranch(remoteRef) },
+                viewStacksFromBranch: { [weak self] branch in self?.commands?.openStackedBranches(baseBranch: branch) }
             )
         )
     }

@@ -71,7 +71,10 @@ extension AppDelegate {
         if menuItem.action == #selector(blameSelectedFile) {
             return repositoryController?.canBlameSelectedFile == true
         }
-        if menuItem.action == #selector(showSubmodulesAndLFS) {
+        if menuItem.action == #selector(showSubmodulesAndLFS)
+            || menuItem.action == #selector(showCleanupAssistant)
+            || menuItem.action == #selector(showStackedBranches)
+        {
             return model.snapshot != nil && model.service != nil
         }
         if menuItem.action == #selector(checkForUpdates) {

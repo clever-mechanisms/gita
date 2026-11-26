@@ -160,6 +160,12 @@ struct MainMenu {
             String(localized: "Submodules & Git LFS…"), #selector(AppDelegate.showSubmodulesAndLFS), in: repo,
             symbol: "shippingbox")
         item(
+            String(localized: "Branch & Worktree Cleanup…"), #selector(AppDelegate.showCleanupAssistant), in: repo,
+            symbol: "wand.and.stars")
+        item(
+            String(localized: "Stacked Branches…"), #selector(AppDelegate.showStackedBranches), in: repo,
+            symbol: "square.stack.3d.up")
+        item(
             String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
             in: repo,
             symbol: "globe")

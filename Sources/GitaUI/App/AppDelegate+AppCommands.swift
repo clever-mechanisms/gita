@@ -186,6 +186,38 @@ extension AppDelegate {
         controller.show(initialTab: initialTab)
     }
 
+    @objc func showCleanupAssistant() {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = root.standardizedFileURL.path
+        let controller =
+            cleanupWindows[key]
+            ?? CleanupAssistantWindowController(gitService: service) { [weak self] in self?.model.refresh() }
+        cleanupWindows[key] = controller
+        controller.present()
+    }
+
+    @objc func showStackedBranches() { openStackedBranches(baseBranch: nil) }
+
+    func openStackedBranches(baseBranch: String?) {
+        guard let root = model.snapshot?.root, let service = model.service else {
+            environment.system.beep()
+            return
+        }
+        statusItem?.closePanel()
+        let key = "\(root.standardizedFileURL.path)#\(baseBranch ?? "")"
+        let controller =
+            stackWindows[key]
+            ?? BranchStackWindowController(gitService: service, baseBranch: baseBranch) { [weak self] in
+                self?.model.refresh()
+            }
+        stackWindows[key] = controller
+        controller.present()
+    }
+
     /// View › a page (⌥⌘1…); Worktrees & Agents opens or closes the right-hand pane.
     @objc func navigate(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let section = Section(rawValue: raw) else { return }

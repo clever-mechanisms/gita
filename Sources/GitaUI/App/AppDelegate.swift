@@ -38,6 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var palette: PaletteController?
     /// Open Submodules & Git LFS utility windows keyed by standardized repository root path.
     var submodulesLFSWindows: [String: SubmodulesLFSWindowController] = [:]
+    /// Open Branch & Worktree Cleanup windows keyed by standardized repository root path.
+    var cleanupWindows: [String: CleanupAssistantWindowController] = [:]
+    /// Open Stacked Branches windows keyed by repository root path and base branch.
+    var stackWindows: [String: BranchStackWindowController] = [:]
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment
