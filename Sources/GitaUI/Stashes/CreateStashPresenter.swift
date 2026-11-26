@@ -18,31 +18,31 @@ struct CreateStashPresenter: Sendable {
     var scopes: [StashScope] { [.allIncludingUntracked, .trackedOnly, .stagedOnly, .selectedPaths(selectedPaths)] }
     var scopeTitles: [String] {
         [
-            String(localized: "All Changes (Incl. Untracked)"), String(localized: "Tracked Only"),
-            String(localized: "Staged Only"), String(localized: "Selected Files (\(selectedPaths.count))"),
+            String(localized: "All (+ Untracked)"), String(localized: "Tracked Only"),
+            String(localized: "Staged Only"), String(localized: "Selected (\(selectedPaths.count))"),
         ]
     }
+    var scopeSymbols: [String] { ["tray.full", "doc.text", "checkmark.circle", "checklist"] }
     var isRunning: Bool { state == .running }
     var canKeepIndex: Bool { scope != .stagedOnly && !isRunning }
     var request: StashCreateRequest { StashCreateRequest(message: message, scope: scope, keepIndex: keepIndex) }
-    var affectedPaths: [String] {
+    var affectedChanges: [FileChange] {
         switch scope {
-        case .allIncludingUntracked: changes.map(\.path)
-        case .trackedOnly: changes.filter { !$0.isUntracked }.map(\.path)
-        case .stagedOnly: changes.filter(\.isStaged).map(\.path)
+        case .allIncludingUntracked: changes
+        case .trackedOnly: changes.filter { !$0.isUntracked }
+        case .stagedOnly: changes.filter(\.isStaged)
         case .selectedPaths(let paths):
             changes.filter { change in
                 paths.contains { change.path == $0 || change.path.hasPrefix($0 + "/") }
-            }.map(\.path)
+            }
         }
     }
-    var canSubmit: Bool {
-        !isRunning && !affectedPaths.isEmpty && (try? request.validate()) != nil
+    var fileCountText: String {
+        let count = affectedChanges.count
+        return count == 1 ? String(localized: "1 file") : String(localized: "\(count) files")
     }
-    var summary: String {
-        let paths = affectedPaths
-        let count = String(localized: "Affected files: \(paths.count)")
-        return ([count] + Array(paths.prefix(4))).joined(separator: "\n")
+    var canSubmit: Bool {
+        !isRunning && !affectedChanges.isEmpty && (try? request.validate()) != nil
     }
     var status: SheetStatus {
         switch state {

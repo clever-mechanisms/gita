@@ -189,7 +189,8 @@ extension AppDelegate {
         }
         statusItem?.closePanel()
         let controller = auxiliaryWindows.controller(for: root, kind: .cleanup, service: service) {
-            CleanupAssistantWindowController(gitService: service) { [weak self] in
+            CleanupAssistantWindowController(gitService: service, repositoryName: root.lastPathComponent) {
+                [weak self] in
                 self?.refreshRepository(at: root)
             }
         }
@@ -207,7 +208,9 @@ extension AppDelegate {
         statusItem?.closePanel()
         let kind = AuxiliaryWindowRegistry.Kind.stackedBranches(baseBranch ?? "")
         let controller = auxiliaryWindows.controller(for: root, kind: kind, service: service) {
-            BranchStackWindowController(gitService: service, baseBranch: baseBranch) { [weak self] in
+            BranchStackWindowController(
+                gitService: service, baseBranch: baseBranch, repositoryName: root.lastPathComponent
+            ) { [weak self] in
                 self?.refreshRepository(at: root)
             }
         }

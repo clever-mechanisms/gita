@@ -8,23 +8,116 @@ import Testing
 @Suite struct WorkflowCleanupPresenterTests {
     @MainActor @Test func utilityLayoutLeavesRoomForTheTableAndFooter() throws {
         UITestSupport.bootstrap()
-        let content = WorkflowWindowContent(title: "Stacked Branches", actionTitle: "Restack")
+        let content = WorkflowWindowContent(
+            title: "Stacked Branches", repositoryName: "sandbox", symbol: "square.stack.3d.up",
+            actionTitle: "Restack", actionSymbol: "arrow.triangle.2.circlepath")
         let root = try #require(content.window.contentView)
+        content.setActionTitle("Restack Chain…", symbol: "arrow.triangle.2.circlepath")
         content.feedback("Complete", emptyMessage: "No stacks")
+        content.feedback("Error", emptyMessage: "Failed", isError: true)
+        content.showsControls = false
+        let pillWithIcon = WorkflowWindowContent.pill("Merged", symbol: "checkmark.circle.fill", color: Theme.success)
+        let plainPill = WorkflowWindowContent.pill("↑2 ↓1")
+        #expect(pillWithIcon.fittingSize.width > 0 && plainPill.fittingSize.width > 0)
         root.layoutSubtreeIfNeeded()
         let scroll = try #require(content.table.enclosingScrollView)
         #expect(scroll.bounds.width > 600)
         #expect(scroll.bounds.height > 200)
+        #expect(scroll.isHidden)
+        #expect(content.empty.bounds.width > 500)
         #expect(content.action.frame.height > 0)
         #expect(!content.window.isVisible)
+        #expect(content.window.title.contains("sandbox"))
+        content.stopObservingTheme()
+    }
+
+    @MainActor @Test func createStashSheetBuildsFileTreePreview() throws {
+        UITestSupport.bootstrap()
+        let parent = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 600), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        let changes = [
+            FileChange(path: "src/formatter.swift", indexStatus: " ", worktreeStatus: "M"),
+            FileChange(path: "README.md", indexStatus: "?", worktreeStatus: "?"),
+        ]
+        var presentedSheet: NSWindow?
+        var completed: Bool?
+        let alerts = AlertPresenter(
+            show: { _, _, _ in },
+            beginSheet: { sheet, _, done in
+                presentedSheet = sheet
+                sheet.contentView?.layoutSubtreeIfNeeded()
+                done(.cancel)
+            })
+        CreateStashSheet.present(
+            on: parent, alerts: alerts, changes: changes, selectedPaths: ["src/formatter.swift"],
+            execute: { _ in }, completion: { completed = $0 })
+        let sheet = try #require(presentedSheet)
+        let root = try #require(sheet.contentView)
+        let filesViews = collectViews(in: root, ofType: ChangedFilesView.self)
+        #expect(filesViews.count == 1)
+        #expect(filesViews.first?.hasFiles == true)
+        #expect(completed == false)
+    }
+
+    @MainActor @Test func cleanupAndStackControllersRenderRows() async throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        try repo.commit("a.txt", "base\n", message: "Initial")
+        try repo.git("checkout", "-q", "-b", "merged-feature")
+        try repo.git("checkout", "-q", "main")
+        try repo.git("checkout", "-q", "-b", "stack-a")
+        try repo.commit("b.txt", "a\n", message: "Layer A")
+        try repo.git("checkout", "-q", "-b", "stack-b")
+        try repo.commit("c.txt", "b\n", message: "Layer B")
+        try repo.git("checkout", "-q", "main")
+        try repo.commit("main.txt", "main\n", message: "Advance main")
+        let worktreeURL = repo.url.deletingLastPathComponent().appendingPathComponent("wt-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: worktreeURL) }
+        try repo.git("worktree", "add", "-q", "-b", "wt-branch", worktreeURL.path)
+        try FileManager.default.removeItem(at: worktreeURL)
+
+        let service = GitService(root: repo.url)
+        let cleanup = CleanupAssistantWindowController(gitService: service, repositoryName: "demo")
+        cleanup.present()
+        defer { cleanup.window?.orderOut(nil) }
+        for _ in 0..<40 where cleanup.numberOfRows(in: NSTableView()) == 0 {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        let cleanupCount = cleanup.numberOfRows(in: NSTableView())
+        #expect(cleanupCount >= 2)
+        for index in 0..<cleanupCount {
+            #expect(cleanup.tableView(NSTableView(), viewFor: nil, row: index) != nil)
+        }
+
+        let stacks = BranchStackWindowController(gitService: service, repositoryName: "demo")
+        stacks.present()
+        defer { stacks.window?.orderOut(nil) }
+        for _ in 0..<40 where stacks.numberOfRows(in: NSTableView()) == 0 {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        let stackCount = stacks.numberOfRows(in: NSTableView())
+        #expect(stackCount == 3)
+        for index in 0..<stackCount {
+            #expect(stacks.tableView(NSTableView(), viewFor: nil, row: index) != nil)
+        }
+    }
+
+    @MainActor private func collectViews<T: NSView>(in view: NSView, ofType _: T.Type) -> [T] {
+        var found: [T] = []
+        if let match = view as? T { found.append(match) }
+        for subview in view.subviews { found.append(contentsOf: collectViews(in: subview, ofType: T.self)) }
+        return found
     }
 
     @Test func filterAndBadgeTitles() {
         #expect(CleanupFilter.allCases.map(\.title) == ["All", "Merged", "Gone Upstream", "Stale", "Worktrees"])
+        #expect(CleanupFilter.allCases.allSatisfy { !$0.symbolName.isEmpty })
         let badges: [CleanupBadge] = [
             .merged, .goneUpstream, .stale, .unmergedWarning, .dirtyWarning, .prunable, .failed,
         ]
         #expect(badges.map(\.title) == ["Merged", "Gone Upstream", "Stale", "Unmerged", "Dirty", "Prunable", "Failed"])
+        #expect(badges.allSatisfy { !$0.symbolName.isEmpty })
     }
 
     @Test func stashScopesAndLifecycle() throws {
@@ -34,14 +127,17 @@ import Testing
             FileChange(path: "new", indexStatus: "?", worktreeStatus: "?"),
         ]
         var presenter = CreateStashPresenter(changes: changes, selectedPaths: ["new"])
-        #expect(presenter.state == .idle && presenter.affectedPaths.count == 3)
+        #expect(presenter.state == .idle && presenter.affectedChanges.count == 3)
+        #expect(presenter.fileCountText == "3 files" && presenter.scopeSymbols.count == 4)
         presenter.selectScope(.trackedOnly)
         presenter.setKeepIndex(true)
-        #expect(presenter.keepIndex && presenter.affectedPaths == ["index", "work"])
+        #expect(presenter.keepIndex && presenter.affectedChanges.map(\.path) == ["index", "work"])
         presenter.selectScope(.stagedOnly)
-        #expect(!presenter.canKeepIndex && !presenter.keepIndex && presenter.affectedPaths == ["index"])
+        #expect(!presenter.canKeepIndex && !presenter.keepIndex && presenter.affectedChanges.map(\.path) == ["index"])
         presenter.selectScope(.selectedPaths(["new"]))
-        #expect(presenter.summary.contains("new") && presenter.canSubmit)
+        #expect(
+            presenter.affectedChanges.map(\.path) == ["new"] && presenter.fileCountText == "1 file"
+                && presenter.canSubmit)
         presenter.message = "bad\0message"
         #expect(!presenter.canSubmit)
         presenter.message = "save"
@@ -107,8 +203,16 @@ import Testing
         #expect(presenter.isAllVisibleSelected && presenter.selectionCount == 3)
         #expect(presenter.visibleRows().first?.badges == [.dirtyWarning])
         #expect(presenter.visibleRows().first?.subtitle == "wip")
+        #expect(presenter.visibleRows().first?.displayTitle == "wip")
+        #expect(presenter.visibleRows().first?.detailText.contains("/dirty") == true)
         #expect(presenter.visibleRows().first?.ageText == "45d")
         #expect(presenter.visibleRows().last?.badges == [.prunable])
+        #expect(presenter.visibleRows().last?.displayTitle == "missing")
+        #expect(presenter.visibleRows().last?.ageText == "Today")
+        #expect(CleanupRowItem.abbreviateHome("/Users/alice/dev/repo", home: "/Users/alice") == "~/dev/repo")
+        #expect(CleanupRowItem.abbreviateHome("/tmp/repo", home: "/Users/alice") == "/tmp/repo")
+        #expect(presenter.actionButtonTitle == "Clean 3 Items…")
+        #expect(presenter.selectionText == "3 of 4 selected")
         presenter.toggleSelection(id: "/dirty")
         #expect(!presenter.isAllVisibleSelected)
         let batch = presenter.buildBatchSelection()
@@ -117,7 +221,8 @@ import Testing
         let summary = presenter.confirmationSummary()
         #expect(summary.contains("/missing") && summary.contains(".env") && presenter.includesUnmerged)
         presenter.deselectAllVisible()
-        #expect(presenter.selectionCount == 1 && presenter.confirmationSummary().contains("old"))
+        #expect(presenter.selectionCount == 1 && presenter.actionButtonTitle == "Clean 1 Item…")
+        #expect(presenter.confirmationSummary().contains("old"))
     }
 
     @Test func cleanupFailuresAndStaleScanCompletion() throws {
@@ -168,7 +273,8 @@ import Testing
         let rows = presenter.rows()
         #expect(rows.map(\.depth) == [0, 1] && rows.first?.needsRestack == true)
         let row = try #require(rows.last)
-        #expect(row.isCurrent && row.counts.contains("↓2") && !row.connector.isEmpty)
+        #expect(rows.first?.connectorSymbol == nil)
+        #expect(row.isCurrent && row.counts.contains("↓2") && row.connectorSymbol == "arrow.turn.down.right")
         #expect(row.summary.contains("The change"))
         let impact = BranchStackRestackPreview.Impact(
             commitsToReplay: [.init(id: "c", parents: [], subject: "The change", author: "", date: .now)],

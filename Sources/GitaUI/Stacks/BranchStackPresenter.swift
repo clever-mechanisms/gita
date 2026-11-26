@@ -9,7 +9,7 @@ struct StackTreeRow: Equatable, Sendable {
     let needsRestack: Bool
     let counts: String
     let summary: String
-    var connector: String { depth == 0 ? "" : "└─" }
+    var connectorSymbol: String? { depth == 0 ? nil : "arrow.turn.down.right" }
 }
 
 struct BranchStackPresenter {

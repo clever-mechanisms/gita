@@ -17,6 +17,16 @@ enum CleanupFilter: String, CaseIterable, Sendable {
         case .worktrees: String(localized: "Worktrees")
         }
     }
+
+    var symbolName: String {
+        switch self {
+        case .all: "tray.full"
+        case .merged: "arrow.triangle.merge"
+        case .goneUpstream: "icloud.slash"
+        case .stale: "clock"
+        case .worktrees: "square.stack.3d.up"
+        }
+    }
 }
 
 enum CleanupBadge: Equatable, Sendable {
@@ -39,24 +49,80 @@ enum CleanupBadge: Equatable, Sendable {
         case .failed: String(localized: "Failed")
         }
     }
+
+    var symbolName: String {
+        switch self {
+        case .merged: "checkmark.circle.fill"
+        case .goneUpstream: "icloud.slash"
+        case .stale: "clock"
+        case .unmergedWarning: "exclamationmark.triangle.fill"
+        case .dirtyWarning: "exclamationmark.circle.fill"
+        case .prunable: "xmark.bin"
+        case .failed: "xmark.circle.fill"
+        }
+    }
 }
 
 struct CleanupRowItem: Identifiable, Sendable, Equatable {
     let id: String
     let title: String
     let subtitle: String?
+    let shortCommit: String?
     let isWorktree: Bool
     let badges: [CleanupBadge]
     let days: Int
     let isSelected: Bool
     let failureReason: String?
 
-    var ageText: String { days < 60 ? String(localized: "\(days)d") : String(localized: "\(days / 30)mo") }
+    var isFailure: Bool { failureReason != nil }
+    var displayTitle: String {
+        guard isWorktree else { return title }
+        if let subtitle, !subtitle.isEmpty { return subtitle }
+        let name = URL(fileURLWithPath: title).lastPathComponent
+        return name.isEmpty ? title : name
+    }
+    var detailText: String {
+        if let failureReason { return failureReason }
+        if isWorktree { return worktreeDetail }
+        return branchDetail
+    }
+    var ageText: String {
+        if days == 0 { return String(localized: "Today") }
+        return days < 60 ? String(localized: "\(days)d") : String(localized: "\(days / 30)mo")
+    }
     var warning: String? {
         if let failureReason { return failureReason }
         if badges.contains(.dirtyWarning) { return String(localized: "Git will refuse to remove a dirty worktree.") }
         if badges.contains(.unmergedWarning) { return String(localized: "Deleting this branch could discard commits.") }
         return nil
+    }
+
+    private var worktreeDetail: String {
+        var parts = [Self.abbreviateHome(title)]
+        if subtitle == nil { parts.append(String(localized: "Detached HEAD")) }
+        if badges.contains(.dirtyWarning) { parts.append(String(localized: "Uncommitted changes")) }
+        if badges.contains(.prunable) { parts.append(String(localized: "Directory missing")) }
+        return parts.joined(separator: " · ")
+    }
+
+    private var branchDetail: String {
+        var parts: [String] = []
+        if let shortCommit, !shortCommit.isEmpty { parts.append(shortCommit) }
+        if badges.contains(.merged) {
+            parts.append(String(localized: "Merged branch"))
+        } else if badges.contains(.goneUpstream) {
+            parts.append(String(localized: "Upstream branch removed"))
+        } else if badges.contains(.stale) {
+            parts.append(String(localized: "Inactive branch"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    static func abbreviateHome(_ path: String, home: String = NSHomeDirectory()) -> String {
+        guard !home.isEmpty else { return path }
+        let prefix = home.hasSuffix("/") ? home : home + "/"
+        guard path.hasPrefix(prefix) else { return path }
+        return "~/" + path.dropFirst(prefix.count)
     }
 
     func matches(_ filter: CleanupFilter) -> Bool {
@@ -95,7 +161,22 @@ struct CleanupAssistantPresenter {
         case .idle, .cleaning: false
         }
     }
-    var selectionText: String { String(localized: "\(selectionCount) selected") }
+    var selectionText: String {
+        let total = rows().count
+        if selectionCount == 0 {
+            return total == 0
+                ? String(localized: "0 selected")
+                : String(localized: "0 of \(total) selected")
+        }
+        return String(localized: "\(selectionCount) of \(total) selected")
+    }
+    var actionButtonTitle: String {
+        switch selectionCount {
+        case 0: String(localized: "Clean Selected…")
+        case 1: String(localized: "Clean 1 Item…")
+        default: String(localized: "Clean \(selectionCount) Items…")
+        }
+    }
     var status: String {
         switch runState {
         case .idle: return ""
@@ -153,8 +234,9 @@ struct CleanupAssistantPresenter {
             let failure = failuresByTarget[branch.name]
             if failure != nil { badges.append(.failed) }
             return CleanupRowItem(
-                id: branch.id, title: branch.name, subtitle: nil, isWorktree: false, badges: badges,
-                days: branch.ageDays, isSelected: selectedBranchIDs.contains(branch.id), failureReason: failure)
+                id: branch.id, title: branch.name, subtitle: nil, shortCommit: String(branch.commit.prefix(8)),
+                isWorktree: false, badges: badges, days: branch.ageDays,
+                isSelected: selectedBranchIDs.contains(branch.id), failureReason: failure)
         }
         return branches
             + report.worktrees.map { tree in
@@ -163,8 +245,9 @@ struct CleanupAssistantPresenter {
                 let failure = failuresByTarget[tree.path]
                 if failure != nil { badges.append(.failed) }
                 return CleanupRowItem(
-                    id: tree.id, title: tree.path, subtitle: tree.branch, isWorktree: true, badges: badges,
-                    days: tree.idleDays, isSelected: selectedWorktreeIDs.contains(tree.id), failureReason: failure)
+                    id: tree.id, title: tree.path, subtitle: tree.branch, shortCommit: nil, isWorktree: true,
+                    badges: badges, days: tree.idleDays, isSelected: selectedWorktreeIDs.contains(tree.id),
+                    failureReason: failure)
             }
     }
 

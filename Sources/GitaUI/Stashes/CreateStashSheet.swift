@@ -8,38 +8,42 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     private let execute: Execute
     private var onEnd: ((NSApplication.ModalResponse) -> Void)?
     private let chrome = SheetChrome(
-        title: String(localized: "Create Stash"), layout: .init(width: 640), identifier: "stash.create",
-        styleMask: [.titled])
+        title: String(localized: "Create Stash"), layout: .init(width: 580, spacing: 10, minimumHeight: 280),
+        identifier: "stash.create", styleMask: [.titled])
     private let message = NSTextField()
-    private let summary = SheetChrome.wrappingLabel(lines: 5)
-    private lazy var picker = ActionSegmentedControl(labels: presenter.scopeTitles) { [weak self] index in
-        guard let self, presenter.scopes.indices.contains(index) else { return }
-        presenter.selectScope(presenter.scopes[index])
-        render()
+    private let fileList = ChangedFilesView(side: .commit)
+    private let fileCountLabel = Deck.label(
+        "", font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), color: Theme.tertiaryText)
+    private lazy var treeToggle = PartsButton(
+        [.symbol("list.bullet.indent", color: Theme.secondaryText, size: 11)], background: .hover,
+        accessibility: String(localized: "Toggle tree view")
+    ) { [weak self] in
+        self?.toggleTreeMode()
     }
+    private lazy var picker: ActionSegmentedControl = {
+        let control = ActionSegmentedControl(labels: presenter.scopeTitles) { [weak self] index in
+            guard let self, presenter.scopes.indices.contains(index) else { return }
+            presenter.selectScope(presenter.scopes[index])
+            render()
+        }
+        for (index, symbol) in presenter.scopeSymbols.enumerated() {
+            control.setImage(Deck.template(symbol, size: 11, weight: .medium), forSegment: index)
+            control.setImageScaling(.scaleProportionallyDown, forSegment: index)
+        }
+        control.segmentDistribution = .fit
+        return control
+    }()
     private lazy var keep = NSButton(
-        checkboxWithTitle: String(localized: "Keep Index"), target: self, action: #selector(changeKeep))
-    private lazy var submit = ActionButton(title: String(localized: "Create Stash")) { [weak self] in self?.create() }
-    private lazy var cancel = ActionButton(title: String(localized: "Cancel")) { [weak self] in self?.end(.cancel) }
+        checkboxWithTitle: String(localized: "Keep staged changes in index (--keep-index)"), target: self,
+        action: #selector(changeKeep))
+    private lazy var submit = SheetChrome.button(String(localized: "Create Stash"), id: "stash.create.submit")
+    private lazy var cancel = SheetChrome.button(String(localized: "Cancel"), id: "stash.create.cancel")
 
     private init(presenter: CreateStashPresenter, execute: @escaping Execute) {
         self.presenter = presenter
         self.execute = execute
         super.init()
-        message.placeholderString = String(localized: "Optional stash message")
-        message.delegate = self
-        summary.font = TextLines.monospaced(12)
-        summary.textColor = Theme.secondaryText
-        chrome.add(message, height: 24)
-        chrome.add(picker, height: 28)
-        chrome.add(keep, height: 22)
-        let box = NSBox()
-        box.title = String(localized: "Stash Preview")
-        if let content = box.contentView { Style.fill(summary, in: content, inset: 6) }
-        chrome.add(box, height: 114)
-        cancel.keyEquivalent = "\u{1b}"
-        submit.keyEquivalent = "\r"
-        chrome.complete(footer: [SheetChrome.spacer(), cancel, submit])
+        buildInterface()
         render()
     }
 
@@ -62,12 +66,97 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
         sheet.chrome.window.makeFirstResponder(sheet.message)
     }
 
+    private func buildInterface() {
+        chrome.add(makeHeader(), height: 36)
+        chrome.add(makeMessageField(), height: 44)
+        chrome.add(picker, height: 28)
+        keep.font = Theme.body
+        chrome.add(keep, height: 20)
+        let preview = makeFileTreeCard()
+        chrome.add(preview, height: 210)
+        chrome.setFlexibleRow(preview, preferred: 210, minimum: 110)
+        cancel.target = self
+        cancel.action = #selector(cancelSheet)
+        cancel.keyEquivalent = "\u{1b}"
+        submit.target = self
+        submit.action = #selector(submitSheet)
+        submit.keyEquivalent = "\r"
+        chrome.complete(footer: [SheetChrome.spacer(), cancel, submit])
+        chrome.window.defaultButtonCell = submit.cell as? NSButtonCell
+    }
+
+    private func makeHeader() -> NSView {
+        let badge = StorageStyle.iconBadge(
+            "archivebox", tint: Theme.accent, boxSize: 32, symbolSize: 15, cornerRadius: 8)
+        let title = Deck.label(
+            String(localized: "Stash Changes"), font: TextLines.system(14, weight: .semibold), color: Theme.text)
+        let subtitle = Deck.caption(
+            String(localized: "Save local modifications to a stash entry and clean your working tree."))
+        return Deck.hstack([badge, Deck.vstack([title, subtitle], spacing: 2), Deck.spacer()], spacing: 10)
+    }
+
+    private func makeMessageField() -> NSView {
+        let label = Deck.label(String(localized: "Message"), font: Theme.captionEmphasis, color: Theme.secondaryText)
+        message.placeholderString = String(localized: "Optional stash message")
+        message.font = Theme.body
+        message.delegate = self
+        let stack = Deck.vstack([label, message], spacing: 4)
+        message.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return stack
+    }
+
+    private func makeFileTreeCard() -> NSView {
+        let card = FillView(color: Theme.window)
+        card.borderColor = Theme.separator
+        card.cornerRadius = 8
+        let clip = NSView()
+        clip.wantsLayer = true
+        clip.layer?.cornerRadius = 7
+        clip.layer?.masksToBounds = true
+        let title = Deck.sectionTitle(String(localized: "Files to Stash"))
+        treeToggle.fixedHeight = 20
+        treeToggle.horizontalPadding = 5
+        treeToggle.cornerRadius = 4
+        let headerRow = Deck.hstack([title, fileCountLabel, Deck.spacer(), treeToggle], spacing: 6)
+        let headerBar = FillView(color: Theme.toolbar)
+        Deck.pin(headerRow, in: headerBar, insets: NSEdgeInsets(top: 0, left: 10, bottom: 0, right: 8))
+        headerBar.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        let divider = Deck.separator()
+        fileList.emptyText = String(localized: "No files match this scope.")
+        fileList.setContentHuggingPriority(.defaultLow, for: .vertical)
+        let stack = Deck.vstack([headerBar, divider, fileList], spacing: 0)
+        Deck.pin(stack, in: clip)
+        for view in [headerBar, divider, fileList] as [NSView] {
+            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+        Deck.pin(clip, in: card, insets: NSEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+        return card
+    }
+
     func controlTextDidChange(_: Notification) {
         presenter.message = message.stringValue
         submit.isEnabled = presenter.canSubmit
     }
 
     @objc private func changeKeep() { presenter.setKeepIndex(keep.state == .on) }
+    @objc private func cancelSheet() { end(.cancel) }
+    @objc private func submitSheet() { create() }
+
+    private func toggleTreeMode() {
+        fileList.showsTree.toggle()
+        syncTreeToggle()
+    }
+
+    private func syncTreeToggle() {
+        let symbol = fileList.showsTree ? "list.bullet.indent" : "list.bullet"
+        let tip =
+            fileList.showsTree
+            ? String(localized: "Showing folder tree (click for flat list)")
+            : String(localized: "Showing flat list (click for folder tree)")
+        treeToggle.parts = [.symbol(symbol, color: Theme.secondaryText, size: 11)]
+        treeToggle.toolTip = tip
+        treeToggle.setAccessibilityLabel(tip)
+    }
 
     private func create() {
         presenter.message = message.stringValue
@@ -102,7 +191,9 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
         message.isEnabled = !presenter.isRunning
         cancel.isEnabled = !presenter.isRunning
         submit.isEnabled = presenter.canSubmit
-        summary.stringValue = presenter.summary
+        fileList.update(presenter.affectedChanges)
+        fileCountLabel.stringValue = presenter.fileCountText
+        syncTreeToggle()
         chrome.show(presenter.status)
     }
 }
