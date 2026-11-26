@@ -112,6 +112,8 @@ final class RepositoryViewController: NSViewController {
     var appliedTemplateRepoPaths: Set<String> = []
     var bisectPresenter: BisectPresenter?
     var bisectServiceID: ObjectIdentifier?
+    var activeCustomActionController: CustomActionOutputWindowController?
+    var activePatchApplySheet: PatchApplySheetController?
     lazy var detailLoader: ProviderDetailLoader = { [weak self] item, force in
         guard let self, let target = item.target, let root = self.model.snapshot?.root, let service = self.model.service
         else { return nil }

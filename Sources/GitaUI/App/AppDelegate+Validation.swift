@@ -85,6 +85,22 @@ extension AppDelegate {
         if menuItem.action == #selector(showRepositoryHealth) {
             return (tabsController?.selectedRepository ?? model.snapshot?.root) != nil
         }
+        if menuItem.action == #selector(exportPatch) {
+            return model.snapshot != nil && model.service != nil
+        }
+        if menuItem.action == #selector(applyPatch) {
+            return model.snapshot != nil && model.service != nil && !model.isMutating
+        }
+        if menuItem.action == #selector(copyPermalink) {
+            return model.snapshot?.remoteURL != nil
+                && (model.selectedCommit != nil || model.selectedFile != nil || model.selectedTreePath != nil)
+        }
+        if menuItem.action == #selector(openInExternalDiffTool) {
+            return repositoryController?.canOpenInExternalDiffTool == true
+        }
+        if menuItem.action == #selector(openInExternalMergeTool) {
+            return repositoryController?.canOpenInExternalMergeTool == true
+        }
         if menuItem.action == #selector(checkForUpdates) {
             menuItem.title =
                 updater.pendingVersion.map { String(localized: "Install Update \($0)…") }

@@ -110,6 +110,9 @@ extension RepositoryViewController {
             self?.showBlame(path: path, revision: commit)
         }
         view.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
+        view.onCopyPermalink = { [weak self] path, revision, lines in
+            self?.copyFilePermalink(path: path, revision: revision, lines: lines)
+        }
         view.onClose = { [weak self] in self?.closeBlame() }
         Style.fill(view, in: codePane)
         view.isHidden = true

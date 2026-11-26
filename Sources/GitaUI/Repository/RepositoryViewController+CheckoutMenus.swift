@@ -42,6 +42,7 @@ extension RepositoryViewController {
                 self?.commands?.inspectStorage(at: url)
             })
         menu.addItem(remoteItem(url))
+        if let custom = customActionSubmenu(scope: .worktree, worktreePath: url) { menu.addItem(custom) }
         if let agents = agentsItem(url) { menu.addItem(agents) }
         if !isMain,
             let tree = model.snapshot?.worktrees.first(where: {

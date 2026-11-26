@@ -40,6 +40,10 @@ extension RepositoryViewController {
         codePane.onDiffOptionsChanged = { [weak self] options in self?.model.setDiffOptions(options) }
         codePane.onOpenInEditor = { [weak self] line in self?.openInEditor(at: line) }
         codePane.diffView.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
+        codePane.diffView.onCopyPermalink = { [weak self] path, lines in
+            self?.copyFilePermalink(path: path, revision: nil, lines: lines)
+        }
+        codePane.diffView.onOpenInExternalDiff = { [weak self] in self?.openInExternalDiffTool() }
         filePane.tree.onSelect = { [weak self] entry in
             self?.closeBlame()
             self?.model.selectTreeEntry(entry)

@@ -35,7 +35,15 @@ extension RepositoryViewController {
                 clearFilters: { model.clearBranchFilters() },
                 openRemoteBranch: { [weak self] remoteRef in self?.openRemoteBranch(remoteRef) },
                 viewStacksFromBranch: { [weak self] branch in self?.commands?.openStackedBranches(baseBranch: branch) },
-                startBisectFromCommit: { [weak self] commit in self?.presentBisectStartSheet(initialBad: commit.id) }
+                startBisectFromCommit: { [weak self] commit in self?.presentBisectStartSheet(initialBad: commit.id) },
+                exportCommitPatch: { [weak self] commit in self?.exportPatch(.commit(sha: commit.id)) },
+                copyCommitPermalink: { [weak self] commit in self?.copyCommitPermalink(commit) },
+                customActionsForCommit: { [weak self] commit in
+                    self?.customActionSubmenu(scope: .commit, commitSHA: commit.id)
+                },
+                customActionsForBranch: { [weak self] ref in
+                    self?.customActionSubmenu(scope: .branch, commitSHA: ref.commit, branch: ref.name)
+                }
             )
         )
     }

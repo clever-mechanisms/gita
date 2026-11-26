@@ -80,4 +80,20 @@ extension RepositoryViewController: FileMenuActions {
         selectDetailTab(.tree)
         filePane.tree.reveal(path)
     }
+
+    func copyFilePermalink(_ path: String, commit: String?) {
+        copyFilePermalink(path: path, revision: commit, lines: nil)
+    }
+
+    func openFileInExternalDiff(_ path: String, staged: Bool?) {
+        openInExternalDiffTool(path: path, staged: staged)
+    }
+
+    func openFileInExternalMerge(_ path: String) {
+        openInExternalMergeTool(path: path)
+    }
+
+    func customActionsMenu(forFile path: String) -> NSMenuItem? {
+        customActionSubmenu(scope: .file, filePath: path)
+    }
 }

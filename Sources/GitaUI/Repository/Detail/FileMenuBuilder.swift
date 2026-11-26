@@ -13,6 +13,17 @@ protocol FileMenuActions: AnyObject {
     func confirmReset(_ paths: [String], to commit: String, message: String)
     func saveFile(_ path: String, commit: String)
     func showInFileTree(_ path: String)
+    func copyFilePermalink(_ path: String, commit: String?)
+    func openFileInExternalDiff(_ path: String, staged: Bool?)
+    func openFileInExternalMerge(_ path: String)
+    func customActionsMenu(forFile path: String) -> NSMenuItem?
+}
+
+extension FileMenuActions {
+    func copyFilePermalink(_: String, commit _: String?) {}
+    func openFileInExternalDiff(_: String, staged _: Bool?) {}
+    func openFileInExternalMerge(_: String) {}
+    func customActionsMenu(forFile _: String) -> NSMenuItem? { nil }
 }
 
 /// The file menus: Open, Open With, Reveal in Finder, Stage / Unstage, Discard, Reset File to, History, Save As,
@@ -128,6 +139,23 @@ struct FileMenuBuilder {
         menu.addItem(.separator())
         menu.addItem(fileHistoryItem(paths))
         menu.addItem(fileBlameItem(paths, commit: nil))
+        if files.count == 1, let file = files.first {
+            if file.isConflict {
+                menu.addItem(
+                    MenuAction(String(localized: "Open in External Merge Tool"), symbol: "arrow.triangle.merge") {
+                        [weak actions] in actions?.openFileInExternalMerge(file.path)
+                    })
+            } else {
+                menu.addItem(
+                    MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square")
+                    { [weak actions] in actions?.openFileInExternalDiff(file.path, staged: staged) })
+            }
+            menu.addItem(
+                MenuAction(String(localized: "Copy Permalink"), symbol: "link") { [weak actions] in
+                    actions?.copyFilePermalink(file.path, commit: nil)
+                })
+            if let custom = actions?.customActionsMenu(forFile: file.path) { menu.addItem(custom) }
+        }
         menu.addItem(.separator())
         copyItems(paths).forEach(menu.addItem)
         return menu
@@ -163,6 +191,19 @@ struct FileMenuBuilder {
         menu.addItem(.separator())
         menu.addItem(fileHistoryItem(paths))
         menu.addItem(fileBlameItem(paths, commit: reference.isCommit ? reference.id : nil))
+        if files.count == 1, let file = files.first {
+            menu.addItem(
+                MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square") {
+                    [weak actions] in actions?.openFileInExternalDiff(file.path, staged: nil)
+                })
+            if reference.isCommit {
+                menu.addItem(
+                    MenuAction(String(localized: "Copy Permalink"), symbol: "link") { [weak actions] in
+                        actions?.copyFilePermalink(file.path, commit: reference.id)
+                    })
+            }
+            if let custom = actions?.customActionsMenu(forFile: file.path) { menu.addItem(custom) }
+        }
         // The file as the commit has it (not for a file the commit deleted).
         let kept = files.count == 1 ? files.first.flatMap { $0.indexCode == .deleted ? nil : $0 } : nil
         let save = MenuAction(String(localized: "Save As…")) { [weak actions] in

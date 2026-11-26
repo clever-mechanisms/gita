@@ -7,7 +7,8 @@ enum SettingsAnchor: Hashable {
 
 /// Settings ▸ sidebar panes. Raw values are stored in `Preference.settingsPane`.
 enum SettingsPane: String, CaseIterable {
-    case general, appearance, history, git, integrations, agents, shortcuts, notifications, menuBar, about
+    case general, appearance, history, git, customActions, externalTools, integrations, agents, shortcuts, notifications,
+        menuBar, about
 
     var title: String {
         switch self {
@@ -15,6 +16,8 @@ enum SettingsPane: String, CaseIterable {
         case .appearance: String(localized: "Appearance")
         case .history: String(localized: "History")
         case .git: "Git"
+        case .customActions: String(localized: "Custom Actions")
+        case .externalTools: String(localized: "External Tools")
         case .integrations: String(localized: "Integrations")
         case .agents: String(localized: "AI Agents")
         case .shortcuts: String(localized: "Shortcuts")
@@ -29,6 +32,8 @@ enum SettingsPane: String, CaseIterable {
         case .appearance: "paintpalette"
         case .history: "point.3.connected.trianglepath.dotted"
         case .git: "arrow.triangle.branch"
+        case .customActions: "bolt.horizontal"
+        case .externalTools: "arrow.left.arrow.right.square"
         case .integrations: "puzzlepiece.extension"
         case .agents: Self.agentsSymbol
         case .shortcuts: "keyboard"
@@ -46,6 +51,8 @@ enum SettingsPane: String, CaseIterable {
         case .appearance: AppearanceSettingsPane(environment: environment)
         case .history: HistorySettingsPane(environment: environment)
         case .git: GitSettingsPane(environment: environment)
+        case .customActions: CustomActionsSettingsPane(environment: environment)
+        case .externalTools: ExternalToolsSettingsPane(environment: environment)
         case .integrations: IntegrationsSettingsPane(environment: environment)
         case .agents: AgentsSettingsPane(environment: environment)
         case .shortcuts: ShortcutsSettingsPane(environment: environment)

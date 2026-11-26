@@ -50,6 +50,15 @@ extension AppDelegate {
         #selector(showRepositoryHealth): [
             "health", "maintenance", "gc", "garbage collection", "fsmonitor", "untracked cache", "commit-graph",
         ],
+        #selector(exportPatch): ["patch", "diff", "format-patch", "export"],
+        #selector(applyPatch): ["patch", "apply", "3way", "import patch"],
+        #selector(copyPermalink): ["permalink", "link", "github", "gitlab", "bitbucket", "url"],
+        #selector(openInExternalDiffTool): [
+            "diff", "external", "kaleidoscope", "vscode", "beyond compare", "filemerge",
+        ],
+        #selector(openInExternalMergeTool): [
+            "merge", "conflict", "external", "kaleidoscope", "vscode", "beyond compare", "filemerge",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).

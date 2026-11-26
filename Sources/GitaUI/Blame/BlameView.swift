@@ -17,6 +17,7 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMen
     var onSelectCommit: ((String) -> Void)?
     var onBlamePrior: ((String, String) -> Void)?
     var onShowLineHistory: ((LineRangeSpec) -> Void)?
+    var onCopyPermalink: ((String, String?, ClosedRange<Int>?) -> Void)?
     var onClose: (() -> Void)?
     var currentModifiers: () -> NSEvent.ModifierFlags = { NSApp.currentEvent?.modifierFlags ?? [] }
 
@@ -267,13 +268,21 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMen
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let row = table.clickedRow >= 0 ? table.clickedRow : (selectedLineIndex ?? -1)
-        guard let document, document.annotations.indices.contains(row), let onShowLineHistory else { return }
+        guard let document, document.annotations.indices.contains(row) else { return }
         let lineNumber = row + 1
-        let spec = LineRangeSpec(
-            path: document.path, startLine: lineNumber, endLine: lineNumber, revision: document.revision)
-        menu.addItem(
-            MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
-                onShowLineHistory(spec)
-            })
+        if let onShowLineHistory {
+            let spec = LineRangeSpec(
+                path: document.path, startLine: lineNumber, endLine: lineNumber, revision: document.revision)
+            menu.addItem(
+                MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
+                    onShowLineHistory(spec)
+                })
+        }
+        if let onCopyPermalink {
+            menu.addItem(
+                MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
+                    onCopyPermalink(document.path, document.revision, lineNumber...lineNumber)
+                })
+        }
     }
 }

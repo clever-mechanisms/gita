@@ -62,6 +62,16 @@ struct ReferenceMenuBuilder {
             bisect.isEnabled = canOperate
             items.append(bisect)
         }
+        if let exportPatch = actions.exportCommitPatch {
+            items.append(
+                MenuAction(String(localized: "Export Patch…"), symbol: "square.and.arrow.up") {
+                    exportPatch(commit)
+                })
+        }
+        if let copyPermalink = actions.copyCommitPermalink, snapshot.remoteURL != nil {
+            items.append(MenuAction(String(localized: "Copy Permalink"), symbol: "link") { copyPermalink(commit) })
+        }
+        if let custom = actions.customActionsForCommit?(commit) { items.append(custom) }
         return items
     }
 
@@ -254,6 +264,9 @@ struct ReferenceMenuBuilder {
                 MenuAction(String(localized: "View Stacks from Branch…"), symbol: "square.stack.3d.up") {
                     viewStacks(reference.name)
                 }, enabled: !isMutating)
+        }
+        if reference.kind == .branch, let custom = actions.customActionsForBranch?(reference) {
+            menu.add(custom)
         }
         if reference.kind == .tag, let deleteRemote = tagDeleteRemoteItem(reference.name) {
             menu.add(deleteRemote, enabled: !isMutating)

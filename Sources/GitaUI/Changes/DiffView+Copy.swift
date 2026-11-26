@@ -69,16 +69,31 @@ extension DiffView {
         openItem.isEnabled = shownPath != nil
         menu.addItem(openItem)
 
-        if let path = shownPath, let onShowLineHistory {
+        if let path = shownPath {
             let lineNumbers = docRows.compactMap { row -> Int? in
                 guard currentLines.indices.contains(row) else { return nil }
                 return DiffDocumentBuilder.sourceLineNumber(for: currentLines[row])
             }
-            if let start = lineNumbers.min(), let end = lineNumbers.max() {
-                let spec = LineRangeSpec(path: path, startLine: start, endLine: end)
+            let lineRange: ClosedRange<Int>? =
+                if let start = lineNumbers.min(), let end = lineNumbers.max() { start...end } else { nil }
+            if let onShowLineHistory, let lineRange {
+                let spec = LineRangeSpec(path: path, startLine: lineRange.lowerBound, endLine: lineRange.upperBound)
                 menu.addItem(
                     MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
                         onShowLineHistory(spec)
+                    })
+            }
+            if let onCopyPermalink {
+                menu.addItem(
+                    MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
+                        onCopyPermalink(path, lineRange)
+                    })
+            }
+            if let onOpenInExternalDiff, !isBlob {
+                menu.addItem(
+                    MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square")
+                    {
+                        onOpenInExternalDiff()
                     })
             }
         }

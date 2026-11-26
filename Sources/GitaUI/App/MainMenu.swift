@@ -181,6 +181,22 @@ struct MainMenu {
         item(
             String(localized: "Repository Health & Maintenance…"), #selector(AppDelegate.showRepositoryHealth),
             in: repo, symbol: "wrench.and.screwdriver")
+        repo.addItem(.separator())
+        item(
+            String(localized: "Export Patch…"), #selector(AppDelegate.exportPatch), in: repo,
+            symbol: "square.and.arrow.up")
+        item(
+            String(localized: "Apply Patch…"), #selector(AppDelegate.applyPatch), in: repo,
+            symbol: "doc.badge.plus")
+        item(
+            String(localized: "Copy Permalink"), #selector(AppDelegate.copyPermalink), in: repo,
+            symbol: "link")
+        item(
+            String(localized: "Open in External Diff Tool"), #selector(AppDelegate.openInExternalDiffTool), in: repo,
+            symbol: "arrow.left.arrow.right.square")
+        item(
+            String(localized: "Open in External Merge Tool"), #selector(AppDelegate.openInExternalMergeTool), in: repo,
+            symbol: "arrow.triangle.merge")
         item(
             String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
             in: repo,

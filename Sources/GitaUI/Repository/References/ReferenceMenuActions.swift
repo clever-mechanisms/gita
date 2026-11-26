@@ -13,6 +13,10 @@ struct ReferenceMenuActions {
     var openRemoteBranch: (String) -> Void
     var viewStacksFromBranch: ((String) -> Void)?
     var startBisectFromCommit: ((GitCommit) -> Void)?
+    var exportCommitPatch: ((GitCommit) -> Void)?
+    var copyCommitPermalink: ((GitCommit) -> Void)?
+    var customActionsForCommit: ((GitCommit) -> NSMenuItem?)?
+    var customActionsForBranch: ((GitReference) -> NSMenuItem?)?
     var open: (URL) -> Void = { Deck.open($0) }
     var copy: (String) -> Void = { Deck.copy($0) }
 }
