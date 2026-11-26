@@ -79,6 +79,59 @@ struct HistoryWorkingChangesAndCompareTests {
         try await fixture.wait("pinned row hidden during search") { rowView.isHidden }
     }
 
+    @Test func workingChangesOverlaySurvivesUnstagedSelectionCommitDraftActivityAndRefresh() async throws {
+        let fixture = try await RepositoryWindowFixture()
+        defer { fixture.close() }
+        let controller = fixture.controller
+
+        try fixture.repository.write("Sources/app.swift", "let answer = 99\n")
+        try fixture.repository.write("README.md", "# Staged change\n")
+        try fixture.repository.git("add", "README.md")
+        try await fixture.refresh()
+
+        controller.openWorkingChangesDetail()
+        try await fixture.wait("working changes overlay visible") {
+            controller.model.isReviewingWorkingChanges
+                && controller.filePane.content == .localChanges
+                && !controller.filesSplit.isHidden
+                && controller.commitDetail.isHidden
+                && !controller.commitFooter.isHidden
+        }
+
+        // Selecting an unstaged file keeps the Working Changes view active and does not lose composer focus.
+        let unstaged = try #require(controller.model.snapshot?.changes.first { $0.path == "Sources/app.swift" })
+        controller.chooseChange(unstaged, staged: false)
+        try await fixture.wait("unstaged diff loaded") {
+            controller.model.selectedFile?.path == "Sources/app.swift"
+                && !controller.model.staged
+                && !controller.model.isDiffLoading
+        }
+        #expect(controller.model.isReviewingWorkingChanges)
+        #expect(controller.filePane.content == .localChanges)
+        #expect(!controller.filesSplit.isHidden)
+        #expect(controller.commitDetail.isHidden)
+
+        // Applying a generated commit message (emits .commitDraft and .activity) must stay in Working Changes.
+        fixture.window.makeFirstResponder(controller.commitFooter.field)
+        let generated = GeneratedCommitMessage(subject: "Update README", body: "", agent: .claude)
+        controller.commitFooter.assistController.onApplyMessage?(generated)
+        #expect(controller.commitFooter.message == "Update README")
+        #expect(controller.model.isReviewingWorkingChanges)
+        #expect(!controller.filesSplit.isHidden)
+        #expect(controller.commitDetail.isHidden)
+        #expect(!controller.commitFooter.isHidden)
+
+        // A repository refresh while changes remain must keep Working Changes instead of jumping back to a commit.
+        try fixture.repository.write("Sources/app.swift", "let answer = 100\n")
+        try await fixture.refresh()
+        #expect(controller.model.isReviewingWorkingChanges)
+        #expect(controller.model.selectedCommit == nil)
+        #expect(controller.filePane.content == .localChanges)
+        #expect(!controller.filesSplit.isHidden)
+        #expect(controller.commitDetail.isHidden)
+        #expect(!controller.commitFooter.isHidden)
+    }
+
     @Test func twoCommitCompareAndSwap() async throws {
         let fixture = try await RepositoryWindowFixture()
         defer { fixture.close() }

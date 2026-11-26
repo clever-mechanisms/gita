@@ -190,7 +190,8 @@ extension AppModel {
             historyIdentity: snapshot?.historyIdentity, ancestryIdentity: snapshot?.ancestryIdentity,
             commit: selection.commit, stash: selection.stash, hasCommitDetails: selection.details != nil,
             isTreeReview: isTreeReview, focusedFirst: focus.commits.first, isFocused: focus.isActive,
-            isSearching: search.isActive)
+            isSearching: search.isActive, isReviewingWorkingChanges: isReviewingWorkingChanges,
+            isAmending: amendStaging.isArmed)
     }
 
     /// The first snapshot of a newly opened repository: its branch filters, the recent list and the watcher.

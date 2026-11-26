@@ -52,6 +52,16 @@ struct ModelValueTests {
         decorated.decorations = ["tag"]
 
         #expect(reselection(next) { $0.section = .changes } == .refreshChanges(unstage: false))
+        var dirty = snapshot(commits: [first, second])
+        dirty.changes = [FileChange(path: "a.txt", indexStatus: " ", worktreeStatus: "M")]
+        #expect(
+            reselection(dirty) { $0.isReviewingWorkingChanges = true } == .refreshChanges(unstage: false))
+        #expect(reselection(next) { $0.isReviewingWorkingChanges = true } == .select(first))
+        #expect(
+            reselection(next) {
+                $0.isReviewingWorkingChanges = true
+                $0.isAmending = true
+            } == .refreshChanges(unstage: false))
         #expect(reselection(next) { $0.stash = stash } == .stash(stash))
         #expect(reselection(next) == .select(first))
         #expect(reselection(snapshot()) == .nothing)

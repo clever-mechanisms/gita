@@ -45,7 +45,7 @@ extension RepositoryViewController {
     }
 
     func openWorkingChangesDetail() {
-        historyTable.table.deselectAll(nil)
+        historyTable.select(nil as String?)
         if !model.showsHistoryDetails { model.toggleHistoryDetails() }
         model.selectWorkingChanges()
         syncHistoryDetailOverlay()
@@ -97,20 +97,24 @@ extension RepositoryViewController {
     }
 
     private func applyWorkingChangesDetailOverlay() {
-        detailBar.apply(DetailBarState(tab: .changes, isChanges: true, commit: nil, hasStash: false))
-        commitDetail.isHidden = true
-        filesSplit.isHidden = false
+        updateDetailBar()
         commitFooter.isHidden = false
-        filePane.show(.localChanges)
+        if filePane.content != .localChanges { filePane.show(.localChanges) }
         if filePane.needsChangesSplitPosition {
             DispatchQueue.main.async { [weak self] in self?.filePane.positionChangesSplit() }
         }
-        filePane.showChanges(model.snapshot?.changes ?? [], amendStaging: model.amendStaging)
+        let changes = model.snapshot?.changes ?? []
+        if !hasRenderedChanges || renderedChanges != changes || renderedAmendStaging != model.amendStaging {
+            hasRenderedChanges = true
+            renderedChanges = changes
+            renderedAmendStaging = model.amendStaging
+            filePane.showChanges(changes, amendStaging: model.amendStaging)
+        }
         updateCleanTreeContext()
         filePane.select(path: model.selectedFile?.path, staged: model.staged)
         filePane.updateStageButtons()
-        showDiff()
         updateCommitActions()
+        refreshCommitSigningAndTemplateIfNeeded()
         loadRecentMessagesForWorkingOverlayIfNeeded()
     }
 

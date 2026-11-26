@@ -115,7 +115,7 @@ extension RepositoryViewController {
     }
 
     func refreshRecentMessagesIfNeeded(force: Bool = false) {
-        guard model.section == .changes, let snapshot = model.snapshot, let service = model.service else { return }
+        guard isShowingLocalChanges, let snapshot = model.snapshot, let service = model.service else { return }
         guard let head = snapshot.head else {
             panes.recentMessagesKey = snapshot.root.path + "#unborn"
             commitFooter.recentMessages = []

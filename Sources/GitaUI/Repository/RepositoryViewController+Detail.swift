@@ -55,6 +55,8 @@ extension RepositoryViewController {
         filePane.tree.menuProvider = { [weak self] entry in self?.treeEntryMenu(entry) }
     }
 
+    var isShowingLocalChanges: Bool { model.section == .changes || model.isReviewingWorkingChanges }
+
     /// The selected commit, stash or working-tree change in every part of the detail pane.
     func rebuildSelection() {
         let commit = model.selectedCommit
@@ -62,8 +64,9 @@ extension RepositoryViewController {
         detailTab = DetailBarState.followingReview(
             detailTab, isTreeReview: model.isTreeReview, isHistory: model.section == .history)
         let isTree = model.isTreeReview && commit != nil && model.section == .history
-        let isChanges = model.section == .changes
-        filePane.show(isTree ? .tree : isChanges ? .localChanges : .commitFiles)
+        let isChanges = isShowingLocalChanges
+        let targetContent: FilePaneView.Content = isTree ? .tree : isChanges ? .localChanges : .commitFiles
+        if filePane.content != targetContent { filePane.show(targetContent) }
         if isChanges && filePane.needsChangesSplitPosition {
             DispatchQueue.main.async { [weak self] in self?.filePane.positionChangesSplit() }
         }
@@ -192,7 +195,7 @@ extension RepositoryViewController {
 
     func updateDetailBar() {
         let state = DetailBarState(
-            tab: detailTab, isChanges: model.section == .changes, commit: model.selectedCommit,
+            tab: detailTab, isChanges: isShowingLocalChanges, commit: model.selectedCommit,
             hasStash: model.selectedStash != nil)
         detailTab = state.tab
         detailBar.apply(state)
@@ -205,7 +208,7 @@ extension RepositoryViewController {
         let noAmendFiles = if case .armed(_, _, let files) = model.amendStaging { files.isEmpty } else { true }
         return CodePaneState(
             .init(
-                isChanges: model.section == .changes, isStaged: model.staged,
+                isChanges: isShowingLocalChanges, isStaged: model.staged,
                 path: model.selectedTreePath ?? model.selectedFile?.path, hasSelectedFile: model.selectedFile != nil,
                 selectedFileIsConflict: model.selectedFile?.isConflict == true,
                 hasSelectedTreePath: model.selectedTreePath != nil, hasCommit: model.selectedCommit != nil,

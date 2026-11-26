@@ -73,7 +73,7 @@ extension RepositoryViewController {
             commitSigningRowState = CommitSigningRowState(signing: .loading, template: nil)
             commitFooter.signingRow.apply(commitSigningRowState)
         }
-        if model.section == .changes {
+        if isShowingLocalChanges {
             refreshCommitSigningAndTemplateIfNeeded()
         }
     }

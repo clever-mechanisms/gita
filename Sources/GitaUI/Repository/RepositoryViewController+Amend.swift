@@ -114,7 +114,7 @@ extension RepositoryViewController {
     }
 
     private func refreshAmendChangesView(selectStagedIfEmpty: Bool) {
-        guard model.section == .changes else { return }
+        guard isShowingLocalChanges else { return }
         let changes = model.snapshot?.changes ?? []
         renderedChanges = changes
         renderedAmendStaging = model.amendStaging

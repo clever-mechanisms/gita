@@ -21,6 +21,7 @@ extension AppModel {
 
     func select(_ commit: GitCommit, preferredPath: String? = nil, base: String? = nil) {
         guard let service else { return }
+        graphState.isReviewingWorkingChanges = false
         selection.task?.cancel()
         selection.clear()
         selection.target = .commit(commit, base: base)
@@ -98,6 +99,7 @@ extension AppModel {
 
     func selectStash(_ stash: GitStash) {
         guard let service else { return }
+        graphState.isReviewingWorkingChanges = false
         section = .history
         selection.task?.cancel()
         selection.clear()

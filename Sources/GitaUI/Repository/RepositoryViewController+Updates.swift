@@ -110,8 +110,8 @@ extension RepositoryViewController {
         historyPane.isHidden = !panes.showsHistoryPane
         pagePane.isHidden = panes.showsHistoryPane
         if section != .history { sidebarSelection = nil }
-        commitFooter.isHidden = !panes.showsCommitFooter
-        if section == .changes { refreshCommitSigningAndTemplateIfNeeded() }
+        commitFooter.isHidden = !panes.showsCommitFooter && !(section == .history && model.isReviewingWorkingChanges)
+        if isShowingLocalChanges { refreshCommitSigningAndTemplateIfNeeded() }
         if panes.showsHistoryPane {
             updateHistoryScope()
             // A section switch changes no row content: reload the rows only when the zoom changed; the panes always
@@ -147,7 +147,7 @@ extension RepositoryViewController {
     private func updateBars(after change: AppModel.Change) {
         updateRetryFooter()
         filePane.updateStageButtons()
-        if model.section == .changes || model.isReviewingWorkingChanges { updateCleanTreeContext() }
+        if isShowingLocalChanges { updateCleanTreeContext() }
         applyOperationBar()
         updateCodePane()
         syncMergeEditor()

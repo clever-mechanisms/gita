@@ -17,6 +17,8 @@ struct RefreshPlan {
         var focusedFirst: GitCommit?
         var isFocused: Bool
         var isSearching: Bool
+        var isReviewingWorkingChanges = false
+        var isAmending = false
     }
 
     enum Reselection: Equatable {
@@ -51,7 +53,11 @@ struct RefreshPlan {
         if let operation = next.operation, operation.identity != before.operationIdentity {
             return before.section == .changes ? .refreshChanges(unstage: true) : .enterChanges
         }
-        if before.section == .changes { return .refreshChanges(unstage: false) }
+        if before.section == .changes
+            || (before.isReviewingWorkingChanges && (!next.changes.isEmpty || before.isAmending))
+        {
+            return .refreshChanges(unstage: false)
+        }
         if let stash = before.stash, next.stashes.contains(stash) { return .stash(stash) }
         let fallback = before.isFocused ? before.focusedFirst : next.commits.first
         guard let commit = next.commits.first(where: { $0.id == before.commit?.id }) ?? before.commit ?? fallback
