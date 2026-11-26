@@ -70,6 +70,7 @@ struct RepositorySheetLauncher {
         let controller = InteractiveRebaseController(
             base: base,
             initialActions: prefillActions,
+            speculativeService: SpeculativeGitService(gitService: check.service),
             onLoad: { try await check.run { try await $0.previewInteractiveRebase(after: base.id) } },
             onMessage: { commitID in
                 let details = try await check.run { try await $0.commitDetails(ref: commitID) }

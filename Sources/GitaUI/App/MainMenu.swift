@@ -184,6 +184,9 @@ struct MainMenu {
         item(
             String(localized: "Run Pre-Push Flight Check…"), #selector(AppDelegate.showFlightCheck),
             in: repo, symbol: "checkmark.shield")
+        item(
+            String(localized: "Organize into Commits…"), #selector(AppDelegate.showCommitBuckets),
+            in: repo, symbol: "square.stack.3d.forward.dottedline")
         repo.addItem(.separator())
         item(
             String(localized: "Export Patch…"), #selector(AppDelegate.exportPatch), in: repo,

@@ -65,6 +65,9 @@ extension AppDelegate {
         #selector(showFlightCheck): [
             "flight check", "pre-push", "checks", "tests", "preflight", "control plane",
         ],
+        #selector(showCommitBuckets): [
+            "buckets", "commit buckets", "organize commits", "split commits", "hunks", "atomic commits",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).

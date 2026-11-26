@@ -33,11 +33,47 @@ extension RepositoryCommandResponder {
         else { return }
         let title = rebase ? GitOperationKind.rebase.localizedTitle : GitOperationKind.merge.localizedTitle
         RepositoryPrompts.reference(
-            rebase: rebase, snapshot: snapshot, preselect: preselect, on: window, alerts: alerts
+            rebase: rebase, snapshot: snapshot, preselect: preselect, on: window, alerts: alerts,
+            onPreview: { [weak self] ref, mode in
+                self?.presentReferencePreview(
+                    rebase: rebase, ref: ref, mode: mode, title: title, snapshot: snapshot, service: service,
+                    on: window)
+            }
         ) { [weak self] ref, mode in
             self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
                 if rebase { return try await git.rebase(onto: ref) }
                 return try await git.merge(ref: ref, mode: mode)
+            }
+        }
+    }
+
+    private func presentReferencePreview(
+        rebase: Bool, ref: String, mode: GitMergeMode, title: String, snapshot: RepositorySnapshot,
+        service: GitService, on window: NSWindow
+    ) {
+        let speculative = SpeculativeGitService(gitService: service)
+        let proceed: @MainActor () -> Void = { [weak self] in
+            self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
+                if rebase { return try await git.rebase(onto: ref) }
+                return try await git.merge(ref: ref, mode: mode)
+            }
+        }
+        DispatchQueue.main.async {
+            if rebase {
+                Task { @MainActor in
+                    let commits = (try? await service.previewInteractiveRebase(after: ref).commits) ?? []
+                    let steps = commits.map { GitRebaseStep(commitID: $0.id) }
+                    let panel =
+                        steps.isEmpty
+                        ? SpeculativeGitFacade.pairwisePreview(
+                            service: speculative, ours: ref, theirs: snapshot.head ?? "HEAD")
+                        : SpeculativeGitFacade.rebasePreview(service: speculative, onto: ref, steps: steps)
+                    SpeculativeGitFacade.presentPreview(panel, on: window, proceedTitle: title, onProceed: proceed)
+                }
+            } else {
+                let panel = SpeculativeGitFacade.pairwisePreview(
+                    service: speculative, ours: snapshot.head ?? "HEAD", theirs: ref)
+                SpeculativeGitFacade.presentPreview(panel, on: window, proceedTitle: title, onProceed: proceed)
             }
         }
     }
@@ -51,13 +87,37 @@ extension RepositoryCommandResponder {
             let alerts = system?.alerts, let window = sheetWindow()
         else { return }
         let title = revert ? GitOperationKind.revert.localizedTitle : GitOperationKind.cherryPick.localizedTitle
+        var preview: (@MainActor (Int?) -> Void)?
+        if !revert {
+            preview = { [weak self] mainline in
+                self?.presentCherryPickPreview(
+                    commit: commit, mainline: mainline, title: title, snapshot: snapshot, service: service, on: window)
+            }
+        }
         RepositoryPrompts.commitOperation(
-            title, commit: commit, branch: snapshot.localizedBranch, on: window, alerts: alerts
+            title, commit: commit, branch: snapshot.localizedBranch, on: window, alerts: alerts, onPreview: preview
         ) { [weak self] mainline in
             self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
                 if revert { return try await git.revert(commit: commit.id, mainline: mainline) }
                 return try await git.cherryPick(commit: commit.id, mainline: mainline)
             }
+        }
+    }
+
+    private func presentCherryPickPreview(
+        commit: GitCommit, mainline: Int?, title: String, snapshot: RepositorySnapshot,
+        service: GitService, on window: NSWindow
+    ) {
+        let speculative = SpeculativeGitService(gitService: service)
+        let proceed: @MainActor () -> Void = { [weak self] in
+            self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
+                try await git.cherryPick(commit: commit.id, mainline: mainline)
+            }
+        }
+        DispatchQueue.main.async {
+            let panel = SpeculativeGitFacade.preFlightPreview(
+                service: speculative, kind: .cherryPick, target: commit.id, onto: snapshot.head ?? "HEAD")
+            SpeculativeGitFacade.presentPreview(panel, on: window, proceedTitle: title, onProceed: proceed)
         }
     }
 

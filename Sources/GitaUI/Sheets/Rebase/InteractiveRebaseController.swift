@@ -29,6 +29,10 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
     private let onLoad: @MainActor () async throws -> GitInteractiveRebasePlan
     private let onMessage: @MainActor (String) async throws -> String
     private let onApply: @MainActor (GitInteractiveRebasePlan, [GitRebaseStep]) async throws -> Void
+    let speculativeService: SpeculativeGitService?
+    let riskBadge = SpeculativeGitFacade.makeBadgeView()
+    var speculativePresenter: SpeculativePreviewPresenter?
+    var lastSimulatedKey: String?
     let chrome: SheetChrome
     let table = NSTableView()
     let tableContainer = NSView()
@@ -56,12 +60,14 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
     init(
         base: GitCommit,
         initialActions: [String: GitRebaseAction] = [:],
+        speculativeService: SpeculativeGitService? = nil,
         onLoad: @escaping @MainActor () async throws -> GitInteractiveRebasePlan,
         onMessage: @escaping @MainActor (String) async throws -> String,
         onApply: @escaping @MainActor (GitInteractiveRebasePlan, [GitRebaseStep]) async throws -> Void
     ) {
         self.base = base
         self.initialActions = initialActions
+        self.speculativeService = speculativeService
         self.onLoad = onLoad
         self.onMessage = onMessage
         self.onApply = onApply
@@ -69,6 +75,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
             title: String(localized: "Edit Commits"),
             layout: SheetChrome.Layout(width: Metrics.width, minimumHeight: 180), identifier: "rebase")
         super.init(sheet: chrome.window)
+        configureSpeculativeRisk()
         buildInterface()
         updateControls()
     }
@@ -89,7 +96,11 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
         bind(downButton, #selector(moveCommitLater))
         upButton.setAccessibilityLabel(String(localized: "Move selected commit earlier"))
         downButton.setAccessibilityLabel(String(localized: "Move selected commit later"))
-        chrome.add(Style.stack([orderLabel, SheetChrome.spacer(), upButton, downButton]), height: 28)
+        let barViews: [NSView] =
+            speculativeService == nil
+            ? [orderLabel, SheetChrome.spacer(), upButton, downButton]
+            : [orderLabel, riskBadge, SheetChrome.spacer(), upButton, downButton]
+        chrome.add(Style.stack(barViews), height: 28)
         buildTable()
         chrome.add(tableContainer, height: Metrics.minimumTable)
         buildEditor()
@@ -111,6 +122,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
     override func sheetDidPresent() { loadPlan() }
     override func cancelLoads() {
         planLoads.cancel()
+        cancelSpeculativeRisk()
         if review.isLoading { review = .unread }
         for read in messageQueue.removeAll() { read.cancel() }
     }
@@ -205,6 +217,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
             minimum: Metrics.minimumTable)
         guard !activity.isFinishing else { return }
         chrome.show(plan.status(activity, progress))
+        refreshSpeculativeRisk()
     }
 
     // MARK: Actions
@@ -241,6 +254,7 @@ final class InteractiveRebaseController: ReviewSheetController, NSTableViewDataS
             keepEditingFirst: true)
     }
     override func sheetWillFinish() {
+        cancelSpeculativeRisk()
         window?.isDocumentEdited = false
         editor.undoManager?.removeAllActions()
     }

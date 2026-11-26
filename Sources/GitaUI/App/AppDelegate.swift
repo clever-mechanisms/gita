@@ -46,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var reflogWindows: [String: ReflogWindowController] = [:]
     var codeSearchWindows: [String: CodeSearchWindowController] = [:]
     var lineHistoryWindows: [String: LineHistoryWindowController] = [:]
+    /// Open Commit Buckets windows keyed by standardized repository root path.
+    var commitBucketsWindows: [String: CommitBucketsWindowController] = [:]
     /// On-demand Storage Inspector & Repository Health utility window.
     lazy var storageWindowController = StorageWindowController(store: environment.storageStore)
 

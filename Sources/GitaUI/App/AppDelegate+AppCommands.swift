@@ -355,6 +355,14 @@ extension AppDelegate {
             sheet.performClose(nil)
             return
         }
+        if let key = NSApp.keyWindow, key !== mainWindow {
+            if let sheet = key.attachedSheet {
+                sheet.performClose(nil)
+            } else {
+                key.performClose(nil)
+            }
+            return
+        }
         if let tabsController { tabsController.closeSelectedTab() } else { NSApp.keyWindow?.performClose(nil) }
     }
 

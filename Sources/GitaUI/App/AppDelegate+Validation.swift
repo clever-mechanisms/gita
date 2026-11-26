@@ -77,6 +77,7 @@ extension AppDelegate {
             || menuItem.action == #selector(showReflogBrowser)
             || menuItem.action == #selector(showCodeSearch)
             || menuItem.action == #selector(showFlightCheck)
+            || menuItem.action == #selector(showCommitBuckets)
         {
             return model.snapshot != nil && model.service != nil
         }
