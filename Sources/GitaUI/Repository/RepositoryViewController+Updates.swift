@@ -25,6 +25,7 @@ extension RepositoryViewController {
         case .selection:
             rebuildSelection()
             rebuildSidebar()
+            syncQuickLookSelection()
         case .diff:
             showDiff()
             selectShownFile()
@@ -38,6 +39,7 @@ extension RepositoryViewController {
     }
 
     private func repositoryChanged() {
+        closeQuickLook()
         model.loadTopAuthorsIfNeeded()
         if model.isReviewingWorkingChanges, model.snapshot?.changes.isEmpty != false, amend.source == nil {
             model.graphState.isReviewingWorkingChanges = false

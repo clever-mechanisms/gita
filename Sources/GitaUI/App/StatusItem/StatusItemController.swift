@@ -19,6 +19,12 @@ protocol StatusItemHost: AnyObject {
     var commands: RepositoryCommandResponder { get }
     /// The panel opened or closed: monitors sample fast only while something shows them.
     func panelVisibilityChanged()
+    /// Shared teleport & menu-bar triage facade, if available.
+    var teleportFacade: TeleportFacade? { get }
+}
+
+extension StatusItemHost {
+    var teleportFacade: TeleportFacade? { nil }
 }
 
 /// The menu bar item and its panel. Everything the icon and the panel show is pushed here; nothing polls for it.
@@ -182,7 +188,7 @@ final class StatusItemController {
         actions.showProviderPage = { [weak self] url, provider in
             self?.openProviderPage(url, provider: provider)
         }
-        let controller = MenuPanelController(actions: actions)
+        let controller = MenuPanelController(actions: actions, teleport: host.teleportFacade)
         let panel = MenuPanelWindow(controller: controller)
         panel.onClose = { [weak self] in self?.panelDidClose() }
         session = PanelSession(panel: panel, controller: controller, model: host.model)

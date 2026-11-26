@@ -3,6 +3,8 @@ import GitaCore
 
 /// The menu bar item's host: what its panel lists and what its rows do.
 extension AppDelegate: StatusItemHost {
+    var teleportFacade: TeleportFacade? { teleport }
+
     var panelActions: MenuPanelActions {
         MenuPanelActions(
             openApp: { [weak self] in self?.showWindow() },

@@ -23,6 +23,11 @@ final class PaletteController: NSObject, NSTableViewDataSource, NSTableViewDeleg
     var onNewBranch: ((String) -> Void)?
     /// Return on an item that cannot run now.
     var onUnavailable: (() -> Void)?
+    /// Search input changed (feeds Paste-Anything Teleport banner).
+    var onQueryChange: ((String) -> Void)?
+    /// The palette dismissed.
+    var onClose: (() -> Void)?
+    private let teleportSlot = Deck.vstack([], spacing: 0)
 
     init(scope: PaletteKind? = nil, recents: [String] = []) {
         state = PaletteState(scope: scope)
@@ -57,9 +62,10 @@ final class PaletteController: NSObject, NSTableViewDataSource, NSTableViewDeleg
             String(localized: "↩ Open    ↑↓ Move    ⇥ Scope    ⌘N New branch    ⎋ Close"), size: 11,
             color: Theme.secondaryText)
         let stack = Style.stack(
-            [header, scopeBar, Deck.separator(), list, Deck.separator(), hints], vertical: true, spacing: 8)
+            [header, teleportSlot, scopeBar, Deck.separator(), list, Deck.separator(), hints], vertical: true,
+            spacing: 8)
         stack.edgeInsets = NSEdgeInsets(top: 14, left: 16, bottom: 10, right: 16)
-        for view in [header, scopeBar, list] {
+        for view in [header, teleportSlot, scopeBar, list] {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -32).isActive = true
         }
         list.setContentHuggingPriority(.defaultLow, for: .vertical)
@@ -120,10 +126,20 @@ final class PaletteController: NSObject, NSTableViewDataSource, NSTableViewDeleg
         panel.makeFirstResponder(field)
     }
 
+    func setTeleportBanner(_ view: NSView) {
+        for subview in teleportSlot.arrangedSubviews {
+            teleportSlot.removeArrangedSubview(subview)
+            subview.removeFromSuperview()
+        }
+        teleportSlot.addArrangedSubview(view)
+        view.widthAnchor.constraint(equalTo: teleportSlot.widthAnchor).isActive = true
+    }
+
     func close() {
         panel.onResignKey = nil
         panel.parent?.removeChildWindow(panel)
         panel.orderOut(nil)
+        onClose?()
     }
 
     /// The items, keeping what is typed and the selected item (dates and provider answers arrive after the first
@@ -176,6 +192,7 @@ final class PaletteController: NSObject, NSTableViewDataSource, NSTableViewDeleg
 
     func controlTextDidChange(_: Notification) {
         state.setQuery(field.stringValue)
+        onQueryChange?(field.stringValue)
         render()
     }
 

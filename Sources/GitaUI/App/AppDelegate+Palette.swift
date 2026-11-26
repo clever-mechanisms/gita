@@ -92,6 +92,9 @@ extension AppDelegate {
         palette.onChoose = { [weak self] item in self?.run(item) }
         palette.onNewBranch = { [weak self] name in self?.newBranchFromPalette(name) }
         palette.onUnavailable = { [weak self] in self?.environment.system.beep() }
+        palette.setTeleportBanner(teleport.makeTeleportBannerView())
+        palette.onQueryChange = { [weak self] text in self?.inspectTeleportInput(text) }
+        palette.onClose = { [weak self] in self?.teleport.teleportPresenter.dismiss() }
         palette.show(over: window)
         self.palette = palette
         guard let snapshot, let service = model.service else { return }

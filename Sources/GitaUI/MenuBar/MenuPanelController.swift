@@ -7,6 +7,9 @@ import GitaCore
 @MainActor
 final class MenuPanelController: NSViewController {
     private let actions: MenuPanelActions
+    private let teleport: TeleportFacade?
+    private let triageStack = Deck.vstack([], spacing: 6)
+    private lazy var triageHeight = triageStack.heightAnchor.constraint(equalToConstant: 0)
     private(set) var page = PanelPage.inbox
     private(set) var state = MenuPanelState()
     private var expanded = Set<String>()
@@ -40,8 +43,9 @@ final class MenuPanelController: NSViewController {
     static let headerHeight: CGFloat = 38, footerHeight: CGFloat = 34, problemLineHeight: CGFloat = 24
     private static let inset: CGFloat = 14, listBottom: CGFloat = 4
 
-    init(actions: MenuPanelActions) {
+    init(actions: MenuPanelActions, teleport: TeleportFacade? = nil) {
         self.actions = actions
+        self.teleport = teleport
         super.init(nibName: nil, bundle: nil)
     }
     @available(*, unavailable, message: "The menu panel is built in code")
@@ -52,10 +56,12 @@ final class MenuPanelController: NSViewController {
         root.setAccessibilityIdentifier("panel")
         view = root
         let header = makeHeader()
+        triageStack.edgeInsets = NSEdgeInsets(top: 2, left: 10, bottom: 4, right: 10)
+        triageStack.isHidden = true
         configureList()
         configureProblem()
         let buttons = makeFooter()
-        for child in [header, scroll, problem, footer] {
+        for child in [header, triageStack, scroll, problem, footer] {
             root.addSubview(child)
             child.translatesAutoresizingMaskIntoConstraints = false
         }
@@ -136,7 +142,8 @@ final class MenuPanelController: NSViewController {
             root.widthAnchor.constraint(equalToConstant: Theme.panelWidth),
             header.topAnchor.constraint(equalTo: root.topAnchor),
             header.heightAnchor.constraint(equalToConstant: Self.headerHeight),
-            scroll.topAnchor.constraint(equalTo: header.bottomAnchor), listHeight,
+            triageStack.topAnchor.constraint(equalTo: header.bottomAnchor), triageHeight,
+            scroll.topAnchor.constraint(equalTo: triageStack.bottomAnchor), listHeight,
             problem.topAnchor.constraint(equalTo: scroll.bottomAnchor), problemHeight,
             footer.topAnchor.constraint(equalTo: problem.bottomAnchor),
             footer.heightAnchor.constraint(equalToConstant: Self.footerHeight),
@@ -147,7 +154,7 @@ final class MenuPanelController: NSViewController {
             footerButtons.leadingAnchor.constraint(equalTo: footer.leadingAnchor),
             footerButtons.trailingAnchor.constraint(equalTo: footer.trailingAnchor),
         ]
-        for band in [header, scroll, problem, footer] {
+        for band in [header, triageStack, scroll, problem, footer] {
             constraints.append(band.leadingAnchor.constraint(equalTo: root.leadingAnchor))
             constraints.append(band.trailingAnchor.constraint(equalTo: root.trailingAnchor))
         }
@@ -186,6 +193,7 @@ final class MenuPanelController: NSViewController {
     private func rebuild() {
         let now = Date()
         list.set(PanelRowBuilder(state: state, expanded: expanded, now: now).rows(page), width: Theme.panelWidth)
+        rebuildTriage()
         caption.attributedStringValue = Self.caption(page, needing: state.attention.count)
         backButton.isHidden = page == .inbox
         activityButton.isHidden = page == .activity
@@ -237,7 +245,7 @@ final class MenuPanelController: NSViewController {
         let screen =
             view.window?.screen ?? NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let visible = screen?.visibleFrame.height ?? 800
-        let fixed = Self.headerHeight + problemHeight.constant + Self.footerHeight
+        let fixed = Self.headerHeight + triageHeight.constant + problemHeight.constant + Self.footerHeight
         let maximum = max(160, min(620, visible - 24 - fixed))
         listHeight.constant = min(maximum, max(44, list.contentHeight + Self.listBottom))
         let size = NSSize(width: Theme.panelWidth, height: fixed + listHeight.constant)
@@ -246,6 +254,35 @@ final class MenuPanelController: NSViewController {
             view.setFrameSize(size)
             onSizeChange?(size)
         }
+    }
+
+    private func rebuildTriage() {
+        for view in triageStack.arrangedSubviews {
+            triageStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        guard page == .inbox, let teleport else {
+            triageStack.isHidden = true
+            triageHeight.constant = 0
+            return
+        }
+        let items = Array(MenuBarTriageMapper.items(from: state).prefix(4))
+        teleport.retainTriageItems(Set(items.map(\.id)))
+        guard !items.isEmpty else {
+            triageStack.isHidden = true
+            triageHeight.constant = 0
+            return
+        }
+        for item in items {
+            let row = teleport.makeTriageRowView(for: item) { [weak self] target in
+                self?.perform(.reveal(target.sessionID))
+            }.view
+            triageStack.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: triageStack.widthAnchor, constant: -20).isActive = true
+        }
+        triageStack.isHidden = false
+        triageStack.layoutSubtreeIfNeeded()
+        triageHeight.constant = min(220, max(44, triageStack.fittingSize.height))
     }
 
     // MARK: Actions

@@ -4,6 +4,7 @@ import GitaCore
 /// Local Changes: choosing, staging and unstaging files, and the commit footer.
 extension RepositoryViewController {
     func wireFileLists() {
+        wireQuickLook()
         filePane.isMutating = { [weak self] in self?.model.isMutating ?? false }
         filePane.onStage = { [weak self] files, staged in self?.setStaged(files, staged) }
         filePane.onStageAll = { [weak self] in self?.stageAllFiles() }

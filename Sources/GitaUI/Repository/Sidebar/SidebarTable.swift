@@ -16,6 +16,8 @@ final class SidebarTable: NSTableView {
 
     var rowMenu: ((Int) -> NSMenu?)?
     var onReturn: (() -> Void)?
+    /// Plain Spacebar on a non-group row (e.g. a Stash row for Quick Look).
+    var onSpace: (() -> Bool)?
     /// Changes the selected group; false when the selected row is not one (the table then handles the key).
     var onExpand: ((GroupChange) -> Bool)?
     /// Clicking directly on a row's disclosure chevron toggles expansion without selecting or navigating.
@@ -51,6 +53,7 @@ final class SidebarTable: NSTableView {
             return
         }
         if let change = Self.groupKeys[event.keyCode], onExpand?(change) == true { return }
+        if KeyPress.isPlain(event), event.keyCode == KeyPress.space, onSpace?() == true { return }
         super.keyDown(with: event)
     }
 

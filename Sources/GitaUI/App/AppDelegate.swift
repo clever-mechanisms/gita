@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var commitBucketsWindows: [String: CommitBucketsWindowController] = [:]
     /// On-demand Storage Inspector & Repository Health utility window.
     lazy var storageWindowController = StorageWindowController(store: environment.storageStore)
+    /// Paste-Anything Teleport, Menu Bar Triage HUD, and Quick Look floating preview facade.
+    lazy var teleport = TeleportFacade(configDirectories: .system)
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment
@@ -63,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
         BuiltInTerminal.open = { [weak self] directory, launch in self?.openTerminal(directory, launch: launch) }
         workspaceMenu.items = { [weak self] in self?.workspaceMenuItems() ?? [] }
         configureLoginOffer()
+        RepositoryViewController.sharedTeleportFacade = teleport
     }
 
     isolated deinit { deactivateCommands() }
@@ -215,6 +218,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
             return
         }
         for url in urls {
+            if url.scheme?.lowercased() == environment.urlScheme.lowercased(), handleTeleportDeepLink(url) {
+                continue
+            }
             switch router.route(url) {
             case .window(let section):
                 showWindow()

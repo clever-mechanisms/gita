@@ -7,6 +7,16 @@ import GitaCore
 final class ContextHistoryTable: NSTableView {
     /// The menu for the pill of `reference` on the commit with this ID; nil falls back to the commit's menu.
     var referenceMenu: ((_ commitID: String, _ reference: ReferenceBadge) -> NSMenu?)?
+    /// Plain Spacebar toggles Quick Look preview for the selected commit.
+    var onSpace: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if KeyPress.isPlain(event), event.keyCode == KeyPress.space, let onSpace {
+            onSpace()
+            return
+        }
+        super.keyDown(with: event)
+    }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = convert(event.locationInWindow, from: nil)

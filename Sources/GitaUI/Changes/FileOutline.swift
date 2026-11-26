@@ -10,6 +10,7 @@ final class FileOutline: NSOutlineView {
     }
     var rowMenu: ((IndexSet) -> NSMenu?)?
     var onReturn: (() -> Void)?
+    var onSpace: (() -> Void)?
     var onFocus: (() -> Void)?
     /// The row of the last click, until a key moves the selection (`clickedRow` keeps the old click meanwhile).
     private(set) var mouseRow: Int?
@@ -31,6 +32,10 @@ final class FileOutline: NSOutlineView {
         mouseRow = nil
         if event.keyCode == KeyCode.returnKey || event.keyCode == KeyCode.enter {
             onReturn?()
+            return
+        }
+        if KeyPress.isPlain(event), event.keyCode == KeyPress.space, let onSpace {
+            onSpace()
             return
         }
         super.keyDown(with: event)
