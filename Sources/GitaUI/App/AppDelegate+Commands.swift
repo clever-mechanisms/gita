@@ -40,6 +40,8 @@ extension AppDelegate: RepositoryCommandHost, MainToolbarHost, SettingsShell {
         NSApp.nextResponder = responder
         repositoryController?.commands = responder
         installPaneFocusMenuItemsIfNeeded(in: NSApp.mainMenu)
+        installAgentControlMenuItemsIfNeeded(in: NSApp.mainMenu)
+        wireAgentControlHooks()
     }
 
     func installPaneFocusMenuItemsIfNeeded(in menu: NSMenu?) {
@@ -68,6 +70,7 @@ extension AppDelegate: RepositoryCommandHost, MainToolbarHost, SettingsShell {
 
     /// The chain must not keep a responder this shell no longer owns (`nextResponder` does not retain it).
     func deactivateCommands() {
+        cleanupAgentControlOnTerminate()
         if let next = NSApp.nextResponder as? RepositoryCommandResponder, next.host === self {
             NSApp.nextResponder = nil
         }

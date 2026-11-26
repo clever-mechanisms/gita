@@ -34,6 +34,8 @@ final class CodePaneView: NSView {
         accessibility: String(localized: "Find in Diff"))
     let whitespaceNotice = DiffWhitespaceNoticeView()
     private lazy var noticeHeight = whitespaceNotice.heightAnchor.constraint(equalToConstant: 0)
+    private let reviewedHunksSlot = NSView()
+    private lazy var reviewedHunksHeight = reviewedHunksSlot.heightAnchor.constraint(equalToConstant: 0)
     private var optionsPopover: NSPopover?
     private weak var optionsController: DiffOptionsPopoverController?
 
@@ -57,10 +59,11 @@ final class CodePaneView: NSView {
         let header = Style.stack([pathLabel, smartDiffButton, layoutControl, optionsButton, findButton], spacing: 6)
         header.edgeInsets = NSEdgeInsets(top: 0, left: 10, bottom: 0, right: 8)
         pathLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        for view in [header, whitespaceNotice, diffView] as [NSView] {
+        for view in [header, whitespaceNotice, reviewedHunksSlot, diffView] as [NSView] {
             addSubview(view)
             view.translatesAutoresizingMaskIntoConstraints = false
         }
+        reviewedHunksSlot.isHidden = true
         NSLayoutConstraint.activate([
             header.leadingAnchor.constraint(equalTo: leadingAnchor),
             header.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -70,9 +73,13 @@ final class CodePaneView: NSView {
             whitespaceNotice.trailingAnchor.constraint(equalTo: trailingAnchor),
             whitespaceNotice.topAnchor.constraint(equalTo: header.bottomAnchor),
             noticeHeight,
+            reviewedHunksSlot.leadingAnchor.constraint(equalTo: leadingAnchor),
+            reviewedHunksSlot.trailingAnchor.constraint(equalTo: trailingAnchor),
+            reviewedHunksSlot.topAnchor.constraint(equalTo: whitespaceNotice.bottomAnchor),
+            reviewedHunksHeight,
             diffView.leadingAnchor.constraint(equalTo: leadingAnchor),
             diffView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            diffView.topAnchor.constraint(equalTo: whitespaceNotice.bottomAnchor),
+            diffView.topAnchor.constraint(equalTo: reviewedHunksSlot.bottomAnchor),
             diffView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         wireDiffCallbacks()
@@ -169,10 +176,22 @@ final class CodePaneView: NSView {
         NSLayoutConstraint.activate([
             smartView.leadingAnchor.constraint(equalTo: leadingAnchor),
             smartView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            smartView.topAnchor.constraint(equalTo: whitespaceNotice.bottomAnchor),
+            smartView.topAnchor.constraint(equalTo: reviewedHunksSlot.bottomAnchor),
             smartView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         return controller
+    }
+
+    func setReviewedHunksBar(_ bar: ReviewedHunksBarView?) {
+        for subview in reviewedHunksSlot.subviews { subview.removeFromSuperview() }
+        if let bar {
+            Deck.pin(bar, in: reviewedHunksSlot)
+            reviewedHunksSlot.isHidden = false
+            reviewedHunksHeight.constant = 32
+        } else {
+            reviewedHunksSlot.isHidden = true
+            reviewedHunksHeight.constant = 0
+        }
     }
 
     private func reloadSmartDiffIfNeeded() {

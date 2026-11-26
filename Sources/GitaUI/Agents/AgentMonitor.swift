@@ -21,6 +21,7 @@ final class AgentMonitor {
     private(set) var sessions: [AgentSession] = []
 
     let environment: AgentMonitorEnvironment
+    var onHookEvent: ((AgentHookEvent) -> Void)?
     private var book = AgentSessionBook()
     private var observers: [UUID: @MainActor ([AgentSession]) -> Void] = [:]
     private var listener: AgentEventListener?
@@ -54,7 +55,10 @@ final class AgentMonitor {
         guard !isRunning else { return }
         isRunning = true
         listener = environment.listen { [weak self] event in
-            Task { @MainActor in self?.handle(event, retry: true) }
+            Task { @MainActor in
+                self?.onHookEvent?(event)
+                self?.handle(event, retry: true)
+            }
         }
         preferenceObserver = NotificationCenter.default.addObserver(
             forName: .gitaPreferenceChanged, object: nil, queue: .main
