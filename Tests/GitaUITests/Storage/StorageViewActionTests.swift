@@ -1,43 +1,97 @@
 import AppKit
-import GitaCore
 import Testing
 
+@testable import GitaCore
 @testable import GitaUI
 
 @MainActor
 struct StorageViewActionTests {
     @Test func healthBannersShowTheActionMessageAndStatusColor() throws {
         UITestSupport.bootstrap()
-        #expect(StorageHealthView.banner(.idle) == nil)
+        #expect(StorageStyle.banner(.idle) == nil)
         let states: [(HealthActionState, NSColor)] = [
             (.running("Working"), Theme.running), (.succeeded("Done"), Theme.success),
             (.failed("Failed"), Theme.failure),
         ]
         for ((state, color), message) in zip(states, ["Working", "Done", "Failed"]) {
-            let label = try #require(StorageHealthView.banner(state) as? NSTextField)
+            let banner = try #require(StorageStyle.banner(state))
+            let label = try #require(SharedFixtures.descendants(banner, of: NSTextField.self).first)
             #expect(label.stringValue == message && label.textColor == color)
         }
     }
 
     @Test func healthCardsReflectStateAndDispatchTheirActions() throws {
         UITestSupport.bootstrap()
+        let recommend = StorageHealthAction.enableRecommended(
+            fsMonitor: true, untrackedCache: false, commitGraph: true, registerMaintenance: false)
+        let summary = StorageHealthSummaryModel(
+            enabledCount: 2, totalCount: 4, headline: "2 of 4 optimizations enabled",
+            subtitle: "Enable recommended optimizations.", status: .recommend(recommend))
         let cards: [StorageHealthCardModel] = [
             .init(
-                title: "Cache", detail: "Details", action: .untrackedCache(false), control: .toggle(true), enabled: true
-            ),
-            .init(title: "Graph", detail: "Rebuild", action: .commitGraph, control: .button, enabled: true),
-            .init(title: "Busy", detail: "Running", action: .maintenance, control: .button, enabled: false),
+                section: .performance, symbol: "hare.fill", iconTone: .green,
+                title: "Cache", statusText: "Enabled", statusTone: .positive,
+                detail: "Details", action: .untrackedCache(false), control: .toggle(true), enabled: true),
+            .init(
+                section: .performance, symbol: "point.3.connected.trianglepath.dotted", iconTone: .purple,
+                title: "Graph", statusText: "Not built", statusTone: .neutral,
+                detail: "Rebuild", action: .commitGraph, control: .button, buttonSymbol: "arrow.clockwise",
+                enabled: true),
+            .init(
+                section: .maintenance, symbol: "clock.arrow.2.circlepath", iconTone: .indigo,
+                title: "Busy", statusText: "Unregistered", statusTone: .neutral,
+                detail: "Running", action: .maintenance, control: .button, buttonSymbol: "play.fill",
+                secondaryToggle: .init(
+                    isOn: false, action: .maintenanceRegistration(true), accessibilityLabel: "Register"),
+                enabled: false),
         ]
         var actions: [StorageHealthAction] = []
-        let view = StorageHealthView(cards: cards, actionState: .succeeded("Saved")) { actions.append($0) }
-        let toggle = try #require(SharedFixtures.descendants(view, of: AccentSwitch.self).first)
-        #expect(toggle.isOn)
-        #expect(toggle.accessibilityPerformPress())
-        let buttons = SharedFixtures.descendants(view, of: ActionButton.self)
-        let rebuild = try #require(buttons.first { $0.title == StorageHealthAction.commitGraph.title })
-        rebuild.performClick(nil)
-        #expect(buttons.first { $0.title == StorageHealthAction.maintenance.title }?.isEnabled == false)
-        #expect(actions == [.untrackedCache(false), .commitGraph])
+        let view = StorageHealthView(summary: summary, cards: cards, actionState: .succeeded("Saved")) {
+            actions.append($0)
+        }
+        view.frame = NSRect(x: 0, y: 0, width: 880, height: 560)
+        UITestSupport.render(view)
+        let toggles = SharedFixtures.descendants(view, of: AccentSwitch.self)
+        let cacheToggle = try #require(toggles.first)
+        #expect(cacheToggle.isOn)
+        #expect(cacheToggle.accessibilityPerformPress())
+        let buttons = SharedFixtures.descendants(view, of: PartsButton.self)
+        let enableAll = try #require(buttons.first { $0.accessibilityLabel() == recommend.title })
+        #expect(enableAll.accessibilityPerformPress())
+        let rebuild = try #require(buttons.first { $0.accessibilityLabel() == StorageHealthAction.commitGraph.title })
+        #expect(rebuild.accessibilityPerformPress())
+        let runNow = buttons.first { $0.accessibilityLabel() == StorageHealthAction.maintenance.title }
+        #expect(runNow?.isEnabled == false)
+        #expect(actions == [.untrackedCache(false), recommend, .commitGraph])
+    }
+
+    @Test func summaryBarAndWorkspaceListRenderAndDispatchActions() throws {
+        UITestSupport.bootstrap()
+        let root = URL(fileURLWithPath: "/tmp/storage-summary-test")
+        let report = StoragePresentationFixture.report(root)
+        var refreshed = 0
+        var trashed = 0
+        let summary = StorageSummaryBar(report: report, refresh: { refreshed += 1 }, trash: { trashed += 1 })
+        summary.frame = NSRect(x: 0, y: 0, width: 840, height: 140)
+        summary.updateSelection([])
+        summary.updateSelection([root.path + "/linked/node_modules"])
+        UITestSupport.render(summary)
+        let buttons = SharedFixtures.descendants(summary, of: PartsButton.self)
+        let refreshButton = try #require(buttons.first { $0.accessibilityLabel() == String(localized: "Refresh") })
+        #expect(refreshButton.accessibilityPerformPress())
+        #expect(refreshed == 1)
+
+        var inspected: URL?
+        let rows = StoragePresenter().workspaceRows(for: [report])
+        let workspace = StorageWorkspaceListView(
+            state: .loaded(rows: rows, failureMessage: nil), refresh: { refreshed += 1 }, inspect: { inspected = $0 })
+        workspace.frame = NSRect(x: 0, y: 0, width: 840, height: 480)
+        UITestSupport.render(workspace)
+        let controls = SharedFixtures.descendants(workspace, of: NSControl.self)
+        let rowControl = try #require(
+            controls.first { $0.accessibilityLabel()?.contains(report.repositoryName) == true })
+        #expect(rowControl.accessibilityPerformPress())
+        #expect(inspected == report.mainRoot)
     }
 
     @Test func outlineMenuOffersOnlyActionsAllowedForItsRow() throws {
@@ -89,5 +143,152 @@ struct StorageViewActionTests {
         }
         #expect(removed?.path.lastPathComponent == "linked")
         #expect(trashed?.relativePath == "node_modules")
+    }
+
+    @Test func windowControllerRendersAllScopesInLightAndDark() async throws {
+        UITestSupport.bootstrap()
+        let root = URL(fileURLWithPath: "/tmp/bambu-bar-website")
+        let otherRoot = URL(fileURLWithPath: "/tmp/gita-app")
+        let report = Self.realisticReport(root: root)
+        let otherReport = Self.realisticReport(root: otherRoot)
+        let snapshot = RepositoryHealthSnapshot(
+            worktreePaths: report.checkouts.map(\.id),
+            fsMonitor: .disabled,
+            untrackedCache: .enabled,
+            commitGraph: CommitGraphInfo(
+                path: root.appendingPathComponent(".git/objects/info/commit-graph"),
+                modifiedAt: Date(timeIntervalSinceNow: -3_600)),
+            maintenance: GitMaintenanceInfo(
+                automatic: .unset, isRegistered: false,
+                looseObjects: 293, packedObjects: 6_322, packs: 2, looseKiB: 1_200, packedKiB: 35_560))
+
+        let store = StorageStore(scan: { url, _ in url == otherRoot ? otherReport : report })
+        await store.scanRepository(root)?.value
+        await store.scanWorkspace([root, otherRoot]).value
+        store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
+
+        let controller = StorageWindowController(store: store)
+        let window = try #require(controller.window)
+        window.setContentSize(NSSize(width: 920, height: 640))
+        let contentView = try #require(window.contentView)
+        let ctx = StorageWindowContext(
+            repositoryRoot: root, knownRepositories: [root, otherRoot],
+            activeAgentPaths: [root.deletingLastPathComponent().appendingPathComponent("madtom").path])
+        let dir = ProcessInfo.processInfo.environment["GITA_SNAPSHOT_DIR"]
+
+        // 1. This Repository (with node_modules checked so footer CTA is also verified)
+        controller.show(context: ctx, scope: .repository)
+        window.orderOut(nil)
+        contentView.layoutSubtreeIfNeeded()
+        if let checkbox = SharedFixtures.descendants(contentView, of: NSButton.self)
+            .first(where: { $0.identifier?.rawValue == root.appendingPathComponent("node_modules").path })
+        {
+            checkbox.performClick(nil)
+        }
+        try Self.captureBothModes(window, contentView, prefix: "storage-repo", in: dir)
+
+        // 2. All Repositories
+        controller.show(context: ctx, scope: .workspace)
+        window.orderOut(nil)
+        await store.scanWorkspace([root, otherRoot]).value
+        store.notify()
+        try Self.captureBothModes(window, contentView, prefix: "storage-workspace", in: dir)
+
+        // 3. Health & Maintenance
+        controller.show(context: ctx, scope: .health)
+        window.orderOut(nil)
+        store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
+        store.notify()
+        try Self.captureBothModes(window, contentView, prefix: "storage-health", in: dir)
+    }
+
+    private static func captureBothModes(
+        _ window: NSWindow, _ view: NSView, prefix: String, in directory: String?
+    ) throws {
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", NSAppearance.Name.darkAqua)] {
+            let app = try #require(NSAppearance(named: appearance))
+            window.appearance = app
+            view.appearance = app
+            app.performAsCurrentDrawingAppearance {
+                view.layoutSubtreeIfNeeded()
+                let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
+                #expect(rep != nil)
+                if let rep {
+                    view.cacheDisplay(in: view.bounds, to: rep)
+                    if let directory, let png = rep.representation(using: .png, properties: [:]) {
+                        let url = URL(fileURLWithPath: directory).appendingPathComponent("\(prefix)-\(name).png")
+                        try? png.write(to: url)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func realisticReport(root: URL) -> RepositoryStorageReport {
+        let now = Date()
+        let parent = root.deletingLastPathComponent()
+        let git = GitStoreBreakdown(
+            gitCommonDirectory: root.appendingPathComponent(".git"),
+            totalAllocatedBytes: 37_400_000, totalLogicalBytes: 37_400_000,
+            objectsAllocatedBytes: 34_200_000, lfsAllocatedBytes: 1_800_000, fileCount: 412)
+        func entry(
+            _ rel: String, in base: URL, cat: HeavyFolderCategory, status: HeavyFolderStatus, bytes: UInt64, files: Int
+        ) -> HeavyFolderEntry {
+            HeavyFolderEntry(
+                relativePath: rel, url: base.appendingPathComponent(rel),
+                category: cat, status: status, allocatedBytes: bytes, fileCount: files)
+        }
+        let mainEntries = [
+            entry(
+                "node_modules", in: root, cat: .javascript, status: .reclaimable, bytes: 2_650_000_000, files: 48_210),
+            entry(".next", in: root, cat: .buildOutput, status: .reclaimable, bytes: 980_000_000, files: 3_420),
+            entry(
+                "public/media", in: root, cat: .otherLarge, status: .trackedOrUnignored, bytes: 130_000_000, files: 84),
+        ]
+        let madtom = parent.appendingPathComponent("madtom")
+        let madtomEntries = [
+            entry(
+                "node_modules", in: madtom, cat: .javascript, status: .reclaimable, bytes: 1_720_000_000,
+                files: 46_100),
+            entry(".turbo", in: madtom, cat: .cache, status: .reclaimable, bytes: 130_000_000, files: 620),
+        ]
+        let pyrosome = parent.appendingPathComponent("pyrosome")
+        let pyrosomeEntries = [
+            entry(
+                "node_modules", in: pyrosome, cat: .javascript, status: .reclaimable, bytes: 1_840_000_000,
+                files: 47_500)
+        ]
+        let guides = parent.appendingPathComponent("bambu-phone-guides")
+        let guidesEntries = [
+            entry(".venv", in: guides, cat: .python, status: .reclaimable, bytes: 680_000_000, files: 14_200)
+        ]
+        return RepositoryStorageReport(
+            mainRoot: root, gitStore: git,
+            checkouts: [
+                CheckoutStorageReport(
+                    path: root, isMainWorktree: true,
+                    worktree: GitWorktree(path: root.path, branch: "main", head: "a1b2c3d"),
+                    totalAllocatedBytes: 3_760_000_000, totalLogicalBytes: 3_760_000_000,
+                    fileCount: 52_000, heavyFolders: mainEntries, lastModifiedDate: now),
+                CheckoutStorageReport(
+                    path: madtom, isMainWorktree: false,
+                    worktree: GitWorktree(
+                        path: madtom.path, branch: "rolottr/bambu-bar-website-posthog", head: "b2c3d4e"),
+                    totalAllocatedBytes: 1_850_000_000, totalLogicalBytes: 1_850_000_000,
+                    fileCount: 47_000, heavyFolders: madtomEntries, lastModifiedDate: now),
+                CheckoutStorageReport(
+                    path: pyrosome, isMainWorktree: false,
+                    worktree: GitWorktree(path: pyrosome.path, branch: "chore/bump-posthog-js", head: "c3d4e5f"),
+                    totalAllocatedBytes: 1_840_000_000, totalLogicalBytes: 1_840_000_000,
+                    fileCount: 47_900, heavyFolders: pyrosomeEntries,
+                    lastModifiedDate: now.addingTimeInterval(-42 * 86_400)),
+                CheckoutStorageReport(
+                    path: guides, isMainWorktree: false,
+                    worktree: GitWorktree(path: guides.path, branch: "rolottr/bambu-phone-guides", head: "d4e5f6a"),
+                    totalAllocatedBytes: 711_100_000, totalLogicalBytes: 711_100_000,
+                    fileCount: 15_000, heavyFolders: guidesEntries,
+                    lastModifiedDate: now.addingTimeInterval(-2 * 86_400)),
+            ],
+            isPartial: false)
     }
 }

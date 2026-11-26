@@ -32,6 +32,7 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     func openLineHistory(range: LineRangeSpec) { host?.openLineHistory(range: range) }
     func inspectStorage(at root: URL) { host?.inspectStorage(at: root) }
     func invalidateStorage(repositoryRoot root: URL) { host?.invalidateStorage(repositoryRoot: root) }
+    func cachedStorageSize(for root: URL) -> String? { host?.cachedStorageSize(for: root) }
 
     // MARK: Remotes and the working copy
 

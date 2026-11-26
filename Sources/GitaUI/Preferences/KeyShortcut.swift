@@ -70,7 +70,7 @@ enum ShortcutCommand: String, CaseIterable {
     case allCommits, localChanges, worktrees, pullRequests, deployments, workflows
     case commitTab, changesTab, fileTreeTab, blame
     case focusSidebar, focusHistory, focusFiles, focusDiff, cyclePaneFocus
-    case commandPalette, switchBranch, newBranch, fetch, pull, push, forcePush, stash, refresh
+    case commandPalette, switchBranch, newBranch, fetch, pull, push, forcePush, stash, storage, refresh
     case toggleTerminal, newTerminal
 
     enum Group: CaseIterable { case pages, details, repository, terminal }
@@ -123,6 +123,7 @@ enum ShortcutCommand: String, CaseIterable {
         case .push: String(localized: "Push…")
         case .forcePush: String(localized: "Force Push…")
         case .stash: String(localized: "Stash Changes…")
+        case .storage: String(localized: "Storage & Health…")
         case .toggleTerminal: String(localized: "Show Terminal")
         case .newTerminal: String(localized: "New Terminal")
         default: String(localized: "Refresh")
@@ -157,6 +158,7 @@ enum ShortcutCommand: String, CaseIterable {
         case .push: KeyShortcut("p", [.command, .shift])
         case .forcePush: KeyShortcut("p", [.command, .option, .shift])
         case .stash: KeyShortcut("s", [.command, .shift])
+        case .storage: KeyShortcut("s", [.command, .option, .shift])
         // As in VS Code: ⌃` shows the terminal, ⌃⇧` opens a new one.
         case .toggleTerminal: KeyShortcut("`", .control)
         case .newTerminal: KeyShortcut("`", [.control, .shift])

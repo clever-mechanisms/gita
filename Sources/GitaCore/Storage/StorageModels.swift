@@ -16,7 +16,6 @@ public enum StorageScanState: Sendable, Equatable {
     case loaded(RepositoryStorageReport, cachedAt: Date = Date())
     case failed(String)
 
-    public var isScanning: Bool { scanID != nil }
     public var report: RepositoryStorageReport? {
         if case .loaded(let report, _) = self { return report }
         return nil

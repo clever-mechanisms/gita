@@ -1,52 +1,140 @@
 import AppKit
 
+@MainActor
 final class StorageHealthView: NSScrollView {
     init(
-        cards: [StorageHealthCardModel], actionState: HealthActionState,
+        summary: StorageHealthSummaryModel? = nil, cards: [StorageHealthCardModel], actionState: HealthActionState,
         perform: @escaping (StorageHealthAction) -> Void
     ) {
         super.init(frame: .zero)
-        drawsBackground = false
-        hasVerticalScroller = true
-        let document = Deck.document(in: self)
-        let stack = Deck.vstack([], spacing: 12)
-        Deck.pin(stack, in: document)
-        if let banner = Self.banner(actionState) { stack.addArrangedSubview(banner) }
-        for model in cards {
-            let card = FillView(color: Theme.inset)
-            card.borderColor = Theme.separator
-            card.cornerRadius = 9
-            let title = Deck.label(model.title, font: Theme.bodyEmphasis)
-            let description = Deck.wrapping(model.detail, color: Theme.secondaryText)
-            let control: NSControl
-            switch model.control {
-            case .toggle(let on):
-                let toggle = AccentSwitch(accessibility: model.title) { _ in perform(model.action) }
-                toggle.setOn(on)
-                control = toggle
-            case .button:
-                control = ActionButton(title: model.action.title) { perform(model.action) }
-            }
-            control.isEnabled = model.enabled
-            let row = Deck.hstack([title, Deck.spacer(), control])
-            let content = Deck.vstack([row, description], spacing: 6)
-            Deck.pin(content, in: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
-            stack.addArrangedSubview(card)
-            card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-            row.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
-            description.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
-        }
-    }
+        let document = StorageStyle.configureScrollView(self)
+        let stack = Deck.vstack([], spacing: 16)
+        Deck.pin(stack, in: document, insets: NSEdgeInsets(top: 16, left: 18, bottom: 20, right: 18))
 
-    static func banner(_ state: HealthActionState) -> NSView? {
-        switch state {
-        case .idle: nil
-        case .running(let text): Deck.label(text, color: Theme.running)
-        case .succeeded(let text): Deck.label(text, color: Theme.success)
-        case .failed(let text): Deck.wrapping(text, color: Theme.failure)
-        }
+        if let banner = StorageStyle.banner(actionState) { StorageStyle.addFullWidth(banner, to: stack) }
+        if let summary { StorageStyle.addFullWidth(makeSummaryCard(summary, perform: perform), to: stack) }
+        addSection(
+            title: String(localized: "Performance"),
+            cards: cards.filter { $0.section == .performance }, in: stack, perform: perform)
+        addSection(
+            title: String(localized: "Maintenance"),
+            cards: cards.filter { $0.section == .maintenance }, in: stack, perform: perform)
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("StorageHealthView is built in code") }
+
+    private func makeSummaryCard(
+        _ summary: StorageHealthSummaryModel, perform: @escaping (StorageHealthAction) -> Void
+    ) -> NSView {
+        let allEnabled = summary.enabledCount == summary.totalCount
+        let card = StorageStyle.card(cornerRadius: 10)
+        let badge = StorageStyle.iconBadge(
+            allEnabled ? "checkmark.shield.fill" : "stethoscope",
+            tint: allEnabled ? Theme.success : Theme.accent,
+            boxSize: 36, symbolSize: 17, cornerRadius: 8)
+        let headline = Deck.label(summary.headline, font: TextLines.system(14, weight: .semibold))
+        let subtitle = Deck.wrapping(summary.subtitle, font: Theme.caption, color: Theme.secondaryText)
+        let textColumn = Deck.vstack([headline, subtitle], spacing: 3)
+
+        let trailing: NSView
+        switch summary.status {
+        case .recommend(let action):
+            trailing = StorageStyle.actionButton(
+                action.buttonTitle, symbol: "sparkles", style: .accent, accessibility: action.title
+            ) { perform(action) }
+        case .optimized:
+            trailing = StorageStyle.statusPill(String(localized: "Optimized"), tone: .positive)
+        case .updating:
+            trailing = StorageStyle.statusPill(String(localized: "Updating…"), tone: .neutral)
+        }
+
+        let row = Deck.hstack([badge, textColumn, Deck.spacer(), trailing], spacing: 12)
+        Deck.pin(row, in: card, insets: NSEdgeInsets(top: 14, left: 16, bottom: 14, right: 16))
+        return card
+    }
+
+    private func addSection(
+        title: String, cards: [StorageHealthCardModel], in stack: NSStackView,
+        perform: @escaping (StorageHealthAction) -> Void
+    ) {
+        guard !cards.isEmpty else { return }
+        let sectionHeader = Deck.sectionTitle(title)
+        let card = StorageStyle.card(cornerRadius: 10)
+        let rows = Deck.vstack([], spacing: 0)
+        Deck.pin(rows, in: card)
+
+        for (index, model) in cards.enumerated() {
+            if index > 0 { StorageStyle.addFullWidth(makeInsetDivider(), to: rows) }
+            StorageStyle.addFullWidth(makeSettingRow(model, perform: perform), to: rows)
+        }
+
+        let group = Deck.vstack([sectionHeader, card], spacing: 6)
+        StorageStyle.addFullWidth(group, to: stack)
+        card.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
+    }
+
+    private func makeSettingRow(
+        _ model: StorageHealthCardModel, perform: @escaping (StorageHealthAction) -> Void
+    ) -> NSView {
+        let icon = StorageStyle.iconBadge(
+            model.symbol, tint: StorageStyle.toneColor(model.iconTone),
+            boxSize: 30, symbolSize: 14, cornerRadius: 7)
+        let title = Deck.label(model.title, font: Theme.bodyEmphasis)
+        let status = StorageStyle.statusPill(model.statusText, tone: model.statusTone)
+        let titleRow = Deck.hstack([title, status], spacing: 8)
+        let detail = Deck.wrapping(model.detail, font: Theme.caption, color: Theme.secondaryText)
+
+        var textItems: [NSView] = [titleRow, detail]
+        if !model.statPills.isEmpty {
+            let pills = model.statPills.map {
+                StorageStyle.pill($0, fill: Theme.control, textColor: Theme.secondaryText, monospacedDigits: true)
+            }
+            textItems.append(Deck.hstack(pills, spacing: 6))
+        }
+        let textColumn = Deck.vstack(textItems, spacing: 4)
+        textColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let controls = makeRowControls(model, perform: perform)
+        let container = NSView()
+        let row = Deck.hstack([icon, textColumn, Deck.spacer(), controls], spacing: 12)
+        Deck.pin(row, in: container, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
+        return container
+    }
+
+    private func makeRowControls(
+        _ model: StorageHealthCardModel, perform: @escaping (StorageHealthAction) -> Void
+    ) -> NSView {
+        var views = [NSView]()
+        if let secondary = model.secondaryToggle {
+            let toggle = AccentSwitch(accessibility: secondary.accessibilityLabel) { _ in
+                perform(secondary.action)
+            }
+            toggle.setOn(secondary.isOn)
+            toggle.isEnabled = model.enabled
+            toggle.toolTip = secondary.accessibilityLabel
+            views.append(toggle)
+        }
+        let primary: NSControl
+        switch model.control {
+        case .toggle(let on):
+            let toggle = AccentSwitch(accessibility: model.title) { _ in perform(model.action) }
+            toggle.setOn(on)
+            primary = toggle
+        case .button:
+            primary = StorageStyle.actionButton(
+                model.action.buttonTitle, symbol: model.buttonSymbol, style: .quiet, accessibility: model.action.title
+            ) { perform(model.action) }
+        }
+        primary.isEnabled = model.enabled
+        views.append(primary)
+        return Deck.hstack(views, spacing: 10)
+    }
+
+    private func makeInsetDivider() -> NSView {
+        let holder = NSView()
+        let line = Deck.separator()
+        Deck.pin(line, in: holder, insets: NSEdgeInsets(top: 0, left: 56, bottom: 0, right: 0))
+        return holder
+    }
 }

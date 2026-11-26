@@ -4,21 +4,84 @@ import GitaCore
 struct StorageBarSegment: Equatable {
     enum ColorRole { case gitStore, reclaimable, workingTrees }
     let colorRole: ColorRole
+    let label: String
+    let formattedBytes: String
     let fraction: Double
+    let percentText: String
     let tooltip: String
 }
 
 struct StorageOutlineNode: Equatable {
+    enum Kind: Equatable {
+        case gitStore, gitStoreObjects, gitStoreLFS, gitStoreOther
+        case mainCheckout, worktree, heavyFolder
+    }
+
+    enum Tone: Equatable {
+        case blue, teal, accent, indigo, green, orange, neutral
+    }
+
     let title: String
     let url: URL
     let bytes: UInt64
+    var kind: Kind = .heavyFolder
     var branch: String?
     var warning: String?
     var caption: String?
+    var reclaimableBytes: UInt64 = 0
+    var share: Double = 0
     var checkout: CheckoutStorageReport?
     var entry: HeavyFolderEntry?
     var children: [Self] = []
+
     var isSelectable: Bool { entry?.status == .reclaimable }
+    var isTopLevel: Bool { kind == .gitStore || kind == .mainCheckout || kind == .worktree }
+
+    var symbolName: String {
+        switch kind {
+        case .gitStore: "cylinder.split.1x2.fill"
+        case .gitStoreObjects: "archivebox.fill"
+        case .gitStoreLFS: "externaldrive.fill"
+        case .gitStoreOther: "doc.text.fill"
+        case .mainCheckout: "folder.fill"
+        case .worktree: Deck.worktreeSymbol
+        case .heavyFolder: Self.heavyFolderSymbol(for: entry)
+        }
+    }
+
+    var tone: Tone {
+        switch kind {
+        case .gitStore, .gitStoreObjects: .blue
+        case .gitStoreLFS: .teal
+        case .gitStoreOther: .neutral
+        case .mainCheckout: .accent
+        case .worktree: .indigo
+        case .heavyFolder: Self.heavyFolderTone(for: entry?.status)
+        }
+    }
+
+    private static let packageFolders: Set<String> = [
+        "node_modules", ".pnpm-store", "pods", "vendor", ".yarn", "bower_components", ".gradle",
+    ]
+
+    static func heavyFolderSymbol(for entry: HeavyFolderEntry?) -> String {
+        guard let entry else { return "folder.fill" }
+        if packageFolders.contains(entry.url.lastPathComponent.lowercased()) { return "shippingbox.fill" }
+        switch entry.category {
+        case .javascript: return "shippingbox.fill"
+        case .swift, .rust, .jvm, .buildOutput: return "hammer.fill"
+        case .python, .cache, .infrastructure: return "cube.fill"
+        case .otherLarge: return "folder.fill"
+        }
+    }
+
+    private static func heavyFolderTone(for status: HeavyFolderStatus?) -> Tone {
+        switch status {
+        case .reclaimable: .green
+        case .trackedOrUnignored: .orange
+        default: .neutral
+        }
+    }
 }
 
 struct StorageWorkspaceRow: Equatable {
@@ -46,23 +109,57 @@ struct StoragePresenter {
         ByteCountFormatter.string(fromByteCount: Int64(clamping: bytes), countStyle: .file)
     }
 
+    func formatPercent(_ fraction: Double) -> String {
+        let pct = fraction * 100
+        if pct > 0, pct < 1 { return "<1%" }
+        return "\(Int(pct.rounded()))%"
+    }
+
     func summarySegments(for report: RepositoryStorageReport) -> [StorageBarSegment] {
         let git = report.gitStore.totalAllocatedBytes
         let reclaimable = report.reclaimableBytes
+        let working =
+            report.totalAllocatedBytes > git + reclaimable ? report.totalAllocatedBytes - git - reclaimable : 0
         func segment(_ role: StorageBarSegment.ColorRole, _ label: String, _ bytes: UInt64) -> StorageBarSegment {
             let size = formatBytes(bytes)
+            let fraction = Double(bytes) / Double(max(1, report.totalAllocatedBytes))
             return StorageBarSegment(
-                colorRole: role,
-                fraction: Double(bytes) / Double(max(1, report.totalAllocatedBytes)),
+                colorRole: role, label: label, formattedBytes: size,
+                fraction: fraction, percentText: formatPercent(fraction),
                 tooltip: String(localized: "\(label) · \(size)"))
         }
         return [
             segment(.gitStore, String(localized: "Git Store"), git),
             segment(.reclaimable, String(localized: "Reclaimable Bloat"), reclaimable),
-            segment(
-                .workingTrees, String(localized: "Working Trees / Other"),
-                report.totalAllocatedBytes - git - reclaimable),
+            segment(.workingTrees, String(localized: "Working Trees / Other"), working),
         ]
+    }
+
+    func selectedBytes(for checked: Set<String>, in report: RepositoryStorageReport) -> UInt64 {
+        report.checkouts
+            .flatMap(\.heavyFolders)
+            .filter { checked.contains($0.id) }
+            .reduce(0) { $0 + $1.allocatedBytes }
+    }
+
+    func summarySubtitle(for report: RepositoryStorageReport) -> String {
+        let count = report.checkouts.filter { !$0.isBare }.count
+        let checkouts = count == 1 ? String(localized: "1 checkout") : String(localized: "\(count) checkouts")
+        guard report.reclaimableBytes > 0 else {
+            return String(localized: "\(checkouts) · No reclaimable bloat")
+        }
+        let reclaimable = formatBytes(report.reclaimableBytes)
+        return String(localized: "\(checkouts) · \(reclaimable) reclaimable")
+    }
+
+    func cleanButtonTitle(selectedPaths: Set<String>, in report: RepositoryStorageReport) -> String {
+        if !selectedPaths.isEmpty {
+            let size = formatBytes(selectedBytes(for: selectedPaths, in: report))
+            return String(localized: "Clean \(size)…")
+        }
+        guard report.reclaimableBytes > 0 else { return String(localized: "Clean…") }
+        let size = formatBytes(report.reclaimableBytes)
+        return String(localized: "Clean \(size)…")
     }
 
     func activeCheckoutIDs(in report: RepositoryStorageReport, activeAgentPaths: Set<String>) -> Set<String> {
@@ -117,31 +214,39 @@ struct StoragePresenter {
 
     func outlineNodes(
         for report: RepositoryStorageReport, activeAgentPaths: Set<String>, now: Date
-    )
-        -> [StorageOutlineNode]
-    {
+    ) -> [StorageOutlineNode] {
         let active = activeCheckoutIDs(in: report, activeAgentPaths: activeAgentPaths)
-        return [storeNode(report.gitStore)]
-            + report.checkouts.sorted {
-                ($1.totalAllocatedBytes, $0.id) < ($0.totalAllocatedBytes, $1.id)
-            }.map { tree in
-                let running = active.contains(tree.id)
-                let caption =
-                    tree.isUnavailable
-                    ? String(localized: "Unavailable (not mounted)")
-                    : staleness(tree.lastModifiedDate, now: now)
-                return StorageOutlineNode(
-                    title: tree.displayName, url: tree.path, bytes: tree.totalAllocatedBytes,
-                    branch: tree.branch, warning: running ? String(localized: "An agent is active here.") : nil,
-                    caption: caption, checkout: tree,
-                    children: tree.heavyFolders.sorted {
-                        ($1.allocatedBytes, $0.id) < ($0.allocatedBytes, $1.id)
-                    }.map { entry in
-                        StorageOutlineNode(
-                            title: entry.relativePath, url: entry.url, bytes: entry.allocatedBytes,
-                            caption: folderCaption(entry), entry: entry)
-                    })
-            }
+        let maxRoot = Double(
+            max(1, max(report.gitStore.totalAllocatedBytes, report.checkouts.map(\.totalAllocatedBytes).max() ?? 0)))
+        let checkoutNodes = report.checkouts.sorted {
+            ($1.totalAllocatedBytes, $0.id) < ($0.totalAllocatedBytes, $1.id)
+        }.map { checkoutNode($0, active: active, maxRoot: maxRoot, now: now) }
+        return [storeNode(report.gitStore, maxRoot: maxRoot)] + checkoutNodes
+    }
+
+    private func checkoutNode(
+        _ tree: CheckoutStorageReport, active: Set<String>, maxRoot: Double, now: Date
+    ) -> StorageOutlineNode {
+        let running = active.contains(tree.id)
+        let caption =
+            tree.isUnavailable
+            ? String(localized: "Unavailable (not mounted)")
+            : staleness(tree.lastModifiedDate, now: now)
+        let parentDenominator = Double(max(1, tree.totalAllocatedBytes))
+        let children = tree.heavyFolders.sorted {
+            ($1.allocatedBytes, $0.id) < ($0.allocatedBytes, $1.id)
+        }.map { entry in
+            StorageOutlineNode(
+                title: entry.relativePath, url: entry.url, bytes: entry.allocatedBytes,
+                kind: .heavyFolder, caption: folderCaption(entry),
+                share: Double(entry.allocatedBytes) / parentDenominator, entry: entry)
+        }
+        return StorageOutlineNode(
+            title: tree.displayName, url: tree.path, bytes: tree.totalAllocatedBytes,
+            kind: tree.isMainWorktree ? .mainCheckout : .worktree,
+            branch: tree.branch, warning: running ? String(localized: "An agent is active here.") : nil,
+            caption: caption, reclaimableBytes: tree.reclaimableBytes,
+            share: Double(tree.totalAllocatedBytes) / maxRoot, checkout: tree, children: children)
     }
 
     func workspaceRows(for reports: [RepositoryStorageReport]) -> [StorageWorkspaceRow] {
@@ -157,24 +262,31 @@ struct StoragePresenter {
 
     private func folderCaption(_ entry: HeavyFolderEntry) -> String {
         let files = entry.fileCount == 1 ? String(localized: "1 file") : String(localized: "\(entry.fileCount) files")
-        switch entry.status {
-        case .reclaimable: return String(localized: "\(entry.category.displayName) · \(files) · Reclaimable")
-        case .trackedOrUnignored: return String(localized: "\(entry.category.displayName) · \(files) · Protected")
-        case .otherLarge: return String(localized: "\(entry.category.displayName) · \(files)")
-        }
+        return String(localized: "\(entry.category.displayName) · \(files)")
     }
 
-    private func storeNode(_ store: GitStoreBreakdown) -> StorageOutlineNode {
+    private func storeNode(_ store: GitStoreBreakdown, maxRoot: Double) -> StorageOutlineNode {
         let url = store.gitCommonDirectory
-        func child(_ name: String, _ path: URL, _ bytes: UInt64) -> StorageOutlineNode {
-            StorageOutlineNode(title: name, url: path, bytes: bytes)
+        let parentTotal = Double(max(1, store.totalAllocatedBytes))
+        func child(
+            _ name: String, _ path: URL, _ bytes: UInt64, _ kind: StorageOutlineNode.Kind
+        ) -> StorageOutlineNode {
+            StorageOutlineNode(
+                title: name, url: path, bytes: bytes, kind: kind, share: Double(bytes) / parentTotal)
         }
         return StorageOutlineNode(
             title: String(localized: ".git store"), url: url, bytes: store.totalAllocatedBytes,
+            kind: .gitStore, share: Double(store.totalAllocatedBytes) / maxRoot,
             children: [
-                child(String(localized: "Objects"), url.appendingPathComponent("objects"), store.objectsAllocatedBytes),
-                child(String(localized: "LFS"), url.appendingPathComponent("lfs"), store.lfsAllocatedBytes),
-                child(String(localized: "Worktrees and other"), url, store.worktreesAndOtherAllocatedBytes),
+                child(
+                    String(localized: "Objects"), url.appendingPathComponent("objects"),
+                    store.objectsAllocatedBytes, .gitStoreObjects),
+                child(
+                    String(localized: "LFS"), url.appendingPathComponent("lfs"),
+                    store.lfsAllocatedBytes, .gitStoreLFS),
+                child(
+                    String(localized: "Worktrees and other"), url,
+                    store.worktreesAndOtherAllocatedBytes, .gitStoreOther),
             ])
     }
 

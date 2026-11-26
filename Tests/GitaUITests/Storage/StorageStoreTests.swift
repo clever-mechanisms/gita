@@ -15,7 +15,7 @@ import Testing
         var notifications = 0
         let observer = store.addObserver { notifications += 1 }
         let first = store.scanRepository(root)
-        #expect(store.state(for: root).isScanning)
+        #expect(store.state(for: root).scanID != nil)
         await first?.value
         #expect(store.state(for: root) == .loaded(report, cachedAt: now))
         now.addTimeInterval(599)
@@ -67,7 +67,7 @@ import Testing
         let workspace = store.scanWorkspace([root])
         for await _ in stream.stream { break }
         stream.continuation.finish()
-        #expect(store.state(for: root).isScanning)
+        #expect(store.state(for: root).scanID != nil)
         controller.windowWillClose(Notification(name: NSWindow.willCloseNotification))
         await workspace.value
         #expect(store.state(for: root) == .idle)
@@ -142,5 +142,49 @@ import Testing
         await store.removeWorktree(checkout.worktree, in: root)
         #expect(!FileManager.default.fileExists(atPath: tree.path))
         #expect(store.state(for: root) == .idle)
+    }
+
+    @Test func enableRecommendedRunsEnabledStepsAndReportsPartialFailure() async throws {
+        struct StubRunner: CommandRunning {
+            let rootPath: String
+            let failSubcommand: String?
+            func run(
+                executable _: String, arguments: [String], directory _: URL?, timeout _: TimeInterval,
+                outputLimit _: Int
+            ) async throws -> CommandResult {
+                if let failSubcommand, arguments.contains(failSubcommand) {
+                    return CommandResult(stdout: Data(), stderr: Data("boom".utf8), exitCode: 1)
+                }
+                if arguments.contains("--show-toplevel") {
+                    return CommandResult(stdout: Data("\(rootPath)\n".utf8), stderr: Data(), exitCode: 0)
+                }
+                if arguments.contains("--git-common-dir") || arguments.contains("--git-dir") {
+                    return CommandResult(stdout: Data(".git\n".utf8), stderr: Data(), exitCode: 0)
+                }
+                return CommandResult(stdout: Data(), stderr: Data(), exitCode: 0)
+            }
+        }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let gitDir = root.appendingPathComponent(".git")
+        try FileManager.default.createDirectory(at: gitDir, withIntermediateDirectories: true)
+        try Data("ref: refs/heads/main\n".utf8).write(to: gitDir.appendingPathComponent("HEAD"))
+        defer { try? FileManager.default.removeItem(at: root) }
+        let okStore = StorageStore(
+            health: RepositoryHealthService(runner: StubRunner(rootPath: root.path, failSubcommand: nil)))
+        await okStore.perform(
+            .enableRecommended(fsMonitor: true, untrackedCache: true, commitGraph: true, registerMaintenance: true),
+            in: root)
+        #expect(okStore.actionState(for: root) == .succeeded(String(localized: "Recommended optimizations enabled.")))
+
+        let failingStore = StorageStore(
+            health: RepositoryHealthService(runner: StubRunner(rootPath: root.path, failSubcommand: "maintenance")))
+        await failingStore.perform(
+            .enableRecommended(fsMonitor: true, untrackedCache: true, commitGraph: false, registerMaintenance: true),
+            in: root)
+        if case .failed(let message) = failingStore.actionState(for: root) {
+            #expect(message.contains("2"))
+        } else {
+            Issue.record("Expected partial failure message")
+        }
     }
 }

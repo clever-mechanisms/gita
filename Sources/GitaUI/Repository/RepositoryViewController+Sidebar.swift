@@ -35,6 +35,11 @@ extension RepositoryViewController {
     }
 
     private func navigate(_ id: SidebarSelection) {
+        if id == .storage {
+            if let root = model.snapshot?.root { commands?.inspectStorage(at: root) }
+            rebuildSidebar()
+            return
+        }
         sidebarSelection = nil
         if let section = id.section {
             model.section = section
@@ -94,6 +99,7 @@ extension RepositoryViewController {
         input.branchComments = model.vercelContext?.comments?.byBranch ?? [:]
         input.productionBranch = model.productionBranch
         input.filters = model.branchFilters
+        input.storageSize = commands?.cachedStorageSize(for: snapshot.root)
         // Linked worktrees (the first entry is the main checkout, or the bare repository); a detached one has no
         // branch.
         let branches = Set(snapshot.references.filter { $0.kind == .branch }.map(\.name))

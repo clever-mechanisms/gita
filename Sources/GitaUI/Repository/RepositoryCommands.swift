@@ -28,6 +28,7 @@ protocol RepositoryCommands: AnyObject {
     func openLineHistory(range: LineRangeSpec)
     func inspectStorage(at root: URL)
     func invalidateStorage(repositoryRoot root: URL)
+    func cachedStorageSize(for root: URL) -> String?
 }
 
 extension RepositoryCommands {
@@ -35,4 +36,5 @@ extension RepositoryCommands {
     func openLineHistory(range _: LineRangeSpec) {}
     func inspectStorage(at _: URL) {}
     func invalidateStorage(repositoryRoot _: URL) {}
+    func cachedStorageSize(for _: URL) -> String? { nil }
 }

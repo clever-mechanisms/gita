@@ -3,70 +3,90 @@ import GitaCore
 
 @MainActor
 final class StorageSummaryBar: NSView {
-    private let cleanupButton: ActionButton
-
-    func updateSelection(_ paths: Set<String>) {
-        cleanupButton.title =
-            paths.isEmpty
-            ? String(localized: "Move Reclaimable to Trash…") : String(localized: "Move Selected to Trash…")
-    }
+    private let report: RepositoryStorageReport
+    private let presenter = StoragePresenter()
+    private let cleanupButton: PartsButton
 
     init(report: RepositoryStorageReport, refresh: @escaping () -> Void, trash: @escaping () -> Void) {
-        cleanupButton = ActionButton(title: String(localized: "Move Reclaimable to Trash…"), onPress: trash)
-        super.init(frame: .zero)
+        self.report = report
         let presenter = StoragePresenter()
+        let cleanTitle = presenter.cleanButtonTitle(selectedPaths: [], in: report)
+        let hasReclaimable =
+            !report.isPartial
+            && report.checkouts.contains { $0.heavyFolders.contains { $0.status == .reclaimable } }
+        cleanupButton = StorageStyle.actionButton(
+            cleanTitle, symbol: "trash", style: hasReclaimable ? .accent : .quiet,
+            accessibility: String(localized: "Move Reclaimable to Trash"), onClick: trash)
+        cleanupButton.isEnabled = hasReclaimable
+        super.init(frame: .zero)
+
+        let card = StorageStyle.card(cornerRadius: 10)
+        Deck.pin(card, in: self)
+
+        let refreshButton = StorageStyle.actionButton(
+            String(localized: "Refresh"), symbol: "arrow.clockwise", style: .quiet, onClick: refresh)
+        let header = StorageStyle.heroHeader(
+            symbol: "internaldrive.fill",
+            title: report.repositoryName,
+            heroMetric: presenter.formatBytes(report.totalAllocatedBytes),
+            subtitle: presenter.summarySubtitle(for: report),
+            controls: [refreshButton, cleanupButton])
         let segments = presenter.summarySegments(for: report)
         let graph = StorageSegmentGraph(segments: segments)
-        let heading = Deck.label(report.repositoryName, font: Theme.title)
-        let size = Deck.label(presenter.formatBytes(report.totalAllocatedBytes), font: Theme.mono)
-        let callout = Self.badge(String(localized: "\(presenter.formatBytes(report.reclaimableBytes)) reclaimable"))
-        cleanupButton.isEnabled =
-            !report.isPartial
-            && report.checkouts.contains { checkout in
-                checkout.heavyFolders.contains { $0.status == .reclaimable }
-            }
-        let toolbar = Deck.hstack([
-            heading, size, Deck.spacer(), callout,
-            ActionButton(title: String(localized: "Refresh"), onPress: refresh), cleanupButton,
-        ])
-        let legend = Deck.hstack(
-            segments.map { segment in
-                let dot = FillView(color: StorageSegmentGraph.color(segment.colorRole))
-                dot.cornerRadius = 4
-                dot.widthAnchor.constraint(equalToConstant: 8).isActive = true
-                dot.heightAnchor.constraint(equalToConstant: 8).isActive = true
-                let label = Deck.label(
-                    segment.tooltip, font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-                    color: Theme.secondaryText)
-                return Deck.hstack([dot, label], spacing: 4)
-            }, spacing: 16)
-        let stack = Deck.vstack([toolbar, graph, legend], spacing: 9)
-        Deck.pin(stack, in: self)
-        toolbar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        graph.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        graph.heightAnchor.constraint(equalToConstant: 14).isActive = true
-    }
+        let legend = makeLegendRow(segments: segments)
 
-    static func badge(
-        _ text: String, fill: NSColor = Theme.success.withAlphaComponent(0.13), monospacedDigits: Bool = true
-    ) -> NSView {
-        let badge = FillView(color: fill)
-        badge.cornerRadius = 7
-        let font =
-            monospacedDigits ? NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium) : Theme.captionEmphasis
-        Deck.pin(
-            Deck.label(text, font: font, color: Theme.text), in: badge,
-            insets: NSEdgeInsets(top: 3, left: 7, bottom: 3, right: 7))
-        return badge
+        let stack = Deck.vstack([header, graph, legend], spacing: 12)
+        Deck.pin(stack, in: card, insets: NSEdgeInsets(top: 14, left: 16, bottom: 14, right: 16))
+        NSLayoutConstraint.activate([
+            header.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            graph.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            graph.heightAnchor.constraint(equalToConstant: 10),
+            legend.widthAnchor.constraint(equalTo: stack.widthAnchor),
+        ])
     }
 
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("StorageSummaryBar is built in code") }
+
+    func updateSelection(_ paths: Set<String>) {
+        let title = presenter.cleanButtonTitle(selectedPaths: paths, in: report)
+        let accessibility =
+            paths.isEmpty
+            ? String(localized: "Move Reclaimable to Trash")
+            : String(localized: "Move Selected to Trash")
+        cleanupButton.background = paths.isEmpty && cleanupButton.isEnabled ? .accent : .quiet
+        StorageStyle.setButtonContent(cleanupButton, title: title, symbol: "trash", accessibility: accessibility)
+    }
+
+    private func makeLegendRow(segments: [StorageBarSegment]) -> NSView {
+        let row = Deck.hstack([], spacing: 18)
+        for segment in segments {
+            let dot = FillView(color: StorageSegmentGraph.color(segment.colorRole))
+            dot.cornerRadius = 4
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            dot.setAccessibilityElement(false)
+            NSLayoutConstraint.activate([
+                dot.widthAnchor.constraint(equalToConstant: 8),
+                dot.heightAnchor.constraint(equalToConstant: 8),
+            ])
+            let name = Deck.label(segment.label, font: Theme.captionEmphasis, color: Theme.text)
+            let metrics = Deck.label(
+                "\(segment.formattedBytes) (\(segment.percentText))",
+                font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+                color: Theme.secondaryText)
+            let item = Deck.hstack([dot, name, metrics], spacing: 5)
+            item.setVisibilityPriority(.detachOnlyIfNecessary, for: metrics)
+            row.addArrangedSubview(item)
+        }
+        row.addArrangedSubview(Deck.spacer())
+        return row
+    }
 }
 
 private final class StorageSegmentGraph: NSView, NSViewToolTipOwner {
     private let segments: [StorageBarSegment]
     private var tips = [NSView.ToolTipTag: String]()
+    private static let segmentGap: CGFloat = 2
 
     init(segments: [StorageBarSegment]) {
         self.segments = segments
@@ -87,11 +107,17 @@ private final class StorageSegmentGraph: NSView, NSViewToolTipOwner {
     }
 
     private func rectangles(_ body: (StorageBarSegment, NSRect) -> Void) {
+        let active = segments.filter { $0.fraction > 0 }
+        guard !active.isEmpty, bounds.width > 0 else { return }
+        let gapTotal = Self.segmentGap * CGFloat(max(0, active.count - 1))
+        let usable = max(0, bounds.width - gapTotal)
         var x: CGFloat = 0
-        for segment in segments where segment.fraction > 0 {
-            let rect = NSRect(x: x, y: 0, width: bounds.width * segment.fraction, height: bounds.height)
+        for (index, segment) in active.enumerated() {
+            let rawWidth = usable * segment.fraction
+            let width = index == active.count - 1 ? max(0, bounds.width - x) : max(2, rawWidth)
+            let rect = NSRect(x: x, y: 0, width: min(width, max(0, bounds.width - x)), height: bounds.height)
             body(segment, rect)
-            x = rect.maxX
+            x = rect.maxX + Self.segmentGap
         }
     }
 
@@ -112,12 +138,13 @@ private final class StorageSegmentGraph: NSView, NSViewToolTipOwner {
     override func draw(_: NSRect) {
         NSGraphicsContext.saveGraphicsState()
         defer { NSGraphicsContext.restoreGraphicsState() }
-        NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).addClip()
+        let radius = bounds.height / 2
+        NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).addClip()
         Theme.control.setFill()
         bounds.fill()
         rectangles { segment, rect in
             Self.color(segment.colorRole).setFill()
-            rect.fill()
+            NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
         }
     }
 }

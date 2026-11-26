@@ -192,8 +192,8 @@ struct AppMenuAvailabilityTests {
     }
 
     @Test(arguments: [
-        ("sidebar", true), ("agents", true), ("workspaces", true), ("open", true), ("repository", true),
-        ("openIn", true),
+        ("sidebar", true), ("agents", true), ("workspaces", true), ("storage", true), ("open", true),
+        ("repository", true), ("openIn", true),
         ("fetch", true), ("pull", true), ("push", true), ("branch", true), ("stash", true), ("worktree", true),
         ("refresh", true), ("NSToolbarFlexibleSpaceItem", true),
     ])

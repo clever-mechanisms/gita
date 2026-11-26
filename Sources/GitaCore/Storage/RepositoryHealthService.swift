@@ -46,6 +46,21 @@ public struct RepositoryHealthService: Sendable {
         try await action(["maintenance", "run"], in: root, message: String(localized: "Maintenance completed."))
     }
 
+    public func setMaintenanceRegistration(_ registered: Bool, in root: URL) async throws -> HealthActionResult {
+        let subcommand = registered ? "register" : "unregister"
+        let result = try await action(
+            ["maintenance", subcommand], in: root,
+            message: registered
+                ? String(localized: "Registered for scheduled maintenance.")
+                : String(localized: "Unregistered from scheduled maintenance."))
+        if !registered {
+            // `git maintenance register` disables foreground `maintenance.auto`; restore Git default on unregister.
+            _ = try await git.read(
+                ["config", "--local", "--unset", "maintenance.auto"], at: root, allowingMissing: true)
+        }
+        return result
+    }
+
     private func action(_ arguments: [String], in root: URL, message: String) async throws -> HealthActionResult {
         var request = CommandRequest.git(arguments, directory: root, timeout: 3_600)
         request.upkeep = true

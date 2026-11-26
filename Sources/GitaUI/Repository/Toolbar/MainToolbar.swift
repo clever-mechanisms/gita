@@ -2,12 +2,12 @@ import AppKit
 import GitaCore
 
 /// A main window's toolbar: sidebar · Fetch / Pull / Push (symmetric badges & one-click sync) / Stash · the centred
-/// repository + branch pill · Open in ▾ · Agents (working / needs-input counts).
+/// repository + branch pill · Open in ▾ · Storage · Agents (working / needs-input counts).
 /// `Workspaces` and `Branch` remain in `allowedItems` for Customize Toolbar.
 @MainActor
 final class MainToolbar {
     enum ID: String, CaseIterable {
-        case sidebar, fetch, pull, push, stash, repository, branch, openIn, agents, workspaces, open,
+        case sidebar, fetch, pull, push, stash, repository, branch, openIn, storage, agents, workspaces, open,
             worktree, refresh
 
         /// The plain buttons: their label, symbol and the app action they send.
@@ -16,6 +16,8 @@ final class MainToolbar {
             case .stash: (String(localized: "Stash"), "archivebox", #selector(RepositoryCommandResponder.stash))
             case .branch:
                 (String(localized: "Branch"), "arrow.triangle.branch", #selector(RepositoryCommandResponder.newBranch))
+            case .storage:
+                (String(localized: "Storage"), "internaldrive", #selector(AppDelegate.showStorageInspector))
             case .open: (String(localized: "Open"), "folder", #selector(AppDelegate.openRepository))
             case .worktree:
                 (String(localized: "Worktree"), Deck.worktreeSymbol, #selector(RepositoryCommandResponder.newWorktree))
@@ -28,7 +30,7 @@ final class MainToolbar {
         .init(ID.sidebar.rawValue), .init(ID.fetch.rawValue), .init(ID.pull.rawValue), .init(ID.push.rawValue),
         .init(ID.stash.rawValue),
         .flexibleSpace, .init(ID.repository.rawValue), .flexibleSpace,
-        .init(ID.openIn.rawValue), .init(ID.agents.rawValue),
+        .init(ID.openIn.rawValue), .init(ID.storage.rawValue), .init(ID.agents.rawValue),
     ]
     static let allowedItems: [NSToolbarItem.Identifier] =
         ID.allCases.map { .init($0.rawValue) } + [.flexibleSpace, .space]

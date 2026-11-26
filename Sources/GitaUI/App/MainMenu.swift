@@ -183,9 +183,7 @@ struct MainMenu {
         item(
             String(localized: "Branch & Worktree Cleanup…"), #selector(AppDelegate.showCleanupAssistant), in: repo,
             symbol: "wand.and.stars")
-        item(
-            String(localized: "Storage & Health…"), #selector(AppDelegate.showStorageInspector), in: repo,
-            symbol: "internaldrive")
+        item(.storage, #selector(AppDelegate.showStorageInspector), in: repo, symbol: "internaldrive")
         item(
             String(localized: "Organize into Commits…"), #selector(AppDelegate.showCommitBuckets),
             in: repo, symbol: "square.stack.3d.forward.dottedline")

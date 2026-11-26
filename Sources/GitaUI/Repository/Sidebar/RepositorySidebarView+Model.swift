@@ -92,6 +92,8 @@ extension RepositorySidebarView {
         var githubRemotes: Set<String> = []
         /// Up to 5 recently checked out branch names from the local reflog.
         var recentBranches: [String] = []
+        /// Cached formatted disk footprint for the repository, when scanned.
+        var storageSize: String?
     }
 
     /// A branch row's filter marks and, in the Worktrees group, the worktree's folder.

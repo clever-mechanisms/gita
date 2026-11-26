@@ -20,6 +20,12 @@ extension AppDelegate {
         storageWindowController.reloadIfVisible()
     }
 
+    func cachedStorageSize(for root: URL) -> String? {
+        environment.storageStore.state(for: root).report.map {
+            StoragePresenter().formatBytes($0.totalAllocatedBytes)
+        }
+    }
+
     private func openStorageWindow(repositoryRoot: URL?, scope: StorageWindowController.Scope) {
         statusItem?.closePanel()
         let context = storageWindowContext(repositoryRoot: repositoryRoot)

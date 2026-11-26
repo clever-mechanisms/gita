@@ -310,7 +310,9 @@ final class SidebarPaneList: NSObject, NSTableViewDataSource, NSTableViewDelegat
     }
 
     private func activateNav(_ nav: RepositorySidebarView.Nav, row: Int, fromKeyboard: Bool) {
-        if case .page(let page) = nav.target { actions.onNavigate?(page) }
+        if case .page(let page) = nav.target {
+            if page != .storage || !fromKeyboard { actions.onNavigate?(page) }
+        }
         if rows[row].group != nil { toggleGroup(row, fromKeyboard: fromKeyboard) }
     }
 

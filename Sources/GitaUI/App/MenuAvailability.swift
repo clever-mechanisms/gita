@@ -160,7 +160,7 @@ struct MenuAvailability {
         if gate.isLanguageRestarting || gate.hasSetupGuide { return false }
         let id = MainToolbar.ID(rawValue: identifier)
         switch id {
-        case .sidebar, .agents, .workspaces: return true
+        case .sidebar, .agents, .workspaces, .storage: return true
         case .open: return canChangeRepository
         case .repository, .openIn: return gate.hasSnapshot
         case .fetch: return hasRemote && !gate.isMutating

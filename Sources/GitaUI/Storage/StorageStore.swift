@@ -31,6 +31,10 @@ enum HealthActionState: Equatable {
     }
 }
 
+extension Notification.Name {
+    static let gitaStorageCacheChanged = Notification.Name("dev.clevermechanisms.Gita.storageCacheChanged")
+}
+
 @MainActor
 final class StorageStore {
     typealias Scan = @Sendable (URL, @escaping StorageProgressHandler) async throws -> RepositoryStorageReport
@@ -69,6 +73,10 @@ final class StorageStore {
     func removeObserver(_ id: UUID) { observers[id] = nil }
     func notify() { for observer in Array(observers.values) { observer() } }
 
+    private func notifyCacheChanged(for paths: Set<String>) {
+        NotificationCenter.default.post(name: .gitaStorageCacheChanged, object: paths)
+    }
+
     func canonicalPath(_ root: URL) -> String {
         root.resolvingSymlinksInPath().standardizedFileURL.path
     }
@@ -101,9 +109,12 @@ final class StorageStore {
                 try Task.checkCancellation()
                 guard states[key]?.scanID == id else { return }
                 states[key] = .loaded(report, cachedAt: now())
-                for path in [report.mainRoot] + report.checkouts.map(\.path) where states[path.path] == nil {
-                    aliases[path.path] = key
+                var updated: Set<String> = [key]
+                for path in [report.mainRoot] + report.checkouts.map(\.path) {
+                    updated.insert(path.path)
+                    if states[path.path] == nil { aliases[path.path] = key }
                 }
+                notifyCacheChanged(for: updated)
             } catch {
                 guard states[key]?.scanID == id else { return }
                 states[key] = Task.isCancelled ? .idle : .failed(error.localizedDescription)
@@ -178,6 +189,7 @@ final class StorageStore {
             states[path] = nil
         }
         resetWorkspace()
+        notifyCacheChanged(for: invalidated)
         notify()
     }
 

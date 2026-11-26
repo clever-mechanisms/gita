@@ -99,19 +99,22 @@ struct CRAPUICoverageTests {
     }
 
     @Test func storageHealthViewAndOutlineMenu() {
-        #expect(StorageHealthView.banner(.idle) == nil)
-        #expect(StorageHealthView.banner(.running("Running")) != nil)
-        #expect(StorageHealthView.banner(.succeeded("Done")) != nil)
-        #expect(StorageHealthView.banner(.failed("Err")) != nil)
+        #expect(StorageStyle.banner(.idle) == nil)
+        #expect(StorageStyle.banner(.running("Running")) != nil)
+        #expect(StorageStyle.banner(.succeeded("Done")) != nil)
+        #expect(StorageStyle.banner(.failed("Err")) != nil)
 
         var invoked: [StorageHealthAction] = []
         let cards = [
             StorageHealthCardModel(
-                title: "Untracked", detail: "Cache", action: .untrackedCache(true),
-                control: .toggle(true), enabled: true),
+                section: .performance, symbol: "hare.fill", iconTone: .green,
+                title: "Untracked", statusText: "Enabled", statusTone: .positive,
+                detail: "Cache", action: .untrackedCache(true), control: .toggle(true), enabled: true),
             StorageHealthCardModel(
-                title: "GC", detail: "Prune", action: .garbageCollection(pruneNow: false),
-                control: .button, enabled: true),
+                section: .maintenance, symbol: "sparkles", iconTone: .orange,
+                title: "GC", statusText: "Healthy", statusTone: .positive,
+                detail: "Prune", statPills: ["2 loose"], action: .garbageCollection(pruneNow: false),
+                control: .button, buttonSymbol: "wand.and.stars", enabled: true),
         ]
         let view = StorageHealthView(cards: cards, actionState: .running("Working")) { invoked.append($0) }
         #expect(view.documentView != nil)

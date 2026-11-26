@@ -186,9 +186,15 @@ extension SidebarCell {
         trailing.stringValue = nav.count
         // A page names its shortcut ("Pull Requests  ⌥⌘4").
         if case .page(let page) = nav.target {
-            toolTip =
-                (page == .history ? ShortcutCommand.allCommits : page.section.flatMap(ShortcutCommand.page))?
-                .toolTip
+            let command: ShortcutCommand? =
+                if page == .storage {
+                    .storage
+                } else if page == .history {
+                    .allCommits
+                } else {
+                    page.section.flatMap(ShortcutCommand.page)
+                }
+            toolTip = command?.toolTip
         } else {
             toolTip = nil
         }

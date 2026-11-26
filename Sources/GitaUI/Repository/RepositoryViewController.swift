@@ -167,6 +167,15 @@ final class RepositoryViewController: NSViewController {
             $0.codeFontChanged()
             $0.rebuildSidebar()
         }
+        notificationObservations.append(
+            center.addObserver(forName: .gitaStorageCacheChanged, object: nil, queue: .main) { [weak self] note in
+                let changed = note.object as? Set<String>
+                MainActor.assumeIsolated {
+                    guard let self, let root = self.model.snapshot?.root else { return }
+                    let key = root.resolvingSymlinksInPath().standardizedFileURL.path
+                    if changed == nil || changed?.contains(key) == true { self.rebuildSidebar() }
+                }
+            })
         workspaceObservation = WorkspaceMonitor.shared.observe { [weak self] _ in
             guard let self, self.view.window != nil else { return }
             self.rebuildSidebar()

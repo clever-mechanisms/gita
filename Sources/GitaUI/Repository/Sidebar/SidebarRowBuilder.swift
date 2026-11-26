@@ -94,6 +94,11 @@ struct SidebarRowBuilder {
         rows += stashRows()
         if !filtering {
             rows += providerPages()
+            rows.append(
+                .nav(
+                    Nav(
+                        target: .page(.storage), title: String(localized: "Storage & Health"),
+                        symbol: "internaldrive", count: input.storageSize ?? "", selected: false)))
         } else if rows.count == 3 {
             rows.append(.empty(String(localized: "No matching references")))
         }
