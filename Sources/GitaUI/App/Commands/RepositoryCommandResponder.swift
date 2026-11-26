@@ -30,6 +30,8 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     func removeFromRepositoryList(_ paths: [String]) { host?.removeFromRepositoryList(paths) }
     func openStackedBranches(baseBranch: String?) { host?.openStackedBranches(baseBranch: baseBranch) }
     func openLineHistory(range: LineRangeSpec) { host?.openLineHistory(range: range) }
+    func inspectStorage(at root: URL) { host?.inspectStorage(at: root) }
+    func invalidateStorage(repositoryRoot root: URL) { host?.invalidateStorage(repositoryRoot: root) }
 
     // MARK: Remotes and the working copy
 

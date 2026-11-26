@@ -26,9 +26,13 @@ protocol RepositoryCommands: AnyObject {
     func deleteRemoteTag(_ name: String, on remote: String)
     func openStackedBranches(baseBranch: String?)
     func openLineHistory(range: LineRangeSpec)
+    func inspectStorage(at root: URL)
+    func invalidateStorage(repositoryRoot root: URL)
 }
 
 extension RepositoryCommands {
     func openStackedBranches(baseBranch _: String?) {}
     func openLineHistory(range _: LineRangeSpec) {}
+    func inspectStorage(at _: URL) {}
+    func invalidateStorage(repositoryRoot _: URL) {}
 }

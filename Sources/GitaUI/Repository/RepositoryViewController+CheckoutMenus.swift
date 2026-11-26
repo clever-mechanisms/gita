@@ -37,6 +37,10 @@ extension RepositoryViewController {
         menu.addItem(MenuAction(String(localized: "Reveal in Finder"), symbol: "folder") { OpenIn.finder(url) })
         menu.addItem(
             MenuAction(String(localized: "Open in Terminal"), symbol: "apple.terminal") { OpenIn.terminal(url) })
+        menu.addItem(
+            MenuAction(String(localized: "Inspect Storage & Health…"), symbol: "internaldrive") { [weak self] in
+                self?.commands?.inspectStorage(at: url)
+            })
         menu.addItem(remoteItem(url))
         if let agents = agentsItem(url) { menu.addItem(agents) }
         if !isMain,
@@ -133,13 +137,18 @@ extension RepositoryViewController {
             detail: tree.path + (activity.map { "\n\n" + $0 } ?? ""), action: String(localized: "Remove"))
         confirmation.present(on: window) { [weak self] in
             guard let self, self.model.service === service else { return }
-            self.model.perform(String(localized: "Remove worktree")) { current in
-                let latest = try await current.snapshot(limit: 1)
-                guard latest.worktrees.contains(tree), latest.root.path != tree.path else {
-                    throw StaleStateError.worktreeChanged
-                }
-                try await current.removeWorktree(path: URL(fileURLWithPath: tree.path))
-            }
+            self.model.perform(
+                String(localized: "Remove worktree"),
+                onSuccess: { [weak self] in
+                    self?.commands?.invalidateStorage(repositoryRoot: snapshot.root)
+                },
+                operation: { current in
+                    let latest = try await current.snapshot(limit: 1)
+                    guard latest.worktrees.contains(tree), latest.root.path != tree.path else {
+                        throw StaleStateError.worktreeChanged
+                    }
+                    try await current.removeWorktree(path: URL(fileURLWithPath: tree.path))
+                })
         }
     }
 }

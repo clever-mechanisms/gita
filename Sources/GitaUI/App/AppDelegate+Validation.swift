@@ -82,6 +82,9 @@ extension AppDelegate {
         if menuItem.action == #selector(startBisect) {
             return model.snapshot != nil && model.service != nil && !model.isMutating
         }
+        if menuItem.action == #selector(showRepositoryHealth) {
+            return (tabsController?.selectedRepository ?? model.snapshot?.root) != nil
+        }
         if menuItem.action == #selector(checkForUpdates) {
             menuItem.title =
                 updater.pendingVersion.map { String(localized: "Install Update \($0)…") }

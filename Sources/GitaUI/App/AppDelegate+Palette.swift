@@ -44,6 +44,12 @@ extension AppDelegate {
         #selector(startBisect): [
             "bisect", "regression", "find bug", "git bisect",
         ],
+        #selector(showStorageInspector): [
+            "storage", "disk", "space", "bloat", "clean", "node_modules", "trash", "worktree size", "reclaim",
+        ],
+        #selector(showRepositoryHealth): [
+            "health", "maintenance", "gc", "garbage collection", "fsmonitor", "untracked cache", "commit-graph",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).

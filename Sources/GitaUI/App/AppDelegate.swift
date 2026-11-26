@@ -46,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var reflogWindows: [String: ReflogWindowController] = [:]
     var codeSearchWindows: [String: CodeSearchWindowController] = [:]
     var lineHistoryWindows: [String: LineHistoryWindowController] = [:]
+    /// On-demand Storage Inspector & Repository Health utility window.
+    lazy var storageWindowController = StorageWindowController(store: environment.storageStore)
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment

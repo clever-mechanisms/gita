@@ -3,16 +3,22 @@ import Foundation
 /// Where a checkout keeps its Git data, read from disk without running Git. A main checkout's `.git` is a folder;
 /// a linked worktree's `.git` is a file naming its own folder (`gitdir: …/.git/worktrees/name`), whose `commondir`
 /// leads back to the shared folder with the refs.
-enum GitDirectoryLocator {
-    struct Location: Equatable {
+public enum GitDirectoryLocator {
+    public struct Location: Equatable, Sendable {
         /// HEAD and the index.
-        let gitDirectory: URL
+        public let gitDirectory: URL
         /// Refs and packed refs; the same as `gitDirectory` in a main checkout.
-        let commonDirectory: URL
+        public let commonDirectory: URL
+
+        public init(gitDirectory: URL, commonDirectory: URL) {
+            self.gitDirectory = gitDirectory
+            self.commonDirectory = commonDirectory
+        }
     }
+
     private static let fileLimit = 4_096
 
-    static func locate(checkout root: URL, fileManager: FileManager = .default) -> Location? {
+    public static func locate(checkout root: URL, fileManager: FileManager = .default) -> Location? {
         let dotGit = root.appendingPathComponent(".git")
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: dotGit.path, isDirectory: &isDirectory) else { return nil }

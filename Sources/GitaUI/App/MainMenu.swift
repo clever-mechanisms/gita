@@ -176,6 +176,12 @@ struct MainMenu {
             String(localized: "Start Git Bisect…"), #selector(AppDelegate.startBisect), in: repo,
             symbol: "scope")
         item(
+            String(localized: "Storage & Health…"), #selector(AppDelegate.showStorageInspector), in: repo,
+            symbol: "internaldrive")
+        item(
+            String(localized: "Repository Health & Maintenance…"), #selector(AppDelegate.showRepositoryHealth),
+            in: repo, symbol: "wrench.and.screwdriver")
+        item(
             String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
             in: repo,
             symbol: "globe")

@@ -59,6 +59,12 @@ final class PaneDetail: NSView {
             button.toolTip = String(localized: "Opens this checkout in a new Gitā tab.")
             actions.append(button)
         }
+        let storageButton = PartsButton.app(
+            String(localized: "Inspect Storage"),
+            icon: Deck.symbol("internaldrive", size: 13, color: Theme.secondaryText)
+        ) { owner()?.onInspectStorage?(folder) }
+        storageButton.toolTip = String(localized: "Inspects disk usage and reclaimable caches for this checkout.")
+        actions.append(storageButton)
         return actions
     }
 

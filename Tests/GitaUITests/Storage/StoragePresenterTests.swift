@@ -1,0 +1,108 @@
+import AppKit
+import Foundation
+import Testing
+
+@testable import GitaCore
+@testable import GitaUI
+
+@Suite struct StoragePresenterTests {
+    let presenter = StoragePresenter()
+    let root = URL(fileURLWithPath: "/sample/repo")
+
+    @Test func byteFormattingAndProportions() {
+        let report = StoragePresentationFixture.report(root)
+        #expect(presenter.formatBytes(1_000) == ByteCountFormatter.string(fromByteCount: 1_000, countStyle: .file))
+        let segments = presenter.summarySegments(for: report)
+        #expect(segments.map(\.bytes) == [40, 8, 52])
+        #expect(segments.map(\.fraction) == [0.40, 0.08, 0.52])
+        #expect(segments.allSatisfy { !$0.tooltip.isEmpty })
+    }
+
+    @Test func outlineShowsBranchesAgentsAndStalenessAndRestrictsSelection() {
+        let report = StoragePresentationFixture.report(root)
+        let nodes = presenter.outlineNodes(
+            for: report, activeAgentPaths: [root.path + "/linked"],
+            now: StoragePresentationFixture.now)
+        #expect(nodes.map(\.bytes) == [40, 50, 10])
+        #expect(nodes[0].children.map(\.bytes) == [10, 5, 25])
+        #expect(nodes[1].branch == "topic")
+        #expect(nodes[1].warning != nil)
+        #expect(nodes[2].warning == nil)
+        #expect(nodes[1].caption == String(localized: "Stale · \(45)d ago"))
+        #expect(nodes[1].children.filter(\.isSelectable).map(\.title) == ["node_modules"])
+        #expect(nodes.allSatisfy { !$0.isSelectable })
+    }
+
+    @MainActor @Test func outlineOffersCheckboxOnlyOnReclaimableRow() throws {
+        let report = StoragePresentationFixture.report(root)
+        let nodes = presenter.outlineNodes(for: report, activeAgentPaths: [], now: StoragePresentationFixture.now)
+        let view = StorageOutlineView(frame: NSRect(x: 0, y: 0, width: 800, height: 450))
+        let outline = try #require(view.documentView as? NSOutlineView)
+        view.display(nodes)
+        outline.expandItem(nil, expandChildren: true)
+        var checks = [NSButton]()
+        for row in 0..<outline.numberOfRows {
+            let item = try #require(outline.item(atRow: row))
+            let cell = view.outlineView(outline, viewFor: outline.outlineTableColumn, item: item)
+            checks += (cell as? NSStackView)?.arrangedSubviews.compactMap { $0 as? NSButton } ?? []
+        }
+        #expect(checks.count == 1)
+        let checkbox = try #require(checks.first)
+        checkbox.performClick(nil)
+        #expect(view.checked == Set([root.path + "/linked/node_modules"]))
+    }
+
+    @Test func ranksWorkspaceAgainstLargestReport() {
+        let small = StoragePresentationFixture.report(root)
+        let large = StoragePresentationFixture.report(root.appendingPathComponent("big"), gitBytes: 140)
+        let rows = presenter.workspaceRows(for: [small, large])
+        #expect(rows.map(\.root) == [large.mainRoot, small.mainRoot])
+        #expect(rows.map(\.share) == [1, 0.5])
+        #expect(rows.map(\.worktreeCount) == [2, 2])
+        #expect(rows.map(\.reclaimableBytes) == [8, 8])
+    }
+
+    @Test func healthCardsDescribeCustomHookAndSafeGCForActiveAgents() {
+        let external = "/external/orca-worktree"
+        let health = RepositoryHealthSnapshot(
+            repositoryRoot: root, worktreePaths: [root.path, external], fsMonitor: .customHook("./monitor"),
+            untrackedCache: .enabled, commitGraph: CommitGraphInfo(path: nil, modifiedAt: nil),
+            maintenance: GitMaintenanceInfo(
+                automatic: .disabled, isRegistered: true, looseObjects: 12,
+                packedObjects: 2, packs: 1, looseKiB: 4, packedKiB: 8))
+        #expect(
+            presenter.hasActiveAgent(
+                in: root, snapshot: health, report: nil, activeAgentPaths: [external + "/subdir"]))
+        #expect(
+            !presenter.hasActiveAgent(
+                in: root, snapshot: health, report: nil, activeAgentPaths: ["/other/repo"]))
+        #expect(
+            presenter.hasActiveAgent(
+                in: root, snapshot: nil, report: nil, activeAgentPaths: ["/other/repo"]))
+        let running = presenter.healthCards(for: health, actionState: .running("GC"), hasActiveAgent: true)
+        #expect(running.count == 5)
+        #expect(running.allSatisfy { !$0.enabled })
+        #expect(running[0].control == .button)
+        #expect(running[0].action == .replaceCustomFSMonitor("./monitor"))
+        #expect(running[0].detail.contains("./monitor"))
+        #expect(running[1].control == .toggle(true))
+        #expect(running[3].action == .garbageCollection(pruneNow: false))
+        #expect(running[3].detail.contains("12"))
+        let idle = presenter.healthCards(for: health, actionState: .idle, hasActiveAgent: false)
+        #expect(idle[3].action == .garbageCollection(pruneNow: true))
+    }
+
+    @Test func trashPlanSkipsActiveAgentsByDefaultAndWarnsWhenExplicit() throws {
+        let report = StoragePresentationFixture.report(root)
+        let linked = root.path + "/linked"
+        let bulk = presenter.trashPlan(report: report, entry: nil, checked: [], activeAgentPaths: [linked])
+        #expect(bulk.groups.isEmpty)
+        #expect(bulk.skippedActiveCount == 1)
+        let entry = try #require(report.checkouts.last?.heavyFolders.first)
+        let explicit = presenter.trashPlan(
+            report: report, entry: nil, checked: [entry.id], activeAgentPaths: [linked])
+        #expect(explicit.groups.count == 1)
+        #expect(explicit.activeAgentNames == ["linked"])
+        #expect(explicit.skippedActiveCount == 0)
+    }
+}

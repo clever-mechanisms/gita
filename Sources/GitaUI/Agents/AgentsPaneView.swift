@@ -10,6 +10,7 @@ final class AgentsPaneView: NSView, NSSearchFieldDelegate {
     var onReveal: ((AgentSession) -> Void)?
     var onOpenCheckout: ((URL) -> Void)?
     var onShowInHistory: ((Row) -> Void)?
+    var onInspectStorage: ((URL) -> Void)?
     var onNewWorktree: (() -> Void)?
     var canCreateWorktree = false { didSet { newWorktree.isEnabled = canCreateWorktree } }
 

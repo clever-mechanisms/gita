@@ -24,6 +24,8 @@ struct AppEnvironment {
     var statusBar: NSStatusBar
     /// Quitting, alerts, the pasteboard and other effects outside the shell's own windows.
     var system = AppSystemHooks()
+    /// On-demand repository storage & health cache (zero idle CPU, cancels scans on window close).
+    var storageStore = StorageStore()
 
     static let current = Self(
         isDevelopment: compiledForDevelopment, defaults: Preference.store, arguments: CommandLine.arguments,

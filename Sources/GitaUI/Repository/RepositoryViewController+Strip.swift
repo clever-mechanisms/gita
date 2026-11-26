@@ -111,6 +111,7 @@ extension RepositoryViewController {
         agentsPane.onReveal = { WindowAgents.shared.reveal($0) }
         agentsPane.onOpenCheckout = { [weak self] url in self?.openRepository(url) }
         agentsPane.onShowInHistory = { [weak self] row in self?.showInHistory(row) }
+        agentsPane.onInspectStorage = { [weak self] url in self?.commands?.inspectStorage(at: url) }
         agentsPane.onNewWorktree = { [weak self] in
             guard self?.model.canStartOperation == true else { return }
             self?.commands?.newWorktree()
