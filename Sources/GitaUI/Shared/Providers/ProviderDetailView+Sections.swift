@@ -108,9 +108,15 @@ extension ProviderDetailView {
             rows.append((String(localized: "Reason"), Deck.label(reason, color: Theme.failure)))
         }
         rows.append((String(localized: "Project"), Deck.label(ProviderDetailFacts.project(value))))
+        var vercelActions: [NSView] = []
         if let dashboard = Deck.safeWebURL(value.dashboardURL) {
-            let inspect = PartsButton.link(String(localized: "Inspect ↗"), size: 12) { Deck.open(dashboard) }
-            rows.append((String(localized: "Vercel"), Deck.hstack([inspect], spacing: 8)))
+            vercelActions.append(PartsButton.link(String(localized: "Inspect ↗"), size: 12) { Deck.open(dashboard) })
+        }
+        if Deck.safeWebURL(value.previewURL) != nil {
+            vercelActions.append(PartsButton.visualPreviewDiff(value, from: self))
+        }
+        if !vercelActions.isEmpty {
+            rows.append((String(localized: "Vercel"), Deck.hstack(vercelActions, spacing: 8)))
         }
         content.addArrangedSubview(grid(rows))
     }

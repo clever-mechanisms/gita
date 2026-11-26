@@ -49,6 +49,11 @@ final class FilePaneView: NSView {
     let tree = CommitTreeView()
     let changesSplit = DeckSplitView()
     private let filter = NSSearchField()
+    private let orderControl = SmartDiffFacade.shared.makeNarrativeOrderModeControl(mode: .pathTree)
+    private var orderMode: FileOrderMode = .pathTree
+    private var rawChanges: [FileChange] = []
+    private var rawAmendStaging = AmendStaging.off
+    private var rawCommitFiles: [FileChange] = []
     private let filterBar: NSStackView
     private let expandButton: PartsButton
     private let treeButton: PartsButton
@@ -94,8 +99,9 @@ final class FilePaneView: NSView {
                 .symbol("arrow.up", color: Deck.onAccent, size: 10),
                 .text(String(localized: "Push"), font: Theme.captionEmphasis, color: Deck.onAccent),
             ], background: .accent, accessibility: String(localized: "Push"))
-        filterBar = Deck.hstack([filter, expandButton, treeButton], spacing: 4)
+        filterBar = Deck.hstack([filter, orderControl, expandButton, treeButton], spacing: 4)
         super.init(frame: .zero)
+        orderControl.onChange = { [weak self] mode in self?.applyOrderMode(mode) }
         cleanPushButton.fixedHeight = 24
         cleanPushButton.horizontalPadding = 10
         cleanPushButton.cornerRadius = 6
@@ -217,14 +223,17 @@ final class FilePaneView: NSView {
 
     /// Local Changes' rows: conflicts and unstaged files above, staged files below.
     func showChanges(_ changes: [FileChange], amendStaging: AmendStaging = .off) {
-        unstaged.update(changes.filter { $0.isConflict || $0.isUnstaged })
+        rawChanges = changes
+        rawAmendStaging = amendStaging
+        let orderedUnstaged = ordered(changes.filter { $0.isConflict || $0.isUnstaged })
+        unstaged.update(orderedUnstaged)
         let amendFiles: [FileChange]
         if case .armed(_, _, let files) = amendStaging {
             amendFiles = files
-            staged.update(files)
+            staged.update(ordered(files))
         } else {
             amendFiles = []
-            staged.update(changes.filter { !$0.isConflict && $0.isStaged })
+            staged.update(ordered(changes.filter { !$0.isConflict && $0.isStaged }))
         }
         isWorkingTreeClean = changes.isEmpty && amendFiles.isEmpty
         updateCleanEmptyState()
@@ -241,8 +250,25 @@ final class FilePaneView: NSView {
     }
 
     func showCommitFiles(_ files: [FileChange]) {
-        commitFiles.update(files)
+        rawCommitFiles = files
+        commitFiles.update(ordered(files))
         updateFolderButtons()
+    }
+
+    private func applyOrderMode(_ mode: FileOrderMode) {
+        guard orderMode != mode else { return }
+        orderMode = mode
+        let useTree = mode == .pathTree && Preference.filesAsTree.bool(defaults)
+        for list in allLists { list.showsTree = useTree }
+        showChanges(rawChanges, amendStaging: rawAmendStaging)
+        showCommitFiles(rawCommitFiles)
+    }
+
+    private func ordered(_ files: [FileChange]) -> [FileChange] {
+        guard orderMode != .pathTree else { return files }
+        return SmartDiffFacade.shared.orderFiles(files, mode: orderMode)
+            .flatMap(\.entries)
+            .compactMap(\.fileChange)
     }
 
     /// Highlights the selected file in its list (in Local Changes, in the staged or unstaged section only).

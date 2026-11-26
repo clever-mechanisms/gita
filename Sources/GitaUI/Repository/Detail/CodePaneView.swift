@@ -11,6 +11,17 @@ final class CodePaneView: NSView {
     private let pathLabel = Style.label("", size: 11, color: Theme.secondaryText)
     let layoutControl = NSSegmentedControl(
         labels: DiffLayout.allCases.map(\.title), trackingMode: .selectOne, target: nil, action: nil)
+    let smartDiffButton = PartsButton(
+        [
+            .symbol("sparkles", color: Theme.secondaryText, size: 11),
+            .text(String(localized: "Smart"), font: Theme.caption, color: Theme.secondaryText),
+        ],
+        background: .hover,
+        accessibility: String(localized: "Smart Diff"))
+    private var smartDiffController: SmartDiffViewController?
+    private(set) var isSmartDiffEnabled = false
+    private var lastSmartDiffText = ""
+    private var lastSmartDiffPath = ""
     let optionsButton = PartsButton(
         [
             .symbol("gearshape", color: Theme.secondaryText, size: 11),
@@ -34,6 +45,7 @@ final class CodePaneView: NSView {
     var onDiscardLines: ((IndexSet) -> Void)?
     var onDiffOptionsChanged: ((DiffOptions) -> Void)?
     var onOpenInEditor: ((Int?) -> Void)?
+    var onJumpToFileLine: ((String, Int) -> Void)?
 
     override init(frame frameRect: NSRect) {
         DiffPreference.registerDefaults()
@@ -42,7 +54,7 @@ final class CodePaneView: NSView {
         diffView.preferredLayout = DiffPreference.layout(diffView.defaults)
         whitespaceNotice.isHidden = true
 
-        let header = Style.stack([pathLabel, layoutControl, optionsButton, findButton], spacing: 6)
+        let header = Style.stack([pathLabel, smartDiffButton, layoutControl, optionsButton, findButton], spacing: 6)
         header.edgeInsets = NSEdgeInsets(top: 0, left: 10, bottom: 0, right: 8)
         pathLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         for view in [header, whitespaceNotice, diffView] as [NSView] {
@@ -95,6 +107,14 @@ final class CodePaneView: NSView {
         findButton.toolTip = String(localized: "Find in Diff  ⌘F")
         findButton.setAccessibilityIdentifier("diff.findButton")
         findButton.onClick = { [weak self] in self?.diffView.openFind() }
+
+        smartDiffButton.fixedHeight = 20
+        smartDiffButton.horizontalPadding = 6
+        smartDiffButton.cornerRadius = 5
+        smartDiffButton.spacing = 4
+        smartDiffButton.toolTip = String(localized: "Toggle Smart Diff (noise-canceling, move-aware, structured)")
+        smartDiffButton.setAccessibilityIdentifier("diff.smartButton")
+        smartDiffButton.onClick = { [weak self] in self?.toggleSmartDiff() }
     }
 
     private func wireDiffCallbacks() {
@@ -108,9 +128,56 @@ final class CodePaneView: NSView {
     }
 
     private func updateHeaderForMedia(_ isImage: Bool) {
+        smartDiffButton.isHidden = isImage
         layoutControl.isHidden = isImage
         optionsButton.isHidden = isImage
         findButton.isHidden = isImage
+        if isImage, isSmartDiffEnabled { setSmartDiffEnabled(false) }
+    }
+
+    func toggleSmartDiff() { setSmartDiffEnabled(!isSmartDiffEnabled) }
+
+    func setSmartDiffEnabled(_ enabled: Bool) {
+        guard isSmartDiffEnabled != enabled else { return }
+        isSmartDiffEnabled = enabled
+        smartDiffButton.background = enabled ? .tinted : .hover
+        if enabled {
+            let controller = smartDiffController ?? makeSmartDiffController()
+            controller.view.isHidden = false
+            diffView.isHidden = true
+            reloadSmartDiffIfNeeded()
+        } else {
+            smartDiffController?.view.isHidden = true
+            diffView.isHidden = false
+        }
+    }
+
+    func updateSmartDiff(diffText: String, filePath: String) {
+        lastSmartDiffText = diffText
+        lastSmartDiffPath = filePath
+        reloadSmartDiffIfNeeded()
+    }
+
+    private func makeSmartDiffController() -> SmartDiffViewController {
+        let controller = SmartDiffFacade.shared.makeSmartDiffViewController { [weak self] path, line in
+            self?.onJumpToFileLine?(path, line)
+        }
+        smartDiffController = controller
+        let smartView = controller.view
+        addSubview(smartView)
+        smartView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            smartView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            smartView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            smartView.topAnchor.constraint(equalTo: whitespaceNotice.bottomAnchor),
+            smartView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+        return controller
+    }
+
+    private func reloadSmartDiffIfNeeded() {
+        guard isSmartDiffEnabled, let controller = smartDiffController else { return }
+        controller.presenter.load(diffText: lastSmartDiffText, filePath: lastSmartDiffPath)
     }
 
     @objc private func changeLayout() {

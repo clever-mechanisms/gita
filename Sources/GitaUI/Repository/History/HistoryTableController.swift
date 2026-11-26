@@ -17,6 +17,8 @@ final class HistoryTableController: NSObject, NSTableViewDataSource, NSTableView
     let headerClip = NSClipView()
     let workingChangesRow = WorkingChangesRowView()
     lazy var workingRowHeight = workingChangesRow.heightAnchor.constraint(equalToConstant: 0)
+    let velocitySparkline = SmartDiffFacade.shared.makeVelocitySparklineView()
+    lazy var sparklineHeight = velocitySparkline.heightAnchor.constraint(equalToConstant: 0)
     weak var delegate: (any HistoryTableDelegate)?
     /// The columns need fitting again on the next layout pass of the window's content.
     var repositoryRoot: () -> String? = { nil }

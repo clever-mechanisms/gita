@@ -92,12 +92,13 @@ extension RepositoryViewController {
         let scroll = historyTable.scroll
         let header = historyTable.headerClip
         let filters = historyControls.filterBar
+        let sparkline = historyTable.velocitySparkline
         let working = historyTable.workingChangesRow
-        for row in [header, filters, working, scroll, loadMore] as [NSView] {
+        for row in [header, filters, sparkline, working, scroll, loadMore] as [NSView] {
             historyTop.addSubview(row)
             row.translatesAutoresizingMaskIntoConstraints = false
         }
-        let fullWidth = [header, filters, working, scroll].flatMap { row in
+        let fullWidth = [header, filters, sparkline, working, scroll].flatMap { row in
             [
                 row.leadingAnchor.constraint(equalTo: historyTop.leadingAnchor),
                 row.trailingAnchor.constraint(equalTo: historyTop.trailingAnchor),
@@ -110,7 +111,8 @@ extension RepositoryViewController {
             fullWidth + [
                 filters.topAnchor.constraint(equalTo: historyTop.topAnchor),
                 filters.heightAnchor.constraint(equalToConstant: 26),
-                header.topAnchor.constraint(equalTo: filters.bottomAnchor),
+                sparkline.topAnchor.constraint(equalTo: filters.bottomAnchor), historyTable.sparklineHeight,
+                header.topAnchor.constraint(equalTo: sparkline.bottomAnchor),
                 header.heightAnchor.constraint(equalToConstant: historyTable.header.frame.height),
                 working.topAnchor.constraint(equalTo: header.bottomAnchor), historyTable.workingRowHeight,
                 scroll.topAnchor.constraint(equalTo: working.bottomAnchor),

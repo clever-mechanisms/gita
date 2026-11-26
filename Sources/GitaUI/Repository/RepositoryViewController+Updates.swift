@@ -16,9 +16,12 @@ extension RepositoryViewController {
             scheduleHistoryDetailOverlay()
         case .history:
             filterHistory()
+            refreshVelocitySparkline()
             rebuildSidebar()
         case .commitDraft: showCommitField()
-        case .historyAppearance: applyHistoryAppearance()
+        case .historyAppearance:
+            applyHistoryAppearance()
+            refreshVelocitySparkline()
         case .section:
             guard sectionChanged() else { return }
             scheduleHistoryDetailOverlay()
@@ -28,6 +31,7 @@ extension RepositoryViewController {
             syncQuickLookSelection()
         case .diff:
             showDiff()
+            syncSmartDiff()
             selectShownFile()
         case .providers: providersChanged()
         case .activity: break
@@ -55,6 +59,7 @@ extension RepositoryViewController {
         indexAgents()
         rebuildSidebar()
         filterHistory()
+        refreshVelocitySparkline()
         rebuildSelection()
         refreshPage()
         refreshStrip()
