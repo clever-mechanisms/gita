@@ -22,6 +22,7 @@ final class CodePaneView: NSView {
     private(set) var isSmartDiffEnabled = false
     private var lastSmartDiffText = ""
     private var lastSmartDiffPath = ""
+    private var retrySmartDiff: (() -> Void)?
     let optionsButton = PartsButton(
         [
             .symbol("gearshape", color: Theme.secondaryText, size: 11),
@@ -147,6 +148,7 @@ final class CodePaneView: NSView {
     func setSmartDiffEnabled(_ enabled: Bool) {
         guard isSmartDiffEnabled != enabled else { return }
         isSmartDiffEnabled = enabled
+        updateReviewedHunksVisibility()
         smartDiffButton.background = enabled ? .tinted : .hover
         if enabled {
             let controller = smartDiffController ?? makeSmartDiffController()
@@ -159,7 +161,8 @@ final class CodePaneView: NSView {
         }
     }
 
-    func updateSmartDiff(diffText: String, filePath: String) {
+    func updateSmartDiff(diffText: String, filePath: String, retry: (() -> Void)? = nil) {
+        retrySmartDiff = retry
         lastSmartDiffText = diffText
         lastSmartDiffPath = filePath
         reloadSmartDiffIfNeeded()
@@ -183,19 +186,25 @@ final class CodePaneView: NSView {
     }
 
     func setReviewedHunksBar(_ bar: ReviewedHunksBarView?) {
-        for subview in reviewedHunksSlot.subviews { subview.removeFromSuperview() }
-        if let bar {
-            Deck.pin(bar, in: reviewedHunksSlot)
-            reviewedHunksSlot.isHidden = false
-            reviewedHunksHeight.constant = 32
-        } else {
-            reviewedHunksSlot.isHidden = true
-            reviewedHunksHeight.constant = 0
+        if reviewedHunksSlot.subviews.first !== bar {
+            for subview in reviewedHunksSlot.subviews { subview.removeFromSuperview() }
+            if let bar { Deck.pin(bar, in: reviewedHunksSlot) }
         }
+        updateReviewedHunksVisibility()
+    }
+
+    private func updateReviewedHunksVisibility() {
+        let hidden = isSmartDiffEnabled || reviewedHunksSlot.subviews.isEmpty
+        reviewedHunksSlot.isHidden = hidden
+        reviewedHunksHeight.constant = hidden ? 0 : 32
     }
 
     private func reloadSmartDiffIfNeeded() {
         guard isSmartDiffEnabled, let controller = smartDiffController else { return }
+        if let retrySmartDiff {
+            controller.presenter.fail(lastSmartDiffText, retry: retrySmartDiff)
+            return
+        }
         if BinaryDiffSummary.isBinaryDiff(lastSmartDiffText) {
             controller.presenter.fail(String(localized: "Binary files are not supported in Smart Diff.")) {
                 [weak self] in

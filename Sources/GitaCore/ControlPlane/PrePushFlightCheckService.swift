@@ -11,10 +11,6 @@ public actor PrePushFlightCheckService {
         let root: String
         let sha: String
 
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.root == rhs.root && lhs.sha == rhs.sha
-        }
-
         func hash(into hasher: inout Hasher) {
             hasher.combine(root)
             hasher.combine(sha)
@@ -29,14 +25,6 @@ public actor PrePushFlightCheckService {
     private var recency: [Key] = []
     public init() {}
 
-    public func cachedResult(for root: URL, commitSHA: String) -> FlightCheckResult? {
-        cache[Key(root: root.standardizedFileURL.resolvingSymlinksInPath().path, sha: commitSHA)]
-    }
-
-    public func cancel(for root: URL) {
-        runs[root.standardizedFileURL.resolvingSymlinksInPath().path]?.task.cancel()
-    }
-
     @discardableResult
     public func run(
         gitService git: GitService, command: FlightCheckCommand, force: Bool = false,
@@ -44,7 +32,7 @@ public actor PrePushFlightCheckService {
     ) async -> Completion {
         let root = git.root.standardizedFileURL.resolvingSymlinksInPath().path
         let previous = runs[root]
-        cancel(for: git.root)
+        previous?.task.cancel()
         let id = UUID()
         let task = Task {
             _ = await previous?.task.value
@@ -72,7 +60,7 @@ public actor PrePushFlightCheckService {
             let sha = GitOutput.withoutTerminalLF(try await git.execute(["rev-parse", "--verify", "HEAD"]).text)
             guard GitParsers.isObjectID(sha) else { throw GitError.invalidReference }
             let key = Key(root: root, sha: sha)
-            if !force, let hit = cachedResult(for: git.root, commitSHA: sha), hit.command == command {
+            if !force, let hit = cache[key], hit.command == command {
                 touch(key)
                 return Completion(state: hit.succeeded ? .passed(hit) : .failed(hit), cached: true)
             }
@@ -113,12 +101,10 @@ public actor PrePushFlightCheckService {
             let (code, tail) = try await FlightCheckProcess.run(command: command, at: folder) { output in
                 await update(.running(commitSHA: sha, startedAt: started, tail: output))
             }
-            let finished = Date()
             result = .success(
                 FlightCheckResult(
                     commitSHA: sha, command: command, succeeded: code == 0,
-                    exitCode: code, duration: ProcessInfo.processInfo.systemUptime - startUptime, output: tail,
-                    finishedAt: finished))
+                    exitCode: code, duration: ProcessInfo.processInfo.systemUptime - startUptime, output: tail))
         } catch {
             result = .failure(error)
         }

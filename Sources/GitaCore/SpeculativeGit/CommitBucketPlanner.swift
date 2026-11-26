@@ -69,8 +69,7 @@ public enum CommitBucketPlanner {
         let old = lines.compactMap { Int($0.old) }
         return .init(
             id: "\(path):\(index.map(String.init) ?? "file")", path: path, hunkIndex: index,
-            header: header, summary: summary, patch: patch, addedLines: lines.count { $0.kind == "+" },
-            removedLines: lines.count { $0.kind == "-" }, oldLineStart: old.first, oldLineEnd: old.last,
+            header: header, summary: summary, patch: patch, oldLineStart: old.first, oldLineEnd: old.last,
             kind: kind)
     }
 

@@ -80,6 +80,7 @@ final class ProviderDetailView: NSView {
         super.init(frame: .zero)
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         let stack = Deck.vstack([content, footer], spacing: 8)
         Deck.pin(stack, in: self)

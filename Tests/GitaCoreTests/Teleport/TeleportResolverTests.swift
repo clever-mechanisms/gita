@@ -3,15 +3,6 @@ import Testing
 
 @testable import GitaCore
 
-extension TeleportResolver {
-    fileprivate func resolve(
-        _ raw: String, in repositories: [TeleportRepositoryEntry]
-    ) async throws -> TeleportResolution? {
-        guard let parsed = TeleportParser.parse(raw) else { return nil }
-        return try await resolve(parsed, in: repositories)
-    }
-}
-
 struct TeleportResolverTests: ProviderDetailFixtures {
     private let sha = String(repeating: "a", count: 40)
     private func entry(_ workspace: String, remote: String) -> TeleportRepositoryEntry {
@@ -29,19 +20,24 @@ struct TeleportResolverTests: ProviderDetailFixtures {
         }
         let resolver = TeleportResolver(runner: runner)
         let raw = "https://github.com/org/app/pull/4"
-        guard case .ambiguous(let choices) = try await resolver.resolve(raw, in: [a, b, a]) else {
+        guard
+            case .ambiguous(let choices) = try await resolver.resolve(
+                #require(TeleportParser.parse(raw)), in: [a, b, a])
+        else {
             Issue.record("Expected two workspaces")
             return
         }
         #expect(choices.map(\.workspaceID) == ["Studio", "Home"])
         #expect(choices.allSatisfy { $0.matchReason == .githubRemote })
-        let filtered = try await resolver.resolve("gita://open?workspace=Home&repo=org/app&pr=4", in: [a, b])
+        let filtered = try await resolver.resolve(
+            #require(TeleportParser.parse("gita://open?workspace=Home&repo=org/app&pr=4")), in: [a, b])
         guard case .resolved(let match) = filtered else {
             Issue.record("Expected Home")
             return
         }
         #expect(match.workspaceID == "Home")
-        let hinted = try await resolver.resolve("gita://open?repo=Client&workspace=Studio&run=8", in: [a, b])
+        let hinted = try await resolver.resolve(
+            #require(TeleportParser.parse("gita://open?repo=Client&workspace=Studio&run=8")), in: [a, b])
         guard case .resolved(let run) = hinted else {
             Issue.record("Expected workspace run")
             return
@@ -59,13 +55,16 @@ struct TeleportResolverTests: ProviderDetailFixtures {
             return .init(stdout: Data((ok ? sha + "\n" : "").utf8), stderr: Data(), exitCode: ok ? 0 : 1)
         }
         let resolver = TeleportResolver(runner: runner)
-        guard case .resolved(let commit) = try await resolver.resolve("aaaaaaa", in: [a]) else {
+        guard
+            case .resolved(let commit) = try await resolver.resolve(#require(TeleportParser.parse("aaaaaaa")), in: [a])
+        else {
             Issue.record("Expected a commit")
             return
         }
         #expect(commit.target == .commit(sha: sha, url: nil) && commit.matchReason == .localObject)
         for name in ["topic", "origin/topic"] {
-            guard case .resolved(let branch) = try await resolver.resolve(name, in: [a]) else {
+            guard case .resolved(let branch) = try await resolver.resolve(#require(TeleportParser.parse(name)), in: [a])
+            else {
                 Issue.record("Expected a branch")
                 return
             }
@@ -73,7 +72,7 @@ struct TeleportResolverTests: ProviderDetailFixtures {
         }
         let parsed = try #require(TeleportParser.parse("unseen"))
         #expect(try await resolver.resolve(parsed, in: [a]) == .notFound(parsed))
-        #expect(try await resolver.resolve("push changes", in: [a]) == nil)
+        #expect(TeleportParser.parse("push changes") == nil)
     }
 
     @Test func linkedProject() async throws {
@@ -86,7 +85,9 @@ struct TeleportResolverTests: ProviderDetailFixtures {
             vercelProjectName: "my-app", vercelTeamSlug: "studio")
         let resolver = TeleportResolver()
         for (raw, repo) in [("https://vercel.com/studio/prj_one/dpl_A", linked), ("https://my-app.vercel.app", known)] {
-            guard case .resolved(let match) = try await resolver.resolve(raw, in: [repo]) else {
+            guard
+                case .resolved(let match) = try await resolver.resolve(#require(TeleportParser.parse(raw)), in: [repo])
+            else {
                 Issue.record("Expected project match")
                 continue
             }
@@ -94,7 +95,8 @@ struct TeleportResolverTests: ProviderDetailFixtures {
         }
         let metadata = #"{"orgId":"team_one","projectId":"prj_one","projectName":"my-app"}"#
         try Data(metadata.utf8).write(to: root.appendingPathComponent(".vercel/project.json"))
-        let named = try await resolver.resolve("https://vercel.com/studio/my-app/dpl_A", in: [linked])
+        let named = try await resolver.resolve(
+            #require(TeleportParser.parse("https://vercel.com/studio/my-app/dpl_A")), in: [linked])
         guard case .resolved(let byName) = named else {
             Issue.record("Expected project.json name")
             return

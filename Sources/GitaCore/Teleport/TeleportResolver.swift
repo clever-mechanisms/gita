@@ -42,47 +42,41 @@ public struct TeleportResolver: Sendable {
     ) async throws -> TeleportDestination? {
         try Task.checkCancellation()
         let hosted = Self.githubTarget(parsed.query)
-        if let hint = parsed.repoHint, hint.lowercased() != hosted?.0.lowercased(),
-            !(await acceptsHint(hint, entry))
-        {
-            return nil
-        }
-        guard let matched = try await matchTarget(parsed, hosted: hosted, entry: entry) else { return nil }
-        return .init(
-            workspaceID: entry.workspaceID, workspaceTitle: entry.workspaceTitle, repoPath: entry.repoPath,
-            repoDisplayName: entry.displayName, target: matched.target, matchReason: matched.reason)
-    }
-
-    private func matchTarget(
-        _ parsed: ParsedTeleportInput, hosted: (String, TeleportTarget)?, entry: TeleportRepositoryEntry
-    ) async throws -> (target: TeleportTarget, reason: TeleportDestination.MatchReason)? {
+        guard await acceptsRepository(parsed.repoHint, hostedSlug: hosted?.0, entry: entry) else { return nil }
+        let target: TeleportTarget
+        let reason: TeleportDestination.MatchReason
         switch parsed.query {
         case .deepLink(let hint):
             guard let repository = await inferredRepository(entry) else { return nil }
-            let reason: TeleportDestination.MatchReason =
-                parsed.workspaceHint == nil && parsed.repoHint == nil ? .githubRemote : .workspaceHint
-            return (Self.target(hint, repository), reason)
+            target = Self.target(hint, repository)
+            reason = parsed.workspaceHint == nil && parsed.repoHint == nil ? .githubRemote : .workspaceHint
         case .deployment(let team, let project, let ref, let url):
             guard
                 await matchesDeployment(
                     team, project: project, ref: ref, hint: parsed.repoHint ?? parsed.workspaceHint, entry: entry)
-            else { return nil }
-            return (
-                .deployment(reference: ref, projectName: project ?? entry.vercelProjectName, url: url),
-                project == nil ? .workspaceHint : .vercelProject
-            )
+            else {
+                return nil
+            }
+            target = .deployment(reference: ref, projectName: project ?? entry.vercelProjectName, url: url)
+            reason = project == nil ? .workspaceHint : .vercelProject
         case .commit(nil, nil, let sha, let url):
             guard let sha = TeleportParser.sha(sha), let full = try await verify(sha + "^{commit}", entry) else {
                 return nil
             }
-            return (.commit(sha: full, url: url), .localObject)
+            target = .commit(sha: full, url: url)
+            reason = .localObject
         case .branch(nil, nil, let ref):
             guard let name = TeleportParser.branch(ref), try await hasBranch(name, entry) else { return nil }
-            return (.branch(name: name), .localBranch)
+            target = .branch(name: name)
+            reason = .localBranch
         default:
-            guard let (slug, target) = hosted, await matchesGitHub(slug, entry) else { return nil }
-            return (target, .githubRemote)
+            guard let (slug, hosted) = hosted, await matchesGitHub(slug, entry) else { return nil }
+            target = hosted
+            reason = .githubRemote
         }
+        return .init(
+            workspaceID: entry.workspaceID, workspaceTitle: entry.workspaceTitle, repoPath: entry.repoPath,
+            repoDisplayName: entry.displayName, target: target, matchReason: reason)
     }
 
     private static func target(_ hint: TeleportTargetHint, _ repo: GitHubRepository) -> TeleportTarget {
@@ -99,7 +93,8 @@ public struct TeleportResolver: Sendable {
         return try await verify("refs/remotes/" + remote, entry) != nil
     }
 
-    private func acceptsHint(_ hint: String, _ entry: TeleportRepositoryEntry) async -> Bool {
+    private func acceptsRepository(_ hint: String?, hostedSlug: String?, entry: TeleportRepositoryEntry) async -> Bool {
+        guard let hint, hint.lowercased() != hostedSlug?.lowercased() else { return true }
         let names = [
             entry.displayName, entry.repoPath.path, entry.repoPath.lastPathComponent, entry.vercelProjectName,
             entry.vercelProjectID,

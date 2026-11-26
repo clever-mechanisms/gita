@@ -177,6 +177,7 @@ struct ImageDiffViewTests {
     }
 
     @Test func repositoryWindowDisplaysImagesInLocalChangesTreeCompareAndFallsBackWhenCorrupt() async throws {
+        UITestSupport.bootstrap()
         let pngV1 = try Self.makeImageData(width: 96, height: 48, color: (30, 100, 220, 255), type: .png)
         let pngV2 = try Self.makeImageData(width: 120, height: 60, color: (220, 60, 40, 255), type: .png)
         let jpgData = try Self.makeImageData(width: 64, height: 64, color: (40, 180, 90, 255), type: .jpeg)
@@ -232,7 +233,10 @@ struct ImageDiffViewTests {
                 && fixture.controller.codePane.diffView.imageDiffView.isHidden
         }
 
-        // 4. Commit File Tree blob mode renders the committed PNG.
+        try await verifyCommittedImage(in: fixture)
+    }
+
+    private func verifyCommittedImage(in fixture: RepositoryWindowFixture) async throws {
         fixture.model.section = .history
         try await fixture.selectCommit("Add banner v1")
         fixture.controller.selectDetailTab(.tree)

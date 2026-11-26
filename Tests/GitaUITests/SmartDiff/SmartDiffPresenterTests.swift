@@ -37,23 +37,6 @@ struct SmartDiffPresenterTests {
         #expect(view.accessibilityPerformPress() && jumped?.representativeCommitID == "0")
     }
 
-    @Test func orderModesAndDisclosure() throws {
-        let file = NarrativeFileEntry(path: "Package.resolved", additions: 2, deletions: 1)
-        let presenter = NarrativeOrderPresenter(entries: [file])
-        let group = try #require(presenter.groups.first)
-        #expect(presenter.collapsedLayers.contains(group.layer))
-        let header = SmartDiffFacade.shared.makeNarrativeHeaderView(group: group, presenter: presenter)
-        #expect(header.accessibilityPerformPress())
-        #expect(!presenter.collapsedLayers.contains(group.layer))
-        #expect(header.isAccessibilityExpanded())
-        #expect(header.accessibilityLabel() == NarrativeOrderPresenter.summary(group))
-        presenter.toggle(group.layer)
-        #expect(!header.isAccessibilityExpanded())
-        presenter.setMode(.alphabetical)
-        #expect(presenter.groups.first?.entries == [file])
-        #expect(presenter.mode == .alphabetical)
-    }
-
     @Test func unifiedRowsAndMoveDestinations() async throws {
         let presenter = SmartDiffPresenter()
         #expect(presenter.state == .idle)

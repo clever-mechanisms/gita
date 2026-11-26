@@ -27,7 +27,7 @@ final class MenuPanelWindow: NSPanel {
         backgroundColor = .clear
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        animationBehavior = .utilityWindow
+        animationBehavior = Deck.reduceMotion ? .none : .utilityWindow
         collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient, .ignoresCycle]
         contentView = container
         container.addSubview(controller.view)

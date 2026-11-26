@@ -87,7 +87,7 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     }
 
     @objc func stash() {
-        if host?.repositoryController?.presentCreateStashSheet() == true { return }
+        if host?.repositoryController?.presentCreateStashSheet(alerts: system?.alerts ?? .standard) == true { return }
         prompt(String(localized: "Stash changes"), labels: [String(localized: "Message")], defaults: [""]) {
             [weak self] values in
             self?.model.perform(String(localized: "Stash")) { try await $0.stash(message: values[0]) }

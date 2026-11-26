@@ -195,6 +195,7 @@ extension AppDelegate {
         let progress = NSProgressIndicator()
         progress.style = .spinning
         progress.controlSize = .small
+        progress.usesThreadedAnimation = false
         progress.startAnimation(nil)
         let row = Style.stack([progress, label], spacing: 12)
         if let content = sheet.contentView {

@@ -50,45 +50,43 @@ extension AppDelegate {
         return entries
     }
 
-    func inspectTeleportInput(_ text: String) {
+    private func bindTeleportNavigation() {
         teleport.onTeleport = { [weak self] destination in
             self?.palette?.close()
             self?.navigate(to: destination)
         }
+    }
+
+    func inspectTeleportInput(_ text: String) {
+        bindTeleportNavigation()
         teleport.inspectPaletteInput(text, repositories: teleportRepositories())
     }
 
     func handleTeleportDeepLink(_ url: URL) -> Bool {
-        teleport.onTeleport = { [weak self] destination in
-            self?.palette?.close()
-            self?.navigate(to: destination)
-        }
+        bindTeleportNavigation()
         guard teleport.handleDeepLink(url, repositories: teleportRepositories()) else { return false }
-        Task { @MainActor [weak self] in await self?.awaitTeleportDeepLinkResolution() }
+        Task { @MainActor [weak self] in
+            await self?.completeDeepLink()
+        }
         return true
     }
 
-    private func awaitTeleportDeepLinkResolution() async {
+    private func completeDeepLink() async {
         for _ in 0..<60 {
-            if !stepTeleportResolution() { return }
-            try? await Task.sleep(for: .milliseconds(50))
+            if case .resolving = teleport.teleportPresenter.state {
+                try? await Task.sleep(for: .milliseconds(50))
+            } else {
+                finishTeleportResolution()
+                return
+            }
         }
-    }
-
-    private func stepTeleportResolution() -> Bool {
-        if case .resolving = teleport.teleportPresenter.state { return true }
-        finishTeleportResolution()
-        return false
     }
 
     private func finishTeleportResolution() {
         switch teleport.teleportPresenter.state {
-        case .resolved:
-            teleport.teleportPresenter.confirmTeleport()
-        case .ambiguous, .notFound, .failed:
-            showCommandPalette()
-        case .idle, .resolving:
-            break
+        case .resolved: teleport.teleportPresenter.confirmTeleport()
+        case .ambiguous, .notFound, .failed: showCommandPalette()
+        case .resolving, .idle: break
         }
     }
 
@@ -98,64 +96,61 @@ extension AppDelegate {
         }
         openRepositoryTab(destination.repoPath)
         showWindow()
-        navigateTarget(destination.target)
+        navigate(to: destination.target)
     }
 
-    private func navigateTarget(_ target: TeleportTarget) {
+    private func navigate(to target: TeleportTarget) {
         switch target {
         case .commit(let sha, _):
             model.section = .history
             repositoryController?.showCommit(id: sha)
         case .branch(let name):
-            focusBranch(named: name)
+            navigateToBranch(name)
         case .pullRequest, .workflowRun, .deployment:
-            navigateProviderTarget(target)
+            navigateToSignal(target)
         }
     }
 
-    private func navigateProviderTarget(_ target: TeleportTarget) {
-        if case .pullRequest(let number, _, _, let url) = target {
-            openProviderSection(.pullRequests, fallbackURL: url) { $0.pullRequest?.number == number }
-            return
+    private func navigateToSignal(_ target: TeleportTarget) {
+        switch target {
+        case .pullRequest(let number, _, _, let url):
+            model.section = .pullRequests
+            openSignal(fallback: url) { $0.pullRequest?.number == number }
+        case .workflowRun(let runID, _, _, _, let url):
+            model.section = .workflows
+            openWorkflowSignal(runID, fallback: url)
+        case .deployment(let reference, _, let url):
+            model.section = .deployments
+            openDeploymentSignal(reference, fallback: url)
+        default: break
         }
-        navigateRunOrDeploymentTarget(target)
     }
 
-    private func navigateRunOrDeploymentTarget(_ target: TeleportTarget) {
-        if case .workflowRun(let runID, _, _, _, let url) = target {
-            openProviderSection(.workflows, fallbackURL: url) { $0.matchesWorkflowRun(runID) }
-        } else if case .deployment(let reference, _, let url) = target {
-            openProviderSection(.deployments, fallbackURL: url) { $0.matchesDeployment(reference) }
+    private func openDeploymentSignal(_ reference: String, fallback url: URL?) {
+        openSignal(fallback: url) { $0.id == reference || $0.url?.absoluteString == reference }
+    }
+
+    private func openWorkflowSignal(_ runID: Int64, fallback url: URL?) {
+        openSignal(fallback: url) {
+            guard case .workflowRun(_, let id, _) = $0.target else { return false }
+            return id == runID
         }
     }
 
-    private func openProviderSection(
-        _ section: Section, fallbackURL: URL?, matching predicate: (ProviderItem) -> Bool
-    ) {
-        model.section = section
+    private func openSignal(fallback url: URL?, matching predicate: (ProviderItem) -> Bool) {
         if let match = model.allSignals.first(where: predicate) {
             repositoryController?.openProviderContext(match)
-        } else if let url = Deck.safeWebURL(fallbackURL) {
+        } else if let url = Deck.safeWebURL(url) {
             Deck.open(url)
         }
     }
 
-    private func focusBranch(named name: String) {
+    private func navigateToBranch(_ name: String) {
         model.section = .history
-        let ref = model.snapshot?.references.first {
+        if let ref = model.snapshot?.references.first(where: {
             $0.name == name || $0.fullName == name || $0.fullName == "refs/heads/\(name)"
+        }) {
+            model.focusHistory(on: ref)
         }
-        if let ref { model.focusHistory(on: ref) }
-    }
-}
-
-extension ProviderItem {
-    fileprivate func matchesWorkflowRun(_ runID: Int64) -> Bool {
-        if case .workflowRun(_, let id, _) = target { return id == runID }
-        return false
-    }
-
-    fileprivate func matchesDeployment(_ reference: String) -> Bool {
-        id == reference || url?.absoluteString == reference
     }
 }

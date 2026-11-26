@@ -114,7 +114,8 @@ import Testing
         cache.insert(2, for: "b")
         #expect(cache.value(for: "a") == 1)
         cache.insert(3, for: "c")
-        #expect(cache.count == 2 && cache.value(for: "b") == nil)
+        #expect(cache.value(for: "b") == nil)
+        #expect(cache.value(for: "a") == 1 && cache.value(for: "c") == 3)
         let steps = [GitRebaseStep(commitID: "abc")]
         let first = PlanFingerprint.hash(baseTree: "base", steps: steps)
         #expect(first.count == 64 && first == PlanFingerprint.hash(baseTree: "base", steps: steps))

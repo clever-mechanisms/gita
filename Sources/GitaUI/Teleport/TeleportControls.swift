@@ -57,6 +57,7 @@ enum TeleportControls {
         let spinner = NSProgressIndicator()
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.sizeToFit()
         spinner.setAccessibilityLabel(label)
         spinner.setAccessibilityIdentifier(id)

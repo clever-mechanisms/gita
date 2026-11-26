@@ -6,6 +6,7 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     typealias Execute = @MainActor (StashCreateRequest) async throws -> Void
     private var presenter: CreateStashPresenter
     private let execute: Execute
+    private var onEnd: ((NSApplication.ModalResponse) -> Void)?
     private let chrome = SheetChrome(
         title: String(localized: "Create Stash"), layout: .init(width: 640), identifier: "stash.create",
         styleMask: [.titled])
@@ -43,14 +44,20 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     }
 
     static func present(
-        on parent: NSWindow, alerts: AlertPresenter = .shared, changes: [FileChange], selectedPaths: [String],
+        on parent: NSWindow, alerts: AlertPresenter = .standard, changes: [FileChange], selectedPaths: [String],
         execute: @escaping Execute, completion: @escaping @MainActor (Bool) -> Void
     ) {
         let sheet = Self(presenter: .init(changes: changes, selectedPaths: selectedPaths), execute: execute)
-        alerts.beginSheet(sheet.chrome.window, parent) { [sheet] response in
+        var finished = false
+        let finish: @MainActor (NSApplication.ModalResponse) -> Void = { response in
+            guard !finished else { return }
+            finished = true
+            sheet.onEnd = nil
             sheet.chrome.window.orderOut(nil)
             completion(response == .OK)
         }
+        sheet.onEnd = finish
+        alerts.beginSheet(sheet.chrome.window, parent) { response in finish(response) }
         sheet.chrome.fit()
         sheet.chrome.window.makeFirstResponder(sheet.message)
     }
@@ -63,6 +70,7 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     @objc private func changeKeep() { presenter.setKeepIndex(keep.state == .on) }
 
     private func create() {
+        presenter.message = message.stringValue
         guard let request = presenter.begin() else { return }
         render()
         Task {
@@ -78,7 +86,11 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     }
 
     private func end(_ response: NSApplication.ModalResponse) {
-        chrome.window.sheetParent?.endSheet(chrome.window, returnCode: response)
+        if let parent = chrome.window.sheetParent {
+            parent.endSheet(chrome.window, returnCode: response)
+        } else {
+            onEnd?(response)
+        }
     }
 
     private func render() {

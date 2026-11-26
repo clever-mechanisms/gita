@@ -43,44 +43,20 @@ public struct ArenaWorkspace: Sendable, Equatable {
 }
 
 public struct ArenaBuildCheckResult: Sendable, Equatable {
-    public let command: [String]
     public let exitCode: Int32
     public let outputExcerpt: String
     public let durationSeconds: TimeInterval
     public var succeeded: Bool { exitCode == 0 }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.command == rhs.command
-            && lhs.exitCode == rhs.exitCode
-            && lhs.outputExcerpt == rhs.outputExcerpt
-            && lhs.durationSeconds == rhs.durationSeconds
-    }
 }
 
 public struct ArenaContestantOutcome: Sendable, Equatable {
-    public let contestant: ArenaContestantID
-    public let config: ArenaAgentConfig
     public let worktreePath: URL
     public let branchName: String
     public let agentExitCode: Int32
-    public let agentOutputExcerpt: String
     public let diffFromBase: String
     public let changedFiles: [String]
     public let durationSeconds: TimeInterval
     public let checkResult: ArenaBuildCheckResult?
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.contestant == rhs.contestant
-            && lhs.config == rhs.config
-            && lhs.worktreePath == rhs.worktreePath
-            && lhs.branchName == rhs.branchName
-            && lhs.agentExitCode == rhs.agentExitCode
-            && lhs.agentOutputExcerpt == rhs.agentOutputExcerpt
-            && lhs.diffFromBase == rhs.diffFromBase
-            && lhs.changedFiles == rhs.changedFiles
-            && lhs.durationSeconds == rhs.durationSeconds
-            && lhs.checkResult == rhs.checkResult
-    }
 }
 
 public enum ArenaContestantStatus: Sendable, Equatable {
@@ -97,13 +73,9 @@ public struct ArenaComparison: Sendable, Equatable {
     public let isDiffTruncated: Bool
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.runID == rhs.runID
-            && lhs.prompt == rhs.prompt
-            && lhs.baseCommit == rhs.baseCommit
-            && lhs.alpha == rhs.alpha
-            && lhs.beta == rhs.beta
-            && lhs.alphaVsBetaDiff == rhs.alphaVsBetaDiff
-            && lhs.isDiffTruncated == rhs.isDiffTruncated
+        (lhs.runID, lhs.prompt, lhs.baseCommit) == (rhs.runID, rhs.prompt, rhs.baseCommit)
+            && (lhs.alpha, lhs.beta) == (rhs.alpha, rhs.beta)
+            && (lhs.alphaVsBetaDiff, lhs.isDiffTruncated) == (rhs.alphaVsBetaDiff, rhs.isDiffTruncated)
     }
 }
 

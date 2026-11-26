@@ -4,6 +4,19 @@ import Testing
 @testable import GitaCore
 
 @Suite struct WorkflowCleanupBranchStackTests {
+    @Test func restackErrorDescriptions() {
+        let checkout = "/repos/feature worktree"
+        let messages: [(BranchStackError, String)] = [
+            (.updateRefsUnsupported, String(localized: "Restacking requires Git 2.38 or later.")),
+            (.branchCheckedOutInOtherWorktree(checkout), String(localized: "A branch is checked out at \(checkout).")),
+            (.emptyStack, String(localized: "Choose a stack with at least one layer.")),
+            (.noBaseBranch, String(localized: "Choose a base branch for this stack.")),
+        ]
+        for (error, message) in messages {
+            #expect(error.errorDescription == message)
+        }
+    }
+
     private func topology(_ tips: [String], base: String = "root") -> BranchStackTopologyInput {
         func ref(_ name: String, _ commit: String) -> GitReference {
             GitReference(name: name, fullName: "refs/heads/" + name, commit: commit, kind: .branch)

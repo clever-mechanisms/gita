@@ -6,6 +6,17 @@ import Testing
 
 @Suite @MainActor
 struct AgentControlFlightRecorderUITests {
+    @Test func writingMessagesIdentifyThePendingOperation() {
+        UITestSupport.bootstrap()
+        let cases: [(FlightWriteKind, String)] = [
+            (.enabling, "Enabling recording…"), (.disabling, "Disabling recording…"),
+            (.capturing, "Capturing snapshot…"), (.clearing, "Clearing snapshots…"),
+        ]
+        for (kind, message) in cases {
+            #expect(AgentFlightRecorderViewController.writingMessage(kind) == message)
+        }
+    }
+
     private func settle(_ presenter: FlightRecorderPresenter) async throws {
         try #require(
             await SharedFixtures.waitUntil(seconds: 20) {

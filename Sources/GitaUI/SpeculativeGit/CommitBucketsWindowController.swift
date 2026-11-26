@@ -25,6 +25,8 @@ final class CommitBucketsWindowController: NSWindowController, NSWindowDelegate 
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
+    func windowWillClose(_: Notification) { presenter.cancel() }
+
     func windowShouldClose(_: NSWindow) -> Bool { !presenter.isCommitting }
     override func close() {
         if !presenter.isCommitting { super.close() }

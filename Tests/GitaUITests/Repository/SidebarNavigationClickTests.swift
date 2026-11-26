@@ -60,6 +60,7 @@ struct SidebarNavigationClickTests {
     }
 
     @Test func clickDoubleClickAndCommandClickBehaveConsistentlyAcrossEveryRow() throws {
+        UITestSupport.bootstrap()
         let (defaults, suite) = try makeDefaults()
         defer { defaults.removePersistentDomain(forName: suite) }
         let fixture = makeSidebar(defaults: defaults)
@@ -98,9 +99,13 @@ struct SidebarNavigationClickTests {
         // Collapsed multi-checkout repository opens main/MRU checkout and expands on single click; Cmd-click opens tab.
         SidebarState.shared(defaults).repositoryExpansion[mainURL.path] = false
         sidebar.repositoriesPane.rebuild()
-        let repoRow = try rowIndex {
-            if case .repository(let repo, _) = $0 { repo.root == mainURL } else { false }
+        func repositoryRow(_ root: URL) throws -> Int {
+            try rowIndex {
+                guard case .repository(let repo, _) = $0 else { return false }
+                return repo.root == root
+            }
         }
+        let repoRow = try repositoryRow(mainURL)
         sidebar.click(repoRow)
         if case .repository(_, let expanded) = sidebar.rows[repoRow] {
             #expect(expanded)
@@ -109,9 +114,7 @@ struct SidebarNavigationClickTests {
         }
         #expect(opened.last?.path == mainURL.path)
 
-        let otherRow = try rowIndex {
-            if case .repository(let repo, _) = $0 { repo.root == otherURL } else { false }
-        }
+        let otherRow = try repositoryRow(otherURL)
         sidebar.currentModifiers = { .command }
         sidebar.click(otherRow)
         #expect(openedTabs.last?.path == otherURL.path)

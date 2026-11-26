@@ -27,51 +27,24 @@ public struct FileCollision: Identifiable, Sendable, Hashable {
     public let overlappingRanges: [LineRangeOverlap]
     public let hasMergeConflict: Bool
     public let previewContent: CollisionPreviewContent?
+    // periphery:ignore - CollisionRadarUITests uses this projection to find previews that require lazy loading.
+    public var conflictPreview: String? { previewContent?.text }
 }
 
 public struct WorktreeCollisionPair: Identifiable, Sendable, Hashable {
     public var id: String { sourceWorktree.path + "\0" + targetWorktree.path }
     public let sourceWorktree, targetWorktree: GitWorktree
-    public let mergeBase: String?
-    public let severity: CollisionSeverity
+    public var severity: CollisionSeverity { hasTreeConflict ? .high : collisions.map(\.severity).max() ?? .low }
     public let collisions: [FileCollision]
     public let mergeTreeMessages: [String]
     public let hasTreeConflict: Bool
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.sourceWorktree == rhs.sourceWorktree
-            && lhs.targetWorktree == rhs.targetWorktree
-            && lhs.mergeBase == rhs.mergeBase
-            && lhs.severity == rhs.severity
-            && lhs.collisions == rhs.collisions
-            && lhs.mergeTreeMessages == rhs.mergeTreeMessages
-            && lhs.hasTreeConflict == rhs.hasTreeConflict
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(sourceWorktree)
-        hasher.combine(targetWorktree)
-        hasher.combine(mergeBase)
-        hasher.combine(severity)
-        hasher.combine(collisions)
-        hasher.combine(mergeTreeMessages)
-        hasher.combine(hasTreeConflict)
-    }
 }
 
 public struct CollisionRadarReport: Sendable, Equatable {
-    public let repositoryRoot: URL
     public let scannedAt: Date
     public let worktrees: [GitWorktree]
     public let pairs: [WorktreeCollisionPair]
     public var highestSeverity: CollisionSeverity? { pairs.map(\.severity).max() }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.repositoryRoot == rhs.repositoryRoot
-            && lhs.scannedAt == rhs.scannedAt
-            && lhs.worktrees == rhs.worktrees
-            && lhs.pairs == rhs.pairs
-    }
 }
 
 public enum CollisionRadarState: Sendable, Equatable {

@@ -30,20 +30,21 @@ enum GitIgnoreInput {
         process.standardInput = input
         process.standardOutput = output
         process.standardError = errors
+        let termination = ProcessTermination()
+        process.terminationHandler = { finished in
+            termination.complete(finished.terminationStatus)
+        }
         try child.start(process)
         async let stdout = drain(output.fileHandleForReading)
         async let stderr = drain(errors.fileHandleForReading)
         let data = Data((paths.joined(separator: "\0") + "\0").utf8)
-        let status: Int32 = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .utility).async {
-                let handle = input.fileHandleForWriting
-                _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
-                do { try handle.write(contentsOf: data) } catch { child.stop(error) }
-                try? handle.close()
-                process.waitUntilExit()
-                continuation.resume(returning: process.terminationStatus)
-            }
+        DispatchQueue.global(qos: .utility).async {
+            let handle = input.fileHandleForWriting
+            _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+            do { try handle.write(contentsOf: data) } catch { child.stop(error) }
+            try? handle.close()
         }
+        let status = await termination.wait()
         let result = try await CommandResult(stdout: stdout, stderr: stderr, exitCode: status)
         try child.check()
         return result
@@ -89,5 +90,33 @@ private final class IgnoreChild: @unchecked Sendable {
 
     func check() throws {
         if let error = lock.withLock({ failure }) { throw error }
+    }
+}
+
+private final class ProcessTermination: @unchecked Sendable {
+    private let lock = NSLock()
+    private var status: Int32?
+    private var continuation: CheckedContinuation<Int32, Never>?
+
+    func complete(_ code: Int32) {
+        let waiting: CheckedContinuation<Int32, Never>? = lock.withLock {
+            guard status == nil else { return nil }
+            status = code
+            let existing = continuation
+            continuation = nil
+            return existing
+        }
+        waiting?.resume(returning: code)
+    }
+
+    func wait() async -> Int32 {
+        await withCheckedContinuation { continuation in
+            let finished: Int32? = lock.withLock {
+                if let status { return status }
+                self.continuation = continuation
+                return nil
+            }
+            if let finished { continuation.resume(returning: finished) }
+        }
     }
 }

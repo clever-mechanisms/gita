@@ -54,24 +54,15 @@ public actor ReviewedHunksStore {
 
     public func isReviewed(_ hash: ReviewedHunkHash) -> Bool { (try? load()[hash]) != nil }
 
-    public func markReviewed(_ hash: ReviewedHunkHash, filePath: String) throws {
-        var updated = try load()
-        updated[hash] = ReviewedHunkRecord(hash: hash, filePath: filePath, reviewedAt: Date())
-        try save(updated)
-    }
-
-    public func unmarkReviewed(_ hash: ReviewedHunkHash) throws {
-        var updated = try load()
-        if updated.removeValue(forKey: hash) != nil { try save(updated) }
-    }
-
     @discardableResult
     public func toggleReviewed(_ hash: ReviewedHunkHash, filePath: String) throws -> Bool {
-        if try load()[hash] != nil {
-            try unmarkReviewed(hash)
+        var updated = try load()
+        if updated.removeValue(forKey: hash) != nil {
+            try save(updated)
             return false
         }
-        try markReviewed(hash, filePath: filePath)
+        updated[hash] = ReviewedHunkRecord(hash: hash, filePath: filePath, reviewedAt: Date())
+        try save(updated)
         return isReviewed(hash)
     }
 
@@ -83,10 +74,4 @@ public actor ReviewedHunksStore {
         let saved = (try? load()) ?? [:]
         return ReviewedHunksProgress(reviewed: hashes.count { saved[$0] != nil }, total: hashes.count)
     }
-
-    public func clear(for filePath: String) throws {
-        try save(load().filter { $0.value.filePath != filePath })
-    }
-
-    public func clearAll() throws { try save([:]) }
 }

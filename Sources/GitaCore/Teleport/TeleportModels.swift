@@ -34,17 +34,9 @@ public struct ParsedTeleportInput: Sendable, Hashable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.query == rhs.query
-            && lhs.workspaceHint == rhs.workspaceHint
-            && lhs.repoHint == rhs.repoHint
-            && lhs.rawInput == rhs.rawInput
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(query)
-        hasher.combine(workspaceHint)
-        hasher.combine(repoHint)
-        hasher.combine(rawInput)
+        (lhs.query, lhs.workspaceHint, lhs.repoHint, lhs.rawInput) == (
+            rhs.query, rhs.workspaceHint, rhs.repoHint, rhs.rawInput
+        )
     }
 }
 
@@ -119,21 +111,8 @@ public struct TeleportDestination: Sendable, Hashable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.workspaceID == rhs.workspaceID
-            && lhs.workspaceTitle == rhs.workspaceTitle
-            && lhs.repoPath == rhs.repoPath
-            && lhs.repoDisplayName == rhs.repoDisplayName
-            && lhs.target == rhs.target
-            && lhs.matchReason == rhs.matchReason
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(workspaceID)
-        hasher.combine(workspaceTitle)
-        hasher.combine(repoPath)
-        hasher.combine(repoDisplayName)
-        hasher.combine(target)
-        hasher.combine(matchReason)
+        (lhs.workspaceID, lhs.workspaceTitle, lhs.repoPath) == (rhs.workspaceID, rhs.workspaceTitle, rhs.repoPath)
+            && (lhs.repoDisplayName, lhs.target, lhs.matchReason) == (rhs.repoDisplayName, rhs.target, rhs.matchReason)
     }
 }
 

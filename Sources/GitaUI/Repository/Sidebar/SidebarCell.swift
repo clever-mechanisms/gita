@@ -55,6 +55,7 @@ final class SidebarCell: NSTableCellView {
         trailing.setContentHuggingPriority(.required, for: .horizontal)
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         spinner.isHidden = true
         spinner.setAccessibilityLabel(String(localized: "Loading Repository"))

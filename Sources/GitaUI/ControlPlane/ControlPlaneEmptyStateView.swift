@@ -12,6 +12,7 @@ final class ControlPlaneEmptyStateView: NSView {
         super.init(frame: .zero)
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         let stack = Deck.vstack([spinner, message, action], spacing: 8)
         stack.alignment = .centerX

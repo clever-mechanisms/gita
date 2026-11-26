@@ -9,7 +9,6 @@ import Testing
             let path = "shared file\nwith newline"
             try repo.write(path, repo.lines())
             try await repo.commit()
-            let base = try await repo.git(["rev-parse", "HEAD"])
             let other = try await repo.sibling()
             try repo.write(path, repo.lines([10: "ours"]))
             try repo.write(path, repo.lines([10: "theirs"]), in: other)
@@ -19,14 +18,13 @@ import Testing
             let report = try await radar.scan(repositoryRoot: repo.root)
             let pair = try #require(report.pairs.first)
             #expect(report.highestSeverity == .high)
-            #expect(pair.mergeBase == base)
             #expect(pair.hasTreeConflict)
             #expect(pair.mergeTreeMessages.contains { $0.contains("CONFLICT") })
             let file = try #require(pair.collisions.first)
             #expect(file.path == path)
             #expect(file.hasMergeConflict)
             #expect(file.overlappingRanges.map(\.overlapStart) == [10])
-            let preview = try #require(file.previewContent?.text)
+            let preview = try #require(file.conflictPreview)
             #expect(["<<<<<<<", "|||||||", "line 10", "ours", "theirs", ">>>>>>>"].allSatisfy(preview.contains))
             #expect(
                 try await radar.conflictPreviewContent(
@@ -82,7 +80,7 @@ import Testing
             let radar = CollisionRadarService()
             let report = try await radar.scan(repositoryRoot: repo.root)
             let pair = try #require(report.pairs.first)
-            let previews = pair.collisions.compactMap { $0.previewContent?.text }
+            let previews = pair.collisions.compactMap(\.conflictPreview)
             #expect(pair.collisions.count == 11)
             #expect(previews.count == 10)
             #expect(pair.collisions.compactMap(\.previewContent).allSatisfy { $0.isTruncated })

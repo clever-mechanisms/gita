@@ -16,30 +16,38 @@ extension RepositoryViewController {
 
     func refreshVelocitySparkline() {
         let metrics = SmartDiffFacade.shared.zoomMetrics(for: historyTable.scale)
-        let shows = metrics.lod == .overview && (!historyTable.commits.isEmpty || model.isLoading)
+        let loading = model.isLoading && historyTable.commits.isEmpty
+        let shows = metrics.lod == .overview && (loading || !historyTable.commits.isEmpty)
         historyTable.velocitySparkline.isHidden = !shows
         historyTable.sparklineHeight.constant = shows ? 64 : 0
-        if shows {
-            if model.isLoading && historyTable.commits.isEmpty {
-                historyTable.velocitySparkline.presenter.setLoading()
-            } else {
-                SmartDiffFacade.shared.updateVelocitySparkline(
-                    historyTable.velocitySparkline, commits: historyTable.commits)
-            }
+        guard shows else { return }
+        if loading {
+            historyTable.velocitySparkline.presenter.setLoading()
+        } else {
+            SmartDiffFacade.shared.updateVelocitySparkline(
+                historyTable.velocitySparkline, commits: historyTable.commits)
         }
     }
 
     func syncSmartDiff() {
-        codePane.updateSmartDiff(diffText: model.diff, filePath: model.selectedFile?.path ?? "")
+        var retry: (() -> Void)?
+        if model.selection.diffFailed, let file = model.selectedFile {
+            retry = { [weak model] in model?.selectFile(file) }
+        }
+        codePane.updateSmartDiff(diffText: model.diff, filePath: model.selectedFile?.path ?? "", retry: retry)
     }
 
     private func jumpToSmartDiffTarget(path: String, line: Int) {
-        if model.selectedFile?.path != path { selectSmartDiffFile(path: path) }
+        if model.selectedFile?.path != path {
+            selectSmartDiffFile(path)
+        }
         if line > 0 { openInEditor(at: line) }
     }
 
-    private func selectSmartDiffFile(path: String) {
-        if model.section == .changes, let change = model.snapshot?.changes.first(where: { $0.path == path }) {
+    private func selectSmartDiffFile(_ path: String) {
+        if model.section == .changes,
+            let change = model.snapshot?.changes.first(where: { $0.path == path })
+        {
             chooseChange(change, staged: model.staged && change.isStaged)
         } else if let commitFile = model.files.first(where: { $0.path == path }) {
             model.selectFile(commitFile)

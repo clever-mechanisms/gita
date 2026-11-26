@@ -83,6 +83,7 @@ final class PullRequestReviewView: NSView {
     private func buildBar() -> NSStackView {
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         subtitle.lineBreakMode = .byTruncatingTail
         subtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -130,6 +131,7 @@ final class PullRequestReviewView: NSView {
         for page in [conversation, filePage] as [NSView] { Deck.pin(page, in: pageHost) }
         emptySpinner.style = .spinning
         emptySpinner.controlSize = .small
+        emptySpinner.usesThreadedAnimation = false
         emptySpinner.isDisplayedWhenStopped = false
         empty.alignment = .center
         emptyStack.alignment = .centerX

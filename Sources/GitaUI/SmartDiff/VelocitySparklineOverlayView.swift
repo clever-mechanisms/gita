@@ -18,6 +18,7 @@ final class VelocitySparklineOverlayView: NSView {
         super.init(frame: frame)
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         spinner.isHidden = true
         spinner.translatesAutoresizingMaskIntoConstraints = false

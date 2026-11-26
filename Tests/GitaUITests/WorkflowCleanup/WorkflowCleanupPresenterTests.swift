@@ -7,7 +7,7 @@ import Testing
 
 @Suite struct WorkflowCleanupPresenterTests {
     @MainActor @Test func utilityLayoutLeavesRoomForTheTableAndFooter() throws {
-        _ = NSApplication.shared
+        UITestSupport.bootstrap()
         let content = WorkflowWindowContent(title: "Stacked Branches", actionTitle: "Restack")
         let root = try #require(content.window.contentView)
         content.feedback("Complete", emptyMessage: "No stacks")
@@ -17,6 +17,14 @@ import Testing
         #expect(scroll.bounds.height > 200)
         #expect(content.action.frame.height > 0)
         #expect(!content.window.isVisible)
+    }
+
+    @Test func filterAndBadgeTitles() {
+        #expect(CleanupFilter.allCases.map(\.title) == ["All", "Merged", "Gone Upstream", "Stale", "Worktrees"])
+        let badges: [CleanupBadge] = [
+            .merged, .goneUpstream, .stale, .unmergedWarning, .dirtyWarning, .prunable, .failed,
+        ]
+        #expect(badges.map(\.title) == ["Merged", "Gone Upstream", "Stale", "Unmerged", "Dirty", "Prunable", "Failed"])
     }
 
     @Test func stashScopesAndLifecycle() throws {
@@ -54,7 +62,7 @@ import Testing
         let stash = GitStash(ref: "stash@{1}", subject: "saved changes")
         let copy = StashActionPresenter.dropConfirmation(stash)
         #expect(copy.title.contains("stash@{1}") && copy.informativeText.contains("saved changes"))
-        #expect(copy.isDestructive && !copy.confirmTitle.isEmpty)
+        #expect(copy.confirmTitle == String(localized: "Drop Stash"))
         #expect(StashActionPresenter.popRecoveryPrompt(for: .applied, stash: stash) == nil)
         let conflict = StashActionPresenter.popRecoveryPrompt(for: .conflictedStashKept("merge"), stash: stash)
         #expect(conflict?.title.contains("stash@{1}") == true && conflict?.informativeText.contains("merge") == true)
@@ -186,7 +194,7 @@ import Testing
     }
 
     @MainActor @Test func closingStackWindowDoesNotCancelInFlightRestack() async throws {
-        _ = NSApplication.shared
+        UITestSupport.bootstrap()
         let runner = DelayedRestackRunner()
         let service = GitService(root: URL(fileURLWithPath: "/tmp"), runner: runner)
         let controller = BranchStackWindowController(gitService: service)

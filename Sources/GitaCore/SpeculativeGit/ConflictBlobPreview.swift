@@ -23,7 +23,7 @@ extension SpeculativeGitService {
             data = try await gitService.execute(arguments, outputLimit: limit).stdout.prefix(limit)
         }
         let excerpt = Self.decode(data, truncated: limit < size)
-        return .init(path: path, treeID: treeID, excerpt: excerpt, truncated: limit < size, totalByteCount: size)
+        return .init(excerpt: excerpt, truncated: limit < size, totalByteCount: size)
     }
 
     private static func decode(_ data: Data, truncated: Bool) -> String {

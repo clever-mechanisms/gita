@@ -51,7 +51,7 @@ import Testing
                 let (one, two) = try await (a, b)
                 #expect(one.agentExitCode == 0)
                 #expect(one.checkResult?.succeeded == true)
-                #expect(two.checkResult?.command == check)
+                #expect(two.checkResult?.succeeded == true)
                 #expect(one.changedFiles == [prompt, "shared"])
                 #expect(two.diffFromBase.contains("+beta"))
                 let comparison = try await arena.compare(

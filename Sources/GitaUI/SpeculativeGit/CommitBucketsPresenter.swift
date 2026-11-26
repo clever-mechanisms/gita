@@ -227,9 +227,7 @@ import GitaCore
         state = next
         onChange?()
     }
-    func cancel() { cancelBackgroundWork() }
-
-    func cancelBackgroundWork() {
+    func cancel() {
         switch state {
         case .suggesting, .loading:
             work.cancel()

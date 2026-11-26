@@ -5,8 +5,6 @@ struct SpeculativeLRUCache<Key: Hashable & Sendable, Value: Sendable>: Sendable 
     let capacity: Int
     private var values: [Key: Value] = [:]
     private var recency: [Key] = []
-    var count: Int { values.count }
-
     init(capacity: Int = 64) { self.capacity = max(0, capacity) }
 
     mutating func value(for key: Key) -> Value? {
@@ -19,7 +17,7 @@ struct SpeculativeLRUCache<Key: Hashable & Sendable, Value: Sendable>: Sendable 
         guard capacity > 0 else { return }
         values[key] = value
         touch(key)
-        if count > capacity { values.removeValue(forKey: recency.removeFirst()) }
+        if recency.count > capacity { values.removeValue(forKey: recency.removeFirst()) }
     }
 
     private mutating func touch(_ key: Key) {

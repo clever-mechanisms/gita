@@ -6,7 +6,7 @@ import Testing
 
 @Suite @MainActor
 struct AgentControlReviewedHunksUITests {
-    @Test func progressFiltersPersistenceAndClear() async throws {
+    @Test func progressFiltersAndPersistence() async throws {
         UITestSupport.bootstrap()
         let repo = try TemporaryRepository()
         let url = repo.url.appending(path: "reviewed.json")
@@ -32,15 +32,11 @@ struct AgentControlReviewedHunksUITests {
         #expect(selected.map { $0.accessibilityLabel() } == [String(localized: "Reviewed")])
         let reopened = ReviewedHunksStore(storageURL: url)
         #expect(await reopened.isReviewed(hashes[1]))
-        presenter.toggle(hash: hashes[0], filePath: "source")
-        presenter.clearFile("source")
+        presenter.toggle(hash: hashes[1], filePath: "source")
         presenter.cancel()
         await presenter.queue.last?.value
         #expect(presenter.progress?.reviewed == 0)
-        presenter.toggle(hash: hashes[2], filePath: "source")
-        presenter.clearAll()
-        await presenter.queue.last?.value
-        #expect(!presenter.isReviewed(hashes[2]))
+        #expect(!presenter.isReviewed(hashes[1]))
     }
 
     @Test func accessibleToggleInvokesAction() {
@@ -81,23 +77,12 @@ struct AgentControlReviewedHunksUITests {
         let facade = AgentControlFacade(flightRecorder: service)
         let radar = facade.makeCollisionRadarViewController(for: repo.url)
         let flight = facade.makeFlightRecorderViewController(for: repo.url)
-        let presenter = facade.makeReviewedHunksPresenter(for: repo.url)
-        #expect(
-            facade.makeReviewedHunksBar(presenter: presenter).accessibilityIdentifier() == "agentControl.review.bar")
         #expect(radar.view.accessibilityIdentifier() == "agentControl.radar.root")
         #expect(flight.view.accessibilityIdentifier() == "agentControl.flight.root")
         let event = AgentHookEvent.claude(event: "Stop", input: Data(#"{"session_id":"test-session"}"#.utf8), pids: [])
         await service.setEnabled(true, for: repo.url)
-        facade.handleHookEvent(event, repositoryRoot: repo.url)
-        #expect(await service.isEnabled(for: repo.url))
-        let deadline = ContinuousClock.now + .seconds(20)
-        var capturedCount = 0
-        while ContinuousClock.now < deadline {
-            capturedCount = (try? await service.listSnapshots(in: repo.url, key: "test-session").count) ?? 0
-            if capturedCount == 1 { break }
-            try await Task.sleep(for: .milliseconds(25))
-        }
-        #expect(capturedCount == 1)
+        await facade.handleHookEvent(event, repositoryRoot: repo.url).value
+        #expect(try await service.listSnapshots(in: repo.url, key: "test-session").count == 1)
         flight.presenter.load()
         try #require(await SharedFixtures.waitUntil(seconds: 20) { flight.presenter.diff != nil })
         #expect(flight.presenter.selectedTurn?.trigger == .agentStop)

@@ -4,6 +4,7 @@ import GitaCore
 /// Local Changes: choosing, staging and unstaging files, and the commit footer.
 extension RepositoryViewController {
     func wireFileLists() {
+        codePane.diffView.onReviewDocumentChange = { [weak self] in self?.syncReviewedHunks() }
         wireQuickLook()
         wireSmartDiff()
         filePane.isMutating = { [weak self] in self?.model.isMutating ?? false }

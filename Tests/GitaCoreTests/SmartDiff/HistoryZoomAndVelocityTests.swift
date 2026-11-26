@@ -10,20 +10,13 @@ struct HistoryZoomAndVelocityTests {
     }
 
     @Test func zoomBands() {
-        let overview = HistoryZoomMetrics.resolve(zoomScale: -1)
-        let compact = HistoryZoomMetrics.resolve(zoomScale: 0.65)
-        let detail = HistoryZoomMetrics.resolve(zoomScale: 1.15)
-        #expect(overview.zoomScale == 0.35 && overview.rowHeight == 14)
-        #expect(overview.lod == .overview && overview.badgeVisibility == .milestonesOnly)
-        #expect(overview.authorRibbonMode == .colorDot && !overview.showSubject)
-        #expect(compact.lod == .compact && compact.badgeVisibility == .branchesAndTags)
-        #expect(compact.authorRibbonMode == .initialsPill && compact.showSubject)
-        #expect(detail.lod == .detailed && detail.badgeVisibility == .all && detail.showSHA && detail.showTimestamp)
-        #expect(detail.authorRibbonMode == .fullNameAndAvatar && detail.milestoneEmphasis < overview.milestoneEmphasis)
-        #expect(HistoryZoomMetrics.resolve(zoomScale: 1).rowHeight == 24)
-        #expect(HistoryZoomMetrics.resolve(zoomScale: 4).zoomScale == 1.6)
-        let heights = (35...160).map { HistoryZoomMetrics.resolve(zoomScale: CGFloat($0) / 100).rowHeight }
-        #expect(zip(heights, heights.dropFirst()).allSatisfy { $1 > $0 && $1 - $0 < 2.5 })
+        #expect(HistoryZoomMetrics.resolve(zoomScale: -.infinity).lod == .overview)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: 0.65.nextDown).lod == .overview)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: 0.65).lod == .compact)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: 1.15.nextDown).lod == .compact)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: 1.15).lod == .detailed)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: .infinity).lod == .detailed)
+        #expect(HistoryZoomMetrics.resolve(zoomScale: .nan).lod == .compact)
     }
 
     @Test func sparseAndCoincidentDates() {

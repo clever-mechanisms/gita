@@ -134,7 +134,7 @@ struct SubmodulesAndLFSTests {
         #expect(!verifiedLocks[1].isOwnedByCurrentUser)
 
         let textLocks = GitService.parseLFSLocksText("models/weights.bin\tBob\tID:99\n")
-        #expect(textLocks == [LFSLockEntry(id: "99", path: "models/weights.bin", owner: "Bob", lockedAt: nil)])
+        #expect(textLocks == [LFSLockEntry(id: "99", path: "models/weights.bin", owner: "Bob")])
 
         let tempCache = FileManager.default.temporaryDirectory
             .appendingPathComponent("GitaLFSCache-\(UUID().uuidString)", isDirectory: true)

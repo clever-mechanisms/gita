@@ -2,46 +2,17 @@ import Foundation
 
 public struct DiffMoveEndpoint: Sendable, Equatable, Hashable {
     public let filePath: String
-    public let hunkIndex: Int
     public let lineIndices: Range<Int>
     public let displayStartLine: Int
     public let displayEndLine: Int
 
     fileprivate var summary: String { String(localized: "\(filePath), lines \(displayStartLine)–\(displayEndLine)") }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.filePath == rhs.filePath
-            && lhs.hunkIndex == rhs.hunkIndex
-            && lhs.lineIndices == rhs.lineIndices
-            && lhs.displayStartLine == rhs.displayStartLine
-            && lhs.displayEndLine == rhs.displayEndLine
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(filePath)
-        hasher.combine(hunkIndex)
-        hasher.combine(lineIndices)
-        hasher.combine(displayStartLine)
-        hasher.combine(displayEndLine)
-    }
 }
 
 public struct DiffMoveMatch: Identifiable, Sendable, Equatable {
     public let id: String
     public let source: DiffMoveEndpoint
     public let destination: DiffMoveEndpoint
-    public let lineCount: Int
-    public let nonTrivialLineCount: Int
-    public let previewLine: String
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id
-            && lhs.source == rhs.source
-            && lhs.destination == rhs.destination
-            && lhs.lineCount == rhs.lineCount
-            && lhs.nonTrivialLineCount == rhs.nonTrivialLineCount
-            && lhs.previewLine == rhs.previewLine
-    }
 }
 
 public enum DiffMoveRole: Sendable, Equatable {
@@ -67,15 +38,7 @@ public enum DiffMoveDetector {
     private struct Block {
         let endpoint: DiffMoveEndpoint
         let content: [String]
-        let count: Int
-        let preview: String
         let removed: Bool
-    }
-
-    public static func detect(
-        in document: DiffDocument, filePath: String, minimumNonTrivialLines: Int = 3
-    ) -> DiffMoveAnalysis {
-        detect(in: [filePath: document], minimumNonTrivialLines: minimumNonTrivialLines)
     }
 
     public static func detect(
@@ -116,17 +79,17 @@ public enum DiffMoveDetector {
             let slice = lines[start..<index]
             let content = slice.map { DiffLineContent.normalize(String($0.text.dropFirst())) }
             let significant = content.filter { !$0.isEmpty && !["{", "}", "[", "]", "(", ")"].contains($0) }
-            guard significant.count >= threshold, let preview = significant.first, let last = slice.last else {
+            guard significant.count >= threshold, let last = slice.last else {
                 continue
             }
             let removed = first.kind == "-"
             let endpoint = DiffMoveEndpoint(
-                filePath: path, hunkIndex: hunk, lineIndices: start..<index,
+                filePath: path, lineIndices: start..<index,
                 displayStartLine: Int(removed ? first.old : first.new) ?? start + 1,
                 displayEndLine: Int(removed ? last.old : last.new) ?? index)
             emit(
                 Block(
-                    endpoint: endpoint, content: content, count: significant.count, preview: preview, removed: removed))
+                    endpoint: endpoint, content: content, removed: removed))
         }
     }
 
@@ -143,10 +106,7 @@ public enum DiffMoveDetector {
             let source = block.endpoint
             let destination = candidates[cursor].endpoint
             let id = "\(source.filePath):\(source.lineIndices.lowerBound)"
-            matches.append(
-                DiffMoveMatch(
-                    id: id, source: source, destination: destination, lineCount: block.content.count,
-                    nonTrivialLineCount: block.count, previewLine: block.preview))
+            matches.append(DiffMoveMatch(id: id, source: source, destination: destination))
             let toSummary = destination.summary
             let fromSummary = source.summary
             for index in source.lineIndices {

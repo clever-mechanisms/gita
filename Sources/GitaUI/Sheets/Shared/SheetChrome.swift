@@ -211,6 +211,7 @@ final class SheetChrome {
     private func configureStatus(identifier: String) {
         progress.style = .spinning
         progress.controlSize = .small
+        progress.usesThreadedAnimation = false
         progress.isDisplayedWhenStopped = false
         progress.widthAnchor.constraint(equalToConstant: Metrics.spinnerSide).isActive = true
         progress.heightAnchor.constraint(equalToConstant: Metrics.spinnerSide).isActive = true

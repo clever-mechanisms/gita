@@ -4,7 +4,10 @@ import GitaCore
 /// The small sheets Git commands ask with: text fields, a branch picker, a mainline parent, a confirmation. Each
 /// shows through `alerts` on `window`.
 @MainActor
-enum RepositoryPrompts {
+struct RepositoryPrompts {
+    let window: NSWindow
+    let alerts: AlertPresenter
+
     private static let fieldWidth: CGFloat = 360
     private static let pickerWidth: CGFloat = 390
     private static let fieldRowHeight = 56
@@ -41,24 +44,18 @@ enum RepositoryPrompts {
         window.attachedSheet?.makeFirstResponder(fields.first)
     }
 
-    /// Confirmation and optional conflict-preview callbacks for a prompt.
-    struct PromptCallbacks<Value> {
-        var onPreview: (@MainActor (Value) -> Void)?
-        var action: @MainActor (Value) -> Void
-    }
-
     /// Merge (with a strategy) or rebase: the branch or commit, preselected when given, else main or master.
-    static func reference(
-        rebase: Bool, snapshot: RepositorySnapshot, preselect: String?, on window: NSWindow,
-        alerts: AlertPresenter,
-        callbacks: PromptCallbacks<(ref: String, mode: GitMergeMode)>
+    func reference(
+        rebase: Bool, snapshot: RepositorySnapshot, preselect: String?,
+        onPreview: (@MainActor (_ ref: String, _ mode: GitMergeMode) -> Void)? = nil,
+        action: @escaping @MainActor (_ ref: String, _ mode: GitMergeMode) -> Void
     ) {
         let title = rebase ? GitOperationKind.rebase.localizedTitle : GitOperationKind.merge.localizedTitle
         let alert = NSAlert()
         alert.messageText = String(localized: "\(title) · \(snapshot.localizedBranch)")
         alert.addButton(withTitle: title)
         alert.addButton(withTitle: String(localized: "Cancel"))
-        if callbacks.onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
+        if onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
         let pick = ReferencePick(references: snapshot.references)
         let picker = NSComboBox()
         picker.addItems(withObjectValues: pick.names)
@@ -76,33 +73,33 @@ enum RepositoryPrompts {
             rebase
             ? [Style.label(String(localized: "Onto")), picker] : [Style.label(String(localized: "From")), picker, mode]
         let stack = Style.stack(rows, vertical: true, spacing: 8)
-        stack.frame = NSRect(x: 0, y: 0, width: pickerWidth, height: rebase ? 62 : 98)
-        picker.widthAnchor.constraint(equalToConstant: pickerWidth).isActive = true
+        stack.frame = NSRect(x: 0, y: 0, width: Self.pickerWidth, height: rebase ? 62 : 98)
+        picker.widthAnchor.constraint(equalToConstant: Self.pickerWidth).isActive = true
         alert.accessoryView = stack
         alerts.present(alert, on: window) { response in
             let ref = pick.resolve(selectedIndex: picker.indexOfSelectedItem, text: picker.stringValue)
             let chosenMode = GitMergeMode.allCases[max(0, mode.indexOfSelectedItem)]
             if response == .alertFirstButtonReturn {
-                callbacks.action((ref, chosenMode))
+                action(ref, chosenMode)
             } else if response == .alertThirdButtonReturn {
-                callbacks.onPreview?((ref, chosenMode))
+                onPreview?(ref, chosenMode)
             }
         }
         window.attachedSheet?.makeFirstResponder(picker)
     }
 
     /// Cherry-pick or revert `commit`; a merge asks which parent is the mainline (1-based).
-    static func commitOperation(
-        _ title: String, commit: GitCommit, branch: String, on window: NSWindow,
-        alerts: AlertPresenter,
-        callbacks: PromptCallbacks<Int?>
+    func commitOperation(
+        _ title: String, commit: GitCommit, branch: String,
+        onPreview: (@MainActor (_ mainline: Int?) -> Void)? = nil,
+        action: @escaping @MainActor (_ mainline: Int?) -> Void
     ) {
         let alert = NSAlert()
         alert.messageText = String(localized: "\(title) · \(branch)")
         alert.informativeText = commit.subject + "\n" + commit.id
         alert.addButton(withTitle: title)
         alert.addButton(withTitle: String(localized: "Cancel"))
-        if callbacks.onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
+        if onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
         let parent = NSPopUpButton()
         let isMerge = commit.parents.count > 1
         if isMerge {
@@ -113,15 +110,15 @@ enum RepositoryPrompts {
             parent.setAccessibilityLabel(String(localized: "Mainline parent"))
             let stack = Style.stack(
                 [Style.label(String(localized: "Mainline parent")), parent], vertical: true, spacing: 8)
-            stack.frame = NSRect(x: 0, y: 0, width: fieldWidth, height: 58)
+            stack.frame = NSRect(x: 0, y: 0, width: Self.fieldWidth, height: 58)
             alert.accessoryView = stack
         }
         alerts.present(alert, on: window) { response in
             let mainline = isMerge ? parent.indexOfSelectedItem + 1 : nil
             if response == .alertFirstButtonReturn {
-                callbacks.action(mainline)
+                action(mainline)
             } else if response == .alertThirdButtonReturn {
-                callbacks.onPreview?(mainline)
+                onPreview?(mainline)
             }
         }
     }

@@ -24,7 +24,8 @@ struct SelectionState {
     var files: [FileChange] = [] { didSet { filesRevision &+= 1 } }
     /// Changes whenever `files` is assigned, so views rebuild their rows only for a new list.
     private(set) var filesRevision = 0
-    var diff = ""
+    var diff = "" { didSet { diffFailed = false } }
+    var diffFailed = false
     /// Exact byte size when the selected tree blob is binary.
     var binaryBlobByteCount: Int64?
     /// The path whose diff is shown; a refresh of the same path keeps the reader's place.

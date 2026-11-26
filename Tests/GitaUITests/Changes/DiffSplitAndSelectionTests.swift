@@ -33,6 +33,37 @@ struct DiffSplitAndSelectionTests {
         }
     }
 
+    @Test func contextMenuStagesOrDiscardsOnlyChangedLines() async throws {
+        UITestSupport.bootstrap()
+        let view = DiffView(frame: .zero)
+        view.update(Self.sampleDiff, loading: false, path: "Sources/App.swift")
+        try await waitUntil("stageable diff") { view.document?.canApplyHunks == true }
+        let first = try #require(view.currentLines.firstIndex { $0.kind == "+" })
+        let single = IndexSet(integer: first)
+        let pair = IndexSet(first...first + 1)
+        var staged: IndexSet?
+        var discarded: IndexSet?
+        view.onStageLines = { staged = $0 }
+        view.onDiscardLines = { discarded = $0 }
+        view.hunkActionState = .init(showsActions: true, isStaged: false, isEnabled: true)
+        for (rows, suffix) in [(single, "1 line"), (pair, "2 lines")] {
+            let menu = try #require(view.contextMenu(for: rows))
+            for title in ["Stage \(suffix)", "Discard \(suffix)…"] {
+                let index = menu.indexOfItem(withTitle: title)
+                try #require(index >= 0)
+                menu.performActionForItem(at: index)
+            }
+            #expect(staged == rows && discarded == rows)
+            view.hunkActionState.isStaged = true
+            let unstage = try #require(view.contextMenu(for: rows))
+            #expect(unstage.item(withTitle: "Unstage \(suffix)") != nil)
+            #expect(unstage.item(withTitle: "Discard \(suffix)…") == nil)
+            view.hunkActionState.isStaged = false
+        }
+        view.hunkActionState.isEnabled = false
+        #expect(view.contextMenu(for: single)?.item(withTitle: "Stage 1 line") == nil)
+    }
+
     @Test func splitPresenterAlignsRowsAndFallsBackBelow900pt() {
         #expect(DiffSplitPresenter.effectiveLayout(preferred: .split, availableWidth: 900, isBlob: false) == .split)
         #expect(DiffSplitPresenter.effectiveLayout(preferred: .split, availableWidth: 899, isBlob: false) == .unified)

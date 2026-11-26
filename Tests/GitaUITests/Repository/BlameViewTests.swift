@@ -7,6 +7,33 @@ import Testing
 @MainActor
 @Suite("Streaming file blame view (§6c)", .serialized)
 struct BlameViewTests {
+    @Test func contextActionsUseTheSelectedLineAndRevision() throws {
+        UITestSupport.bootstrap()
+        let view = BlameView(frame: .zero)
+        let menu = NSMenu()
+        view.menuNeedsUpdate(menu)
+        #expect(menu.items.isEmpty)
+        let doc = BlameDocument(path: "README", revision: "abc", lines: ["first", "second"])
+        view.showLoading(path: doc.path, revision: doc.revision, partial: doc)
+        view.performClickOnRow(at: 1, optionPressed: false)
+        var history: LineRangeSpec?
+        var permalink: ClosedRange<Int>?
+        view.onShowLineHistory = { history = $0 }
+        view.onCopyPermalink = { path, revision, lines in
+            #expect(path == doc.path && revision == doc.revision)
+            permalink = lines
+        }
+        view.menuNeedsUpdate(menu)
+        #expect(menu.items.map(\.title) == ["Line History…", "Copy Permalink"])
+        for index in menu.items.indices { menu.performActionForItem(at: index) }
+        #expect(history == LineRangeSpec(path: "README", startLine: 2, endLine: 2, revision: "abc"))
+        #expect(permalink == 2...2)
+        view.onShowLineHistory = nil
+        view.onCopyPermalink = nil
+        view.menuNeedsUpdate(menu)
+        #expect(menu.items.isEmpty)
+    }
+
     @Test func blameLoadEnumAndHeatGlyphs() {
         var load = BlameLoad.idle
         #expect(!load.isLoading)

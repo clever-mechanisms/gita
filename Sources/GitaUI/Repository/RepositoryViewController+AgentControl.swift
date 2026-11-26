@@ -1,53 +1,62 @@
 import AppKit
 import GitaCore
 
-/// Content-hashed Reviewed Hunks bar integration in the repository diff pane.
 extension RepositoryViewController {
-    static weak var sharedAgentControlFacade: AgentControlFacade?
-    private static var fallbackAgentControlFacade: AgentControlFacade?
-    private static var reviewedPresenters: [ObjectIdentifier: (root: URL, presenter: ReviewedHunksPresenter)] = [:]
-
-    private var agentControlFacade: AgentControlFacade {
-        if let shared = Self.sharedAgentControlFacade { return shared }
-        if let existing = Self.fallbackAgentControlFacade { return existing }
-        let created = AgentControlFacade()
-        Self.fallbackAgentControlFacade = created
-        return created
-    }
+    static var sharedReviewedHunksProvider: (() -> ReviewedHunksRegistry?)?
+    private static let fallbackReviews = ReviewedHunksRegistry()
 
     func resetReviewedHunks() {
-        let key = ObjectIdentifier(self)
-        Self.reviewedPresenters.removeValue(forKey: key)?.presenter.cancel()
+        hunkReview?.presenter.cancel()
+        hunkReview = nil
+        clearHunkReviewControls()
+    }
+
+    private func clearHunkReviewControls() {
+        hunkReview?.bar.onChange = nil
         codePane.setReviewedHunksBar(nil)
+        codePane.diffView.reviewAction = nil
+        codePane.diffView.setHiddenReviewHunks([])
     }
 
     func syncReviewedHunks() {
-        guard let root = model.snapshot?.root, let path = model.selectedFile?.path, !model.diff.isEmpty else {
-            codePane.setReviewedHunksBar(nil)
+        let diff = codePane.diffView
+        guard !diff.isBlob, let document = diff.document, !document.hunks.isEmpty,
+            let path = diff.shownPath, let root = model.snapshot?.root
+        else {
+            clearHunkReviewControls()
             return
         }
-        let document = UnifiedDiff.parse(model.diff)
+        if hunkReview?.root != root {
+            hunkReview?.presenter.cancel()
+            let registry = Self.sharedReviewedHunksProvider?() ?? Self.fallbackReviews
+            let presenter = registry.makeReviewedHunksPresenter(for: root)
+            hunkReview = (root, presenter, ReviewedHunksBarView(presenter: presenter))
+        }
+        guard let review = hunkReview else { return }
         let hashes = document.hunks.map { hunk in
-            if !hunk.patch.isEmpty {
-                return ReviewedHunkHasher.hash(filePath: path, hunkPatch: hunk.patch)
-            }
+            if !hunk.patch.isEmpty { return ReviewedHunkHasher.hash(filePath: path, hunkPatch: hunk.patch) }
             let lines = document.lines.filter { $0.hunkIndex == hunk.index }.map(\.text)
             return ReviewedHunkHasher.hash(filePath: path, hunkLines: lines)
         }
-        guard !hashes.isEmpty else {
-            codePane.setReviewedHunksBar(nil)
-            return
+        let presenter = review.presenter
+        diff.reviewAction = { [weak presenter] index in
+            guard let presenter, hashes.indices.contains(index) else { return nil }
+            let hash = hashes[index]
+            return DiffHunkBar.ReviewAction(isReviewed: presenter.isReviewed(hash)) {
+                presenter.toggle(hash: hash, filePath: path)
+            }
         }
-        let key = ObjectIdentifier(self)
-        let presenter: ReviewedHunksPresenter
-        if let existing = Self.reviewedPresenters[key], existing.root == root {
-            presenter = existing.presenter
-        } else {
-            Self.reviewedPresenters[key]?.presenter.cancel()
-            presenter = agentControlFacade.makeReviewedHunksPresenter(for: root)
-            Self.reviewedPresenters[key] = (root, presenter)
-            codePane.setReviewedHunksBar(agentControlFacade.makeReviewedHunksBar(presenter: presenter))
+        review.bar.onChange = { [weak presenter, weak diff] in
+            guard let presenter, let diff, diff.shownPath == path, diff.document != nil else { return }
+            let hidden =
+                presenter.filterMode == .all
+                ? []
+                : Set(hashes.indices).subtracting(
+                    presenter.visibleHunkIndices(for: hashes))
+            diff.setHiddenReviewHunks(hidden)
+            diff.reconfigureVisibleRows()
         }
+        codePane.setReviewedHunksBar(review.bar)
         presenter.load(filePath: path, hashes: hashes)
     }
 }

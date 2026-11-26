@@ -38,4 +38,20 @@ struct NarrativeFileOrdererTests {
         #expect(sorted(.alphabetical) == ["z/A.swift", "a/B.mm", "a/CProtocol.swift", "a/Z.h"])
         #expect(NarrativeFileOrderer.group(files).first?.entries.first?.originalPath == "old")
     }
+
+    @Test func layerMetadataAndEntryEquality() {
+        for layer in NarrativeLayer.allCases {
+            #expect(!layer.displayTitle.isEmpty)
+            #expect(!layer.symbolName.isEmpty)
+        }
+        let changeA = FileChange(path: "a.swift", indexStatus: "M", worktreeStatus: " ")
+        let changeB = FileChange(path: "b.swift", indexStatus: "A", worktreeStatus: " ")
+        let entry1 = NarrativeFileEntry(changeA, additions: 3, deletions: 1)
+        let entry1Copy = NarrativeFileEntry(
+            path: "a.swift", originalPath: nil, additions: 3, deletions: 1, fileChange: changeA)
+        let entry2 = NarrativeFileEntry(changeB, additions: 5, deletions: 2)
+        #expect(entry1 == entry1Copy)
+        #expect(entry1 != entry2)
+        #expect(Set([entry1, entry1Copy, entry2]).count == 2)
+    }
 }

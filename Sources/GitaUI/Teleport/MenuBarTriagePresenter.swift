@@ -16,7 +16,6 @@ final class MenuBarTriagePresenter {
         }
     }
     private let service: MenuBarTriageService
-    private var task: Task<Void, Never>?
 
     init(item: TriageItem, service: MenuBarTriageService = .init()) {
         self.item = item
@@ -32,14 +31,8 @@ final class MenuBarTriagePresenter {
     func cancelConfirmation() { if state == .confirming { state = .idle } }
     func retry() { if case .failed = state { execute() } }
 
-    func reset() {
-        task?.cancel()
-        task = nil
-        state = .idle
-    }
-
     private func execute() {
-        task = Task { [weak self, service, item] in
+        Task { [weak self, service, item] in
             let result = await service.perform(item.kind)
             guard !Task.isCancelled, let self else { return }
             switch result {

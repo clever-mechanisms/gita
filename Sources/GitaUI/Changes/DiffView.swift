@@ -72,6 +72,9 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         didSet { applyTypographyChange() }
     }
     var copyText: (String) -> Void = { Deck.copy($0) }
+    var onReviewDocumentChange: (() -> Void)?
+    var reviewAction: ((Int) -> DiffHunkBar.ReviewAction?)?
+    var hiddenReviewHunks = Set<Int>()
     var onHunkSelection: (() -> Void)?
     var onStageHunk: ((Int) -> Void)?
     var onDiscardHunk: ((Int) -> Void)?
@@ -238,6 +241,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         parseTask?.cancel()
         document = nil
         reviewedText = ""
+        onReviewDocumentChange?()
         lastGutterAnchorRow = nil
         onHunkSelection?()
         if showBinaryOrImageIfNeeded(text: text, path: path, blob: blob, binaryBlobByteCount: binaryBlobByteCount) {
@@ -268,6 +272,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         splitRows = []
         findMatchRanges = [:]
         table.reloadData()
+        applyReviewFilter()
         updateSelectionBar()
         empty.stringValue = loading || hasText ? String(localized: "Loading…") : emptyMessage
         empty.isHidden = false
@@ -280,6 +285,7 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         splitRows = []
         findMatchRanges = [:]
         table.reloadData()
+        applyReviewFilter()
         updateSelectionBar()
         empty.isHidden = true
     }
@@ -309,8 +315,10 @@ final class DiffView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         isBlob = result.isBlob
         longestLine = result.longestLine
         reviewedText = text
+        onReviewDocumentChange?()
         lastGutterAnchorRow = nil
         table.reloadData()
+        applyReviewFilter()
         if let origin, let clip = scrollView?.contentView {
             let maxY = max(0, table.bounds.height - clip.bounds.height)
             clip.scroll(to: NSPoint(x: origin.x, y: min(origin.y, maxY)))

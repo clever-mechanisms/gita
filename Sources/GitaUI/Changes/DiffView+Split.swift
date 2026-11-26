@@ -5,6 +5,7 @@ import GitaCore
 extension DiffView {
     func applyLayoutChange() {
         table.reloadData()
+        applyReviewFilter()
         updateColumnWidth()
         updateHunkBarInsets()
         updateSelectionBar()

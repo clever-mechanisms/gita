@@ -20,6 +20,28 @@ final class DiffHunkBar: NSView {
     let stageButton = PartsButton([], background: .quiet, accessibility: String(localized: "Stage Hunk"))
     let discardButton = PartsButton([], background: .quiet, accessibility: String(localized: "Discard Hunk…"))
 
+    struct ReviewAction {
+        let isReviewed: Bool
+        let toggle: () -> Void
+    }
+
+    private var reviewToggle: (button: PartsButton, reviewed: Bool)?
+
+    func setReviewAction(_ action: ReviewAction?) {
+        if let action, let reviewToggle, reviewToggle.reviewed == action.isReviewed {
+            reviewToggle.button.onClick = action.toggle
+            actionsStack.isHidden = false
+            return
+        }
+        reviewToggle?.button.removeFromSuperview()
+        reviewToggle = nil
+        guard let action else { return }
+        let button = ReviewedHunksBarView.makeHunkToggleButton(isReviewed: action.isReviewed, onToggle: action.toggle)
+        actionsStack.insertArrangedSubview(button, at: 0)
+        actionsStack.isHidden = false
+        reviewToggle = (button, action.isReviewed)
+    }
+
     var onStage: (() -> Void)?
     var onDiscard: (() -> Void)?
     var trailingInset: CGFloat = 0 {

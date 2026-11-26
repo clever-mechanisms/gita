@@ -28,8 +28,7 @@ struct CRAPUICoverageTests {
             RebaseStepPrediction(
                 commitID: "abcdef012345\(idx)", action: action, outcome: .clean, resultingTreeID: "tree\(idx)")
         }
-        let sim = RebaseSimulationResult(
-            ontoCommit: "0000000", baseTreeID: "base", steps: steps, finalTreeID: "tree5")
+        let sim = RebaseSimulationResult(steps: steps, finalTreeID: "tree5")
         let rows = SpeculativePreviewContent.rebase(sim).steps
         #expect(rows.count == 6)
         #expect(rows.allSatisfy { !$0.title.isEmpty })
@@ -55,8 +54,7 @@ struct CRAPUICoverageTests {
 
     @Test func smartDiffSnapshotEquatable() {
         let doc = UnifiedDiff.parse("@@ -1,1 +1,1 @@\n-old\n+new\n")
-        let filtered = FilteredDiffResult(
-            classifications: [], hiddenNoiseHunkIndices: [], visibleLines: doc.lines, collapsedNoiseRuns: [])
+        let filtered = FilteredDiffResult(hiddenNoiseHunkIndices: [], collapsedNoiseRuns: [])
         let snap1 = SmartDiffSnapshot(
             document: doc, filtered: filtered, moves: .empty, structured: .unsupported,
             filePath: "a.swift", options: SmartDiffOptions(), expandedNoiseHunks: [],
@@ -163,6 +161,35 @@ struct CRAPUICoverageTests {
         presenter.initializeSubmodules(path: "libs/a")
         await appWaitUntil { presenter.submoduleState.errorMessage != nil }
         #expect(presenter.submoduleState.errorMessage == "boom")
+    }
+
+    @Test func narrativeOrderHeaderKeyDownTogglesCollapseState() throws {
+        UITestSupport.bootstrap()
+        let entry = NarrativeFileEntry(path: "Sources/App.swift", additions: 2, deletions: 1)
+        let group = NarrativeFileGroup(
+            layer: .coreLogic, entries: [entry], mode: .narrative, collapsedByDefault: false)
+        let presenter = NarrativeOrderPresenter()
+        var toggles = 0
+        let header = NarrativeOrderHeaderView(group: group, presenter: presenter) { toggles += 1 }
+        func send(_ keyCode: UInt16, chars: String = "") throws {
+            let event = try #require(
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
+                    context: nil, characters: chars, charactersIgnoringModifiers: chars, isARepeat: false,
+                    keyCode: keyCode))
+            header.keyDown(with: event)
+        }
+        try send(KeyPress.leftArrow)
+        #expect(presenter.isCollapsed(.coreLogic))
+        #expect(toggles == 1)
+        try send(KeyPress.rightArrow)
+        #expect(!presenter.isCollapsed(.coreLogic))
+        #expect(toggles == 2)
+        try send(KeyPress.space, chars: " ")
+        #expect(presenter.isCollapsed(.coreLogic))
+        #expect(toggles == 3)
+        try send(0, chars: "a")
+        #expect(toggles == 3)
     }
 }
 

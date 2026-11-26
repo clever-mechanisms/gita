@@ -47,8 +47,6 @@ struct MenuBarTriageRowTests {
         #expect(presenter.state == .running)
         try await TeleportTestSupport.until { if case .succeeded = presenter.state { true } else { false } }
         #expect(await calls.count == 2)
-        presenter.reset()
-        #expect(presenter.state == .idle)
     }
 
     @Test func rollbackSurvivesRowRecreation() async throws {

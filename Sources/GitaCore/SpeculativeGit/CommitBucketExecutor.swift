@@ -35,7 +35,7 @@ public actor CommitBucketExecutor {
                 }
                 onProgress?(index + 1, buckets.count)
                 let id = try await transaction.commit(bucket, items: items, parent: parent)
-                commits.append(.init(bucketID: bucket.id, commitID: id, title: bucket.title))
+                commits.append(.init(commitID: id))
                 parent = id
             }
             guard let final = commits.last?.commitID, try await service.bucketBranch() == ref else {
@@ -43,8 +43,13 @@ public actor CommitBucketExecutor {
             }
             try Task.checkCancellation()
             // Finish publication (including recovery) even if the window closes after the compare-and-swap.
-            try await Task { try await service.publishBuckets(final, previous: head, branch: ref) }.value
-            return .init(createdCommits: commits, previousHeadID: head, newHeadID: final, branchRef: ref)
+            let result = CommitBucketExecutionResult(
+                createdCommits: commits, previousHeadID: head, newHeadID: final, branchRef: ref)
+            try await Task {
+                try await service.publishBuckets(
+                    result.newHeadID, previous: result.previousHeadID, branch: result.branchRef)
+            }.value
+            return result
         }
     }
 }

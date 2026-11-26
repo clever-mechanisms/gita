@@ -2,33 +2,12 @@ import Foundation
 
 public actor SpeculativeGitService {
     let gitService: GitService
-    private struct RebaseCacheKey: Hashable {
-        let baseTreeID: String
-        let planHash: String
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.baseTreeID == rhs.baseTreeID && lhs.planHash == rhs.planHash
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(baseTreeID)
-            hasher.combine(planHash)
-        }
-    }
     private struct MergeKey: Hashable {
         let ours: String
         let theirs: String
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.ours == rhs.ours && lhs.theirs == rhs.theirs
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(ours)
-            hasher.combine(theirs)
-        }
     }
-    private var rebases: SpeculativeLRUCache<RebaseCacheKey, RebaseSimulationResult>
+
+    private var rebases: SpeculativeLRUCache<String, RebaseSimulationResult>
     private var merges: SpeculativeLRUCache<MergeKey, PairwiseMergeOutcome>
 
     public init(gitService: GitService, cacheCapacity: Int = 64) {
@@ -40,23 +19,17 @@ public actor SpeculativeGitService {
     public func simulateRebase(onto: String, steps: [GitRebaseStep]) async throws -> RebaseSimulationResult {
         let commit = try await gitService.resolveCommit(onto, verify: true)
         let base = try await tree(of: commit)
-        let key = RebaseCacheKey(baseTreeID: base, planHash: PlanFingerprint.hash(baseTree: base, steps: steps))
+        let key = PlanFingerprint.hash(baseTree: base, steps: steps)
         // A symbolic step can move between requests, even when the destination tree is unchanged.
         let cacheable = steps.allSatisfy { GitParsers.isObjectID($0.commitID) }
-        if cacheable, var cached = rebases.value(for: key) {
-            cached.ontoCommit = commit
-            return cached
-        }
-        var current = base
-        var predictions: [RebaseStepPrediction] = []
+        if cacheable, let cached = rebases.value(for: key) { return cached }
+        var result = RebaseSimulationResult(steps: [], finalTreeID: base)
         for step in steps {
             try Task.checkCancellation()
-            let prediction = try await predict(step, onto: current)
-            current = prediction.resultingTreeID ?? current
-            predictions.append(prediction)
+            let prediction = try await predict(step, onto: result.finalTreeID)
+            if let tree = prediction.resultingTreeID { result.finalTreeID = tree }
+            result.steps.append(prediction)
         }
-        let result = RebaseSimulationResult(
-            ontoCommit: commit, baseTreeID: base, steps: predictions, finalTreeID: current)
         if cacheable { rebases.insert(result, for: key) }
         return result
     }
@@ -102,17 +75,17 @@ public actor SpeculativeGitService {
     }
 
     public func checkPairwiseMerge(ours: String, theirs: String) async throws -> PairwiseMergePrediction {
-        let first = try await gitService.resolveCommit(ours, verify: true)
-        let second = try await gitService.resolveCommit(theirs, verify: true)
-        let key = MergeKey(ours: first, theirs: second)
+        let key = try await MergeKey(
+            ours: gitService.resolveCommit(ours, verify: true),
+            theirs: gitService.resolveCommit(theirs, verify: true))
         let outcome: PairwiseMergeOutcome
         if let cached = merges.value(for: key) {
             outcome = cached
         } else {
-            outcome = try await merge(ours: first, theirs: second)
+            outcome = try await merge(ours: key.ours, theirs: key.theirs)
             merges.insert(outcome, for: key)
         }
-        return .init(oursRef: ours, theirsRef: theirs, oursCommitID: first, theirsCommitID: second, outcome: outcome)
+        return .init(oursRef: ours, theirsRef: theirs, outcome: outcome)
     }
 
     public func checkCherryPick(commit: String, onto: String = "HEAD") async throws -> PreFlightPrediction {

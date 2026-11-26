@@ -32,7 +32,6 @@ extension RepositoryViewController {
         case .diff:
             showDiff()
             syncSmartDiff()
-            syncReviewedHunks()
             selectShownFile()
         case .providers: providersChanged()
         case .activity: break
@@ -45,7 +44,7 @@ extension RepositoryViewController {
 
     private func repositoryChanged() {
         closeQuickLook()
-        resetReviewedHunks()
+        if hunkReview?.root != model.snapshot?.root { resetReviewedHunks() }
         model.loadTopAuthorsIfNeeded()
         if model.isReviewingWorkingChanges, model.snapshot?.changes.isEmpty != false, amend.source == nil {
             model.graphState.isReviewingWorkingChanges = false

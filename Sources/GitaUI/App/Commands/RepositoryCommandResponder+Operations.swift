@@ -27,66 +27,48 @@ extension RepositoryCommandResponder {
         return window
     }
 
-    private struct ReferencePreviewRequest {
-        let rebase: Bool
-        let ref: String
-        let mode: GitMergeMode
-        let title: String
-    }
-
     private func promptReference(rebase: Bool, preselect: String? = nil) {
         guard model.canStartOperation, let snapshot = model.snapshot, let service = model.service,
             let alerts = system?.alerts, let window = sheetWindow()
         else { return }
         let title = rebase ? GitOperationKind.rebase.localizedTitle : GitOperationKind.merge.localizedTitle
-        let callbacks = RepositoryPrompts.PromptCallbacks<(ref: String, mode: GitMergeMode)>(
-            onPreview: { [weak self] choice in
-                let request = ReferencePreviewRequest(
-                    rebase: rebase, ref: choice.ref, mode: choice.mode, title: title)
-                self?.presentReferencePreview(request, snapshot: snapshot, service: service, on: window)
-            },
-            action: { [weak self] choice in
-                self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
-                    if rebase { return try await git.rebase(onto: choice.ref) }
-                    return try await git.merge(ref: choice.ref, mode: choice.mode)
-                }
-            }
-        )
-        RepositoryPrompts.reference(
-            rebase: rebase, snapshot: snapshot, preselect: preselect, on: window, alerts: alerts,
-            callbacks: callbacks
-        )
-    }
-
-    private func presentReferencePreview(
-        _ request: ReferencePreviewRequest, snapshot: RepositorySnapshot,
-        service: GitService, on window: NSWindow
-    ) {
-        let speculative = SpeculativeGitService(gitService: service)
-        let proceed: @MainActor () -> Void = { [weak self] in
-            self?.runReviewedOperation(request.title, snapshot: snapshot, service: service) { git in
-                if request.rebase { return try await git.rebase(onto: request.ref) }
-                return try await git.merge(ref: request.ref, mode: request.mode)
+        let run: @MainActor (String, GitMergeMode) -> Void = { [weak self] ref, mode in
+            self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
+                if rebase { return try await git.rebase(onto: ref) }
+                return try await git.merge(ref: ref, mode: mode)
             }
         }
+        RepositoryPrompts(window: window, alerts: alerts).reference(
+            rebase: rebase, snapshot: snapshot, preselect: preselect,
+            onPreview: { ref, mode in
+                Self.presentReferencePreview(
+                    rebase: rebase, ref: ref, head: snapshot.head ?? "HEAD", service: service, on: window
+                ) { run(ref, mode) }
+            }, action: run)
+    }
+
+    private static func presentReferencePreview(
+        rebase: Bool, ref: String, head: String, service: GitService, on window: NSWindow,
+        proceed: @escaping @MainActor () -> Void
+    ) {
+        let title = rebase ? GitOperationKind.rebase.localizedTitle : GitOperationKind.merge.localizedTitle
+        let speculative = SpeculativeGitService(gitService: service)
         DispatchQueue.main.async {
-            if request.rebase {
+            if rebase {
                 Task { @MainActor in
-                    let commits = (try? await service.previewInteractiveRebase(after: request.ref).commits) ?? []
+                    let commits = (try? await service.previewInteractiveRebase(after: ref).commits) ?? []
                     let steps = commits.map { GitRebaseStep(commitID: $0.id) }
                     let panel =
                         steps.isEmpty
                         ? SpeculativeGitFacade.pairwisePreview(
-                            service: speculative, ours: request.ref, theirs: snapshot.head ?? "HEAD")
-                        : SpeculativeGitFacade.rebasePreview(service: speculative, onto: request.ref, steps: steps)
-                    SpeculativeGitFacade.presentPreview(
-                        panel, on: window, proceedTitle: request.title, onProceed: proceed)
+                            service: speculative, ours: ref, theirs: head)
+                        : SpeculativeGitFacade.rebasePreview(service: speculative, onto: ref, steps: steps)
+                    SpeculativeGitFacade.presentPreview(panel, on: window, proceedTitle: title, onProceed: proceed)
                 }
             } else {
                 let panel = SpeculativeGitFacade.pairwisePreview(
-                    service: speculative, ours: snapshot.head ?? "HEAD", theirs: request.ref)
-                SpeculativeGitFacade.presentPreview(
-                    panel, on: window, proceedTitle: request.title, onProceed: proceed)
+                    service: speculative, ours: head, theirs: ref)
+                SpeculativeGitFacade.presentPreview(panel, on: window, proceedTitle: title, onProceed: proceed)
             }
         }
     }
@@ -107,19 +89,14 @@ extension RepositoryCommandResponder {
                     commit: commit, mainline: mainline, title: title, snapshot: snapshot, service: service, on: window)
             }
         }
-        let callbacks = RepositoryPrompts.PromptCallbacks<Int?>(
-            onPreview: preview,
-            action: { [weak self] mainline in
-                self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
-                    if revert { return try await git.revert(commit: commit.id, mainline: mainline) }
-                    return try await git.cherryPick(commit: commit.id, mainline: mainline)
-                }
+        RepositoryPrompts(window: window, alerts: alerts).commitOperation(
+            title, commit: commit, branch: snapshot.localizedBranch, onPreview: preview
+        ) { [weak self] mainline in
+            self?.runReviewedOperation(title, snapshot: snapshot, service: service) { git in
+                if revert { return try await git.revert(commit: commit.id, mainline: mainline) }
+                return try await git.cherryPick(commit: commit.id, mainline: mainline)
             }
-        )
-        RepositoryPrompts.commitOperation(
-            title, commit: commit, branch: snapshot.localizedBranch, on: window, alerts: alerts,
-            callbacks: callbacks
-        )
+        }
     }
 
     private func presentCherryPickPreview(

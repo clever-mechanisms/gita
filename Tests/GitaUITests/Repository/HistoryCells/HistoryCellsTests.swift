@@ -49,31 +49,30 @@ struct HistoryCellsTests {
         #expect(path.x(2) == 42)
     }
 
-    @Test func historyCellsDrawEveryRow() {
+    @Test(arguments: [CGFloat(1), 1.5])
+    func historyCellsDrawEveryRow(scale: CGFloat) {
         UITestSupport.bootstrap()
         let rows = GraphLayout.build(commits: Self.commits)
         let lanes = rows.map(\.lane).max() ?? 0
-        for scale in [CGFloat(1), 1.5] {
-            for (index, commit) in Self.commits.enumerated() {
-                let cell = HistoryCommitCell(
-                    frame: NSRect(x: 0, y: 0, width: index.isMultiple(of: 3) ? 260 : 700, height: 24 * scale))
-                let merge =
-                    commit.parents.count > 1
-                    ? MergeFlair(
-                        mergedBy: "Grace", email: "grace@example.invalid", count: index == 0 ? "3 commits" : nil,
-                        tooltip: "Merged by Grace", squashed: index == 2, expanded: index == 5)
-                    : nil
-                cell.configure(
-                    HistoryCommitCell.Content(
-                        commit: commit, row: rows[index], previous: index > 0 ? rows[index - 1] : nil,
-                        next: index + 1 < rows.count ? rows[index + 1] : nil, scale: scale, isHead: index == 0,
-                        remoteNames: ["origin/main", "origin/feature/c"], merge: merge))
-                cell.graph.nodeAlpha = commit.author == "Grace" ? 0.3 : 1
-                cell.layoutSubtreeIfNeeded()
-                UITestSupport.render(cell)
-                #expect(cell.representedCommitID == commit.id)
-                _ = cell.accessibilityLabel()
-            }
+        for (index, commit) in Self.commits.enumerated() {
+            let cell = HistoryCommitCell(
+                frame: NSRect(x: 0, y: 0, width: index.isMultiple(of: 3) ? 260 : 700, height: 24 * scale))
+            let merge =
+                commit.parents.count > 1
+                ? MergeFlair(
+                    mergedBy: "Grace", email: "grace@example.invalid", count: index == 0 ? "3 commits" : nil,
+                    tooltip: "Merged by Grace", squashed: index == 2, expanded: index == 5)
+                : nil
+            cell.configure(
+                HistoryCommitCell.Content(
+                    commit: commit, row: rows[index], previous: index > 0 ? rows[index - 1] : nil,
+                    next: index + 1 < rows.count ? rows[index + 1] : nil, scale: scale, isHead: index == 0,
+                    remoteNames: ["origin/main", "origin/feature/c"], merge: merge))
+            cell.graph.nodeAlpha = commit.author == "Grace" ? 0.3 : 1
+            cell.layoutSubtreeIfNeeded()
+            UITestSupport.render(cell)
+            #expect(cell.representedCommitID == commit.id)
+            _ = cell.accessibilityLabel()
         }
         #expect(GraphCell.width(lastLane: lanes, scale: 1) > 0)
     }

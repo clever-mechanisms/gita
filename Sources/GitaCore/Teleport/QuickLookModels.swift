@@ -51,16 +51,6 @@ public struct QuickLookBadge: Sendable, Hashable {
 
 public struct QuickLookFileItem: Sendable, Hashable {
     public let path: String
-    public let status: FileChange.Code
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.path == rhs.path && lhs.status == rhs.status
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(path)
-        hasher.combine(status)
-    }
 }
 
 public struct QuickLookPreviewContent: Sendable, Hashable {
@@ -76,36 +66,6 @@ public struct QuickLookPreviewContent: Sendable, Hashable {
     public var omittedFileCount = 0
     public let diffExcerpt: QuickLookDiffExcerpt
     public let isBinary: Bool
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.target == rhs.target
-            && lhs.title == rhs.title
-            && lhs.subtitle == rhs.subtitle
-            && lhs.commitSHA == rhs.commitSHA
-            && lhs.author == rhs.author
-            && lhs.date == rhs.date
-            && lhs.pills == rhs.pills
-            && lhs.statSummary == rhs.statSummary
-            && lhs.files == rhs.files
-            && lhs.omittedFileCount == rhs.omittedFileCount
-            && lhs.diffExcerpt == rhs.diffExcerpt
-            && lhs.isBinary == rhs.isBinary
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(target)
-        hasher.combine(title)
-        hasher.combine(subtitle)
-        hasher.combine(commitSHA)
-        hasher.combine(author)
-        hasher.combine(date)
-        hasher.combine(pills)
-        hasher.combine(statSummary)
-        hasher.combine(files)
-        hasher.combine(omittedFileCount)
-        hasher.combine(diffExcerpt)
-        hasher.combine(isBinary)
-    }
 }
 
 public enum QuickLookLoadState: Equatable, Sendable {

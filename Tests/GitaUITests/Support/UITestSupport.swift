@@ -5,6 +5,8 @@ import Foundation
 enum UITestSupport {
     /// Creates the shared application once so windows, views and menus can be built headlessly. Never calls `run()`.
     @MainActor static func bootstrap() {
+        UserDefaults.standard.set(false, forKey: "NSAutomaticWindowAnimationsEnabled")
+        UserDefaults.standard.set(0.0, forKey: "NSWindowResizeTime")
         _ = NSApplication.shared
     }
 
@@ -16,6 +18,7 @@ enum UITestSupport {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: true)
+        window.animationBehavior = .none
         window.isReleasedWhenClosed = false
         window.contentViewController = controller
         window.setContentSize(size)

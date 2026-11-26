@@ -60,16 +60,16 @@ public struct QuickLookPreviewLoader: Sendable {
         try Task.checkCancellation()
         let diff = try await git.diff(path: nil, commit: revision)
         try Task.checkCancellation()
-        if stash, try await git.resolveCommit(ref) != commit.id { throw GitError.invalidReference }
-        try Task.checkCancellation()
         var content = preview(
             target, title: hint?.subject ?? commit.subject,
             subtitle: stash ? ref : String(commit.id.prefix(12)), raw: diff)
         content.author = commit.author
         content.date = commit.date
         content.commitSHA = commit.id
+        if stash, try await git.resolveCommit(ref) != content.commitSHA { throw GitError.invalidReference }
+        try Task.checkCancellation()
         content.statSummary = ProviderValidation.nonempty(stat.text.trimmingCharacters(in: .whitespacesAndNewlines))
-        content.files = files.prefix(maxFiles).map { .init(path: $0.path, status: $0.indexCode) }
+        content.files = files.prefix(maxFiles).map { .init(path: $0.path) }
         content.omittedFileCount = files.count - content.files.count
         content.pills = hint?.badges ?? []
         return content

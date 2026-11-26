@@ -169,6 +169,7 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
 
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         spinner.widthAnchor.constraint(equalToConstant: 14).isActive = true
         spinner.heightAnchor.constraint(equalToConstant: 14).isActive = true

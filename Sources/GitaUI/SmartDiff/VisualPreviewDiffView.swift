@@ -42,6 +42,7 @@ final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         Deck.pin(background, in: self)
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
         let slot = NSView()
         Deck.pin(canvas, in: slot)

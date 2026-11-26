@@ -39,8 +39,6 @@ final class CommitBucketLaneView: ThemedCardView, NSTextFieldDelegate, NSTextVie
         registerForDraggedTypes([SpeculativeList.itemType])
         configure()
     }
-    // periphery:ignore - Swift requires required init?(coder:) on NSView subclasses with custom designated init
-    required init?(coder _: NSCoder) { nil }
 
     private func control(_ label: String, _ symbol: String, _ id: String, action: @escaping () -> Void) -> PartsButton {
         SpeculativeViews.button(

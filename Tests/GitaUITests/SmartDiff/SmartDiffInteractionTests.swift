@@ -35,29 +35,6 @@ struct SmartDiffInteractionTests {
         return group
     }
 
-    @Test func disclosureArrowsAreIdempotentAndClickPreservesFocus() throws {
-        let file = NarrativeFileEntry(path: "Package.resolved", additions: 1, deletions: 0)
-        let presenter = NarrativeOrderPresenter(entries: [file])
-        let group = try #require(presenter.groups.first)
-        let header = SmartDiffFacade.shared.makeNarrativeHeaderView(group: group, presenter: presenter)
-        let window = SharedEvents.window(containing: header)
-        defer { window.close() }
-        let right = try #require(SharedEvents.key("", code: KeyPress.rightArrow))
-        let left = try #require(SharedEvents.key("", code: KeyPress.leftArrow))
-        for _ in 0..<2 { header.keyDown(with: right) }
-        #expect(header.isAccessibilityExpanded() && !presenter.isCollapsed(group.layer))
-        for _ in 0..<2 { header.keyDown(with: left) }
-        #expect(!header.isAccessibilityExpanded() && presenter.isCollapsed(group.layer))
-        let table = NSTableView()
-        window.contentView?.addSubview(table)
-        #expect(window.makeFirstResponder(table))
-        let previous = try #require(window.firstResponder)
-        #expect(previous !== header)
-        header.mouseDown(with: try #require(SharedEvents.mouse(.leftMouseDown, at: .zero, in: header)))
-        #expect(window.firstResponder === previous)
-        #expect(header.isAccessibilityExpanded())
-    }
-
     @Test func sparklineActivationAndEscape() throws {
         let commit = GitCommit(id: "1", parents: [], subject: "", author: "A", date: Date())
         var jumps = 0

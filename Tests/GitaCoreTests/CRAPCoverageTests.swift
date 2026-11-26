@@ -109,11 +109,11 @@ struct CRAPCoreCoverageTests {
         let wtA = GitWorktree(path: "/tmp/a", branch: "main", head: "111")
         let wtB = GitWorktree(path: "/tmp/b", branch: "feat", head: "222")
         let pair1 = WorktreeCollisionPair(
-            sourceWorktree: wtA, targetWorktree: wtB, mergeBase: "000", severity: .high,
+            sourceWorktree: wtA, targetWorktree: wtB,
             collisions: [], mergeTreeMessages: ["m"], hasTreeConflict: true)
         let pair2 = WorktreeCollisionPair(
-            sourceWorktree: wtA, targetWorktree: wtB, mergeBase: "000", severity: .low,
-            collisions: [], mergeTreeMessages: ["m"], hasTreeConflict: true)
+            sourceWorktree: wtA, targetWorktree: wtB,
+            collisions: [], mergeTreeMessages: ["m"], hasTreeConflict: false)
         let pair1Copy = pair1
         #expect(pair1 == pair1Copy)
         #expect(pair1 != pair2)
@@ -129,11 +129,9 @@ struct CRAPCoreCoverageTests {
         #expect(wrc1 == wrc2)
 
         let ep = DiffMoveEndpoint(
-            filePath: "a.swift", hunkIndex: 0, lineIndices: 1..<2, displayStartLine: 1, displayEndLine: 1)
-        let move1 = DiffMoveMatch(
-            id: "1", source: ep, destination: ep, lineCount: 1, nonTrivialLineCount: 1, previewLine: "x")
-        let move2 = DiffMoveMatch(
-            id: "2", source: ep, destination: ep, lineCount: 1, nonTrivialLineCount: 1, previewLine: "x")
+            filePath: "a.swift", lineIndices: 1..<2, displayStartLine: 1, displayEndLine: 1)
+        let move1 = DiffMoveMatch(id: "1", source: ep, destination: ep)
+        let move2 = DiffMoveMatch(id: "2", source: ep, destination: ep)
         let move1Copy = move1
         #expect(move1 == move1Copy)
         #expect(move1 != move2)
@@ -151,15 +149,15 @@ struct CRAPCoreCoverageTests {
         #expect(se1 != se2)
 
         let p1 = PairwiseMergePrediction(
-            oursRef: "main", theirsRef: "feat", oursCommitID: "a", theirsCommitID: "b", outcome: .clean(treeID: "t"))
+            oursRef: "main", theirsRef: "feat", outcome: .clean(treeID: "t"))
         let p2 = PairwiseMergePrediction(
-            oursRef: "main", theirsRef: "feat", oursCommitID: "a", theirsCommitID: "c", outcome: .clean(treeID: "t"))
+            oursRef: "main", theirsRef: "feat", outcome: .clean(treeID: "u"))
         let p1Copy = p1
         #expect(p1 == p1Copy)
         #expect(p1 != p2)
 
-        let cp1 = ConflictPreview(path: "a.txt", treeID: "t", excerpt: "hi", truncated: false, totalByteCount: 2)
-        let cp2 = ConflictPreview(path: "a.txt", treeID: "t", excerpt: "bye", truncated: true, totalByteCount: 3)
+        let cp1 = ConflictPreview(excerpt: "hi", truncated: false, totalByteCount: 2)
+        let cp2 = ConflictPreview(excerpt: "bye", truncated: true, totalByteCount: 3)
         let cp1Copy = cp1
         #expect(cp1 == cp1Copy)
         #expect(cp1 != cp2)

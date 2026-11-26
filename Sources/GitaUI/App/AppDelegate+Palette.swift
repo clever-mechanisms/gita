@@ -10,7 +10,7 @@ extension AppDelegate {
     private static let rememberedChoices = 30
 
     /// More words a command is found by: "go to workflows", "open terminal", "checkout".
-    private static let paletteAliases: [Selector: [String]] = [
+    static let paletteAliases: [Selector: [String]] = [
         #selector(navigate(_:)): ["go to", "open", "show", "page"],
         #selector(showDetailTab(_:)): ["go to", "show", "tab"],
         #selector(settings): ["preferences", "options"],
@@ -65,6 +65,15 @@ extension AppDelegate {
         ],
         #selector(showCommitBuckets): [
             "buckets", "commit buckets", "organize commits", "split commits", "hunks", "atomic commits",
+        ],
+        #selector(showCollisionRadar): [
+            "collision", "radar", "conflict", "overlap", "agent", "agents", "worktree", "air traffic",
+        ],
+        #selector(showAgentFlightRecorder): [
+            "flight recorder", "agent", "agents", "timeline", "turn", "turns", "rollback", "rewind", "hooks",
+        ],
+        #selector(showAgentArena): [
+            "arena", "fork", "race", "fork and race", "compare agents", "compete", "contestant",
         ],
     ]
 

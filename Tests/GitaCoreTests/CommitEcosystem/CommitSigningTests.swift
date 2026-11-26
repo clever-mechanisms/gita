@@ -60,7 +60,7 @@ struct CommitSigningTests {
         #expect(enabledConfig.isEnabled)
         #expect(enabledConfig.isRepoLocalOverride)
         #expect(enabledConfig.format == .ssh)
-        #expect(enabledConfig.isConfigured)
+        #expect(enabledConfig.signingKey != nil)
         #expect(enabledConfig.shortKeyDisplay == "id_ed25519.pub")
 
         try await fixture.service.setLocalCommitSigning(false)

@@ -62,6 +62,7 @@ extension MergeEditorView {
     private func buildFooter() -> NSView {
         progress.style = .spinning
         progress.controlSize = .small
+        progress.usesThreadedAnimation = false
         progress.isDisplayedWhenStopped = false
         errorLabel.lineBreakMode = .byTruncatingTail
         errorLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

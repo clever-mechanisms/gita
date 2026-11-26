@@ -42,8 +42,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var commitBucketsWindows: [String: CommitBucketsWindowController] = [:]
     /// On-demand Storage Inspector & Repository Health utility window.
     lazy var storageWindowController = StorageWindowController(store: environment.storageStore)
-    /// Paste-Anything Teleport, Menu Bar Triage HUD, and Quick Look floating preview facade.
-    lazy var teleport = TeleportFacade(configDirectories: .system)
+    var activeAgentControl: AgentControlFacade?
+    lazy var reviewedHunks = ReviewedHunksRegistry()
+    /// Paste-Anything Teleport, Menu Bar Triage HUD, and Quick Look share one on-demand facade.
+    private(set) var existingTeleport: TeleportFacade?
+    var teleport: TeleportFacade {
+        if let existingTeleport { return existingTeleport }
+        let facade = TeleportFacade(configDirectories: .system)
+        existingTeleport = facade
+        return facade
+    }
 
     init(environment: AppEnvironment = .current, updater: AppUpdater = .shared) {
         self.environment = environment
@@ -57,7 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
         BuiltInTerminal.open = { [weak self] directory, launch in self?.openTerminal(directory, launch: launch) }
         workspaceMenu.items = { [weak self] in self?.workspaceMenuItems() ?? [] }
         configureLoginOffer()
-        RepositoryViewController.sharedTeleportFacade = teleport
+        RepositoryViewController.sharedTeleportFacadeProvider = { [weak self] create in
+            create ? self?.teleport : self?.existingTeleport
+        }
     }
 
     isolated deinit { deactivateCommands() }
@@ -149,17 +159,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
             environment.system.beep()
             return refuseTermination()
         case .now:
-            return flushAllCommitDrafts() ? .terminateNow : refuseTermination()
+            guard hasActiveAgentArenaRace else {
+                return flushAllCommitDrafts() ? .terminateNow : refuseTermination()
+            }
+            DispatchQueue.main.async { self.confirmArenaAndReply(to: sender) }
         case .askReviewSheet:
             DispatchQueue.main.async {
                 self.dismissReviewSheets { allowed in
-                    let flushed = allowed && self.flushAllCommitDrafts()
-                    if !flushed { _ = self.refuseTermination() }
-                    sender.reply(toApplicationShouldTerminate: flushed)
+                    if allowed {
+                        self.confirmArenaAndReply(to: sender)
+                    } else {
+                        self.replyToTermination(sender, allowed: false)
+                    }
                 }
             }
-            return .terminateLater
         }
+        return .terminateLater
+    }
+
+    private func confirmArenaAndReply(to sender: NSApplication) {
+        confirmQuitDuringActiveArenaRace { allowed in self.replyToTermination(sender, allowed: allowed) }
+    }
+
+    private func replyToTermination(_ sender: NSApplication, allowed: Bool) {
+        let shouldQuit = allowed && flushAllCommitDrafts()
+        if !shouldQuit { _ = refuseTermination() }
+        sender.reply(toApplicationShouldTerminate: shouldQuit)
     }
 
     /// Asks each window's open review sheet in turn whether the app may quit, and closes those that agree;

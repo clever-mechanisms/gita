@@ -62,9 +62,9 @@ enum ControlPlaneViews {
 }
 
 @MainActor
-class ControlPlaneThemedView: NSView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+class ControlPlaneSurface: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
         NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: .gitaThemeChanged, object: nil)
     }
     required init?(coder _: NSCoder) { nil }
@@ -76,7 +76,7 @@ class ControlPlaneThemedView: NSView {
 }
 
 @MainActor
-final class ControlPlaneBadge: ControlPlaneThemedView {
+final class ControlPlaneBadge: ControlPlaneSurface {
     private let fill: NSColor
     private let border: NSColor
 
@@ -107,7 +107,7 @@ final class ControlPlaneBadge: ControlPlaneThemedView {
 }
 
 @MainActor
-final class ControlPlaneCard: ControlPlaneThemedView {
+final class ControlPlaneCard: ControlPlaneSurface {
     init(_ content: NSView) {
         super.init(frame: .zero)
         Style.fill(content, in: self, inset: 8)

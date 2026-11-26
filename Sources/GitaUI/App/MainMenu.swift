@@ -101,7 +101,7 @@ struct MainMenu {
     private func editMenu() {
         let edit = menu(String(localized: "Edit"))
         for (title, action, key) in [
-            (String(localized: "Undo"), Selector(("undo:")), "z"),
+            (String(localized: "Undo"), NSSelectorFromString("undo:"), "z"),
             (String(localized: "Cut"), #selector(NSText.cut(_:)), "x"),
             (String(localized: "Copy"), #selector(NSText.copy(_:)), "c"),
             (String(localized: "Paste"), #selector(NSText.paste(_:)), "v"),
@@ -192,6 +192,7 @@ struct MainMenu {
         item(
             String(localized: "Organize into Commits…"), #selector(AppDelegate.showCommitBuckets),
             in: repo, symbol: "square.stack.3d.forward.dottedline")
+        target.installAgentControlMenuItems(in: repo)
         repo.addItem(.separator())
         item(
             String(localized: "Reflog…"), #selector(AppDelegate.showReflogBrowser), in: repo,

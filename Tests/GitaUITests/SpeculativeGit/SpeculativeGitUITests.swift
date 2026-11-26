@@ -1,10 +1,18 @@
 import AppKit
-import GitaCore
 import Testing
 
+@testable import GitaCore
 @testable import GitaUI
 
 @Suite @MainActor struct SpeculativeGitUITests {
+    @Test func rebasePreviewNamesEveryActionAndAbbreviatesTheCommit() {
+        let steps = GitRebaseAction.allCases.map {
+            RebaseStepPrediction(commitID: "1234567890abcdef", action: $0, outcome: .clean, resultingTreeID: nil)
+        }
+        let preview = SpeculativePreviewContent.rebase(.init(steps: steps, finalTreeID: "tree"))
+        #expect(preview.steps.map(\.title) == GitRebaseAction.allCases.map { "\($0.rawValue) 1234567890" })
+    }
+
     @Test func badgeStatesExposeAccessibleTextAndRefreshAppearance() {
         UITestSupport.bootstrap()
         let badge = ConflictRiskBadgeView(frame: NSRect(x: 0, y: 0, width: 140, height: 24))

@@ -23,8 +23,8 @@ extension AgentArenaService {
         let tree = try await git.worktreeTree()
         let patch = try await git.fullDiff(from: base, to: tree)
         return ArenaContestantOutcome(
-            contestant: workspace.id, config: config, worktreePath: root,
-            branchName: workspace.branchName, agentExitCode: agent.exitCode, agentOutputExcerpt: agent.outputExcerpt,
+            worktreePath: root,
+            branchName: workspace.branchName, agentExitCode: agent.exitCode,
             diffFromBase: patch, changedFiles: try await git.files(from: base, to: tree),
             durationSeconds: agent.durationSeconds, checkResult: check)
     }
@@ -50,7 +50,7 @@ extension AgentArenaService {
         var output = Data(result.stdout.prefix(limit))
         output.append(result.stderr.prefix(limit - output.count))
         return ArenaBuildCheckResult(
-            command: command, exitCode: result.exitCode,
+            exitCode: result.exitCode,
             outputExcerpt: AgentControlGit.excerpt(output, limit: limit).text,
             durationSeconds: ProcessInfo.processInfo.systemUptime - start)
     }

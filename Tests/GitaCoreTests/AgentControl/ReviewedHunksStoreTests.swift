@@ -24,25 +24,25 @@ import Testing
         #expect(ReviewedHunkHasher.hash(filePath: "a", hunkLines: ["+x+y"]) != split)
     }
 
-    @Test func persistToggleFilterAndClearByFile() async throws {
+    @Test func persistTogglesByFile() async throws {
         try await withStore { url, store in
             let a = ReviewedHunkHasher.hash(filePath: "a", hunkLines: ["+value"])
             let b = ReviewedHunkHasher.hash(filePath: "b", hunkLines: ["+value"])
-            #expect(try await store.toggleReviewed(a, filePath: "a"))
-            try await store.markReviewed(b, filePath: "b")
+            let marked = try await store.toggleReviewed(a, filePath: "a")
+            #expect(marked)
+            #expect(try await store.toggleReviewed(b, filePath: "b"))
             let loaded = ReviewedHunksStore(storageURL: url)
             #expect(await loaded.reviewedHashes(for: "a") == [a])
-            #expect(await loaded.progress(for: [a, b]).isComplete)
+            #expect(await loaded.progress(for: [a, b]) == ReviewedHunksProgress(reviewed: 2, total: 2))
             #expect(try await !loaded.toggleReviewed(b, filePath: "b"))
             let progress = await loaded.progress(for: [a, b])
             #expect(progress.reviewed == 1)
             #expect(progress.total == 2)
-            #expect(progress.remaining == 1)
-            try await loaded.markReviewed(b, filePath: "b")
-            try await loaded.clear(for: "a")
+            #expect(try await loaded.toggleReviewed(b, filePath: "b"))
+            #expect(try await !loaded.toggleReviewed(a, filePath: "a"))
             #expect(await !loaded.isReviewed(a))
             #expect(await loaded.isReviewed(b))
-            try await loaded.clearAll()
+            #expect(try await !loaded.toggleReviewed(b, filePath: "b"))
             #expect(await !ReviewedHunksStore(storageURL: url).isReviewed(b))
         }
     }
@@ -50,7 +50,7 @@ import Testing
     @Test func evictOldestBeforePersisting() async throws {
         try await withStore { url, store in
             let hashes = ["oldest", "middle", "newest"].map { ReviewedHunkHash(rawValue: $0) }
-            for hash in hashes { try await store.markReviewed(hash, filePath: "a") }
+            for hash in hashes { try await store.toggleReviewed(hash, filePath: "a") }
             let loaded = ReviewedHunksStore(storageURL: url)
             #expect(await loaded.reviewedHashes(for: "a") == Set(hashes.suffix(2)))
             #expect(await !store.isReviewed(hashes[0]))
@@ -60,10 +60,10 @@ import Testing
     @Test func failedWriteLeavesInMemorySelectionIntact() async throws {
         try await withStore { url, store in
             let hash = ReviewedHunkHash(rawValue: "saved")
-            try await store.markReviewed(hash, filePath: "file")
+            #expect(try await store.toggleReviewed(hash, filePath: "file"))
             try FileManager.default.removeItem(at: url)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            await #expect(throws: (any Error).self) { try await store.unmarkReviewed(hash) }
+            await #expect(throws: (any Error).self) { try await store.toggleReviewed(hash, filePath: "file") }
             #expect(await store.isReviewed(hash))
         }
     }

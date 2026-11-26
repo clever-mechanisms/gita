@@ -75,6 +75,9 @@ extension AppDelegate {
         #selector(showFlightCheck),
         #selector(showCommitBuckets),
         #selector(exportPatch),
+        #selector(showCollisionRadar),
+        #selector(showAgentFlightRecorder),
+        #selector(showAgentArena),
     ]
 
     private static let idleRepositorySelectors: Set<Selector> = [

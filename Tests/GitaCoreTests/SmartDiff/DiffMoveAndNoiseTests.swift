@@ -6,9 +6,9 @@ struct DiffMoveAndNoiseTests {
     private let inserted = "@@ -9,0 +9,4 @@\n+open()\n+ work()\n+}\n+close()\n"
 
     @Test func sameFileAndCrossFile() throws {
-        let analysis = DiffMoveDetector.detect(in: UnifiedDiff.parse(removed + inserted), filePath: "a")
+        let analysis = DiffMoveDetector.detect(in: ["a": UnifiedDiff.parse(removed + inserted)])
         let match = try #require(analysis.matches.first)
-        #expect(match.nonTrivialLineCount == 3 && match.lineCount == 4)
+        #expect(match.source.lineIndices.count == 4)
         #expect(match.source.displayStartLine == 5 && match.destination.displayEndLine == 12)
         #expect(match.source.lineIndices == 1..<5 && match.destination.lineIndices == 6..<10)
         for endpoint in [match.source, match.destination] {
@@ -33,9 +33,11 @@ struct DiffMoveAndNoiseTests {
             }
             return UnifiedDiff.parse(hunks.joined())
         }
-        let result = DiffMoveDetector.detect(in: ["a": document("-"), "b": document("+")])
-        #expect(result.matches.map(\.lineCount) == [4, 3, 3])
-        #expect(result.matches.map(\.destination.hunkIndex) == [1, 0, 2])
+        let destination = document("+")
+        let result = DiffMoveDetector.detect(in: ["a": document("-"), "b": destination])
+        #expect(result.matches.map(\.source.lineIndices.count) == [4, 3, 3])
+        #expect(
+            result.matches.map { destination.lines[$0.destination.lineIndices.lowerBound].hunkIndex } == [1, 0, 2])
         #expect(Set(result.matches.map(\.id)).count == 3)
     }
 
@@ -43,7 +45,7 @@ struct DiffMoveAndNoiseTests {
         let text = "@@ -1,4 +1,4 @@\n-x\n-{\n-\n-]\n+x\n+{\n+\n+]\n"
         #expect(
             DiffMoveDetector.detect(
-                in: UnifiedDiff.parse(text), filePath: "a",
+                in: ["a": UnifiedDiff.parse(text)],
                 minimumNonTrivialLines: 1
             ).matches.isEmpty)
     }
@@ -53,18 +55,22 @@ struct DiffMoveAndNoiseTests {
             "@@ -1 +1 @@\n- foo()\n+foo()\n@@ -5,2 +5,2 @@\n-import A\n-import B\n+import B\n+import A\n"
             + "@@ -9 +9 @@\n-old\n+new\n"
         let doc = UnifiedDiff.parse(text)
-        let result = DiffNoiseFilter.filter(doc, hideNoise: true)
-        #expect(result.classifications.map(\.noiseKind) == [.whitespaceOnly, .importOrderOnly, .substantive])
+        let classifications = DiffNoiseFilter.analyze(doc)
+        func filter(_ hide: Bool, expanded: Set<Int> = []) -> FilteredDiffResult {
+            DiffNoiseFilter.filter(doc, classifications: classifications, hideNoise: hide, expandedHunks: expanded)
+        }
+        let result = filter(true)
+        #expect(classifications.map(\.noiseKind) == [.whitespaceOnly, .importOrderOnly, .substantive])
         #expect(result.collapsedNoiseRuns.count == 1)
         let run = try #require(result.collapsedNoiseRuns.first)
         #expect(run.hunkIndices == [0, 1] && run.anchorLineIndex == 0)
         #expect(result.summaryText == "2 formatting/import hunks hidden")
-        #expect(result.visibleLines.map(\.text) == ["@@ -9 +9 @@", "-old", "+new"])
-        let expanded = DiffNoiseFilter.filter(doc, hideNoise: true, expandedHunks: [0])
+        #expect(result.hiddenNoiseHunkIndices == [0, 1])
+        let expanded = filter(true, expanded: [0])
         #expect(expanded.summaryText == "1 formatting/import hunk hidden")
         #expect(expanded.collapsedNoiseRuns.first?.anchorLineIndex == 3)
-        #expect(DiffNoiseFilter.filter(doc, hideNoise: false).visibleLines == doc.lines)
-        #expect(DiffNoiseFilter.filter(doc, hideNoise: true, maxLines: 1).visibleLines == doc.lines)
+        #expect(filter(false).hiddenNoiseHunkIndices.isEmpty)
+        #expect(DiffNoiseFilter.analyze(doc, maxLines: 1).isEmpty)
     }
 
     @Test func importsAcrossLanguages() {

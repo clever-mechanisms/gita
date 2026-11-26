@@ -7,13 +7,6 @@ public enum DiffHunkNoiseKind: String, Sendable, Equatable {
 public struct DiffHunkClassification: Sendable, Equatable {
     public let hunkIndex: Int
     public let noiseKind: DiffHunkNoiseKind
-    public let changedLineCount: Int
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.hunkIndex == rhs.hunkIndex
-            && lhs.noiseKind == rhs.noiseKind
-            && lhs.changedLineCount == rhs.changedLineCount
-    }
 }
 
 public struct CollapsedNoiseRun: Sendable, Equatable {
@@ -25,19 +18,10 @@ public struct CollapsedNoiseRun: Sendable, Equatable {
 }
 
 public struct FilteredDiffResult: Sendable, Equatable {
-    public let classifications: [DiffHunkClassification]
     public let hiddenNoiseHunkIndices: Set<Int>
-    public let visibleLines: [DiffLine]
     public let collapsedNoiseRuns: [CollapsedNoiseRun]
     public var hiddenNoiseHunkCount: Int { hiddenNoiseHunkIndices.count }
     public var summaryText: String { DiffNoiseFilter.summary(hiddenNoiseHunkCount) }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.classifications == rhs.classifications
-            && lhs.hiddenNoiseHunkIndices == rhs.hiddenNoiseHunkIndices
-            && lhs.visibleLines == rhs.visibleLines
-            && lhs.collapsedNoiseRuns == rhs.collapsedNoiseRuns
-    }
 }
 
 public enum DiffNoiseFilter {
@@ -123,15 +107,8 @@ public enum DiffNoiseFilter {
         }
         return document.hunks.map { hunk in
             let data = hunks[hunk.index, default: Hunk()]
-            return DiffHunkClassification(hunkIndex: hunk.index, noiseKind: data.kind, changedLineCount: data.changed)
+            return DiffHunkClassification(hunkIndex: hunk.index, noiseKind: data.kind)
         }
-    }
-
-    public static func filter(
-        _ document: DiffDocument, hideNoise: Bool, expandedHunks: Set<Int> = [], maxLines: Int = 50_000
-    ) -> FilteredDiffResult {
-        let classifications = analyze(document, maxLines: maxLines)
-        return filter(document, classifications: classifications, hideNoise: hideNoise, expandedHunks: expandedHunks)
     }
 
     package static func filter(
@@ -142,7 +119,6 @@ public enum DiffNoiseFilter {
                 hideNoise && item.noiseKind != .substantive && !expandedHunks.contains(item.hunkIndex)
                     ? item.hunkIndex : nil
             })
-        var visible: [DiffLine] = []
         var runs: [CollapsedNoiseRun] = []
         var current: [Int] = []
         var anchor = 0
@@ -153,12 +129,10 @@ public enum DiffNoiseFilter {
             } else {
                 if !current.isEmpty { runs.append(CollapsedNoiseRun(hunkIndices: current, anchorLineIndex: anchor)) }
                 current.removeAll(keepingCapacity: true)
-                visible.append(line)
             }
         }
         if !current.isEmpty { runs.append(CollapsedNoiseRun(hunkIndices: current, anchorLineIndex: anchor)) }
         return FilteredDiffResult(
-            classifications: classifications, hiddenNoiseHunkIndices: hidden,
-            visibleLines: visible, collapsedNoiseRuns: runs)
+            hiddenNoiseHunkIndices: hidden, collapsedNoiseRuns: runs)
     }
 }

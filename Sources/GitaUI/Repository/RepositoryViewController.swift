@@ -31,6 +31,8 @@ final class RepositoryViewController: NSViewController {
         onStopHighlighting: { [weak self] in self?.model.highlightAuthor(nil) })
     let filePane: FilePaneView
     let codePane = CodePaneView()
+    var hunkReview: (root: URL, presenter: ReviewedHunksPresenter, bar: ReviewedHunksBarView)?
+
     let commitDetail = CommitDetailView()
     let detailBar = DetailBarView()
     let operationBar = OperationBarView(commands: nil)
@@ -196,6 +198,8 @@ final class RepositoryViewController: NSViewController {
         hoverPrefetchTask = nil
         mediaLoadTask?.cancel()
         mediaLoadTask = nil
+        codePane.diffView.onReviewDocumentChange = nil
+        resetReviewedHunks()
         detachCommitEcosystem()
         detachBisect()
         detachActionsTools()

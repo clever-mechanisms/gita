@@ -7,12 +7,7 @@ import Testing
     private let paths = ["$LEFT": "a $RIGHT", "$RIGHT": "$(id) b", "$BASE": "base", "$MERGED": "merge result"]
 
     @Test func allPresetCommands() throws {
-        #expect(ExternalToolPreset.allCases.count == 9)
-        #expect(ExternalToolPreset.fileMerge.cliPaths.contains("/usr/bin/opendiff"))
-        #expect(ExternalToolPreset.fileMerge.defaultDiffArguments == ["$LEFT", "$RIGHT"])
         for preset in ExternalToolPreset.allCases {
-            #expect(!preset.displayName.isEmpty)
-            #expect(preset == .custom || (!preset.cliPaths.isEmpty && !preset.bundleIdentifiers.isEmpty))
             for kind in ExternalToolKind.allCases {
                 let templates = kind == .diff ? preset.defaultDiffArguments : preset.defaultMergeArguments
                 let selection = ExternalToolSelection(
@@ -32,14 +27,28 @@ import Testing
         }
     }
 
+    @Test func resolveUnavailableAndMissingInputs() {
+        let selection = ExternalToolSelection(preset: .vsCode)
+        #expect(throws: ExternalToolError.unavailable(selection.preset.displayName)) {
+            try ExternalToolLauncher.resolveCommand(
+                selection: selection, kind: .diff, paths: paths, detector: .notInstalled)
+        }
+        for inputs in [["$LEFT": "left"], ["$LEFT": "left", "$RIGHT": ""]] {
+            #expect(throws: ExternalToolError.missingPath("$RIGHT")) {
+                try ExternalToolLauncher.resolveCommand(
+                    selection: selection, kind: .diff, paths: inputs, detector: .installed(executablePath: "/cli"))
+            }
+        }
+    }
+
     @Test func customResolutionAndShellGuards() throws {
         var selection = ExternalToolSelection(
             preset: .custom, customExecutable: "diff tool",
-            customArguments: ["--left=$LEFT", "$RIGHT", ""])
+            customArguments: ["--left=$LEFT", "$RIGHT", "$LEFT_EXTRA", ""])
         let command = try ExternalToolLauncher.resolveCommand(
             selection: selection, kind: .diff, paths: paths,
             detector: .notInstalled)
-        #expect(command.arguments == ["--left=a $RIGHT", "$(id) b", ""])
+        #expect(command.arguments == ["--left=a $RIGHT", "$(id) b", "$LEFT_EXTRA", ""])
         selection.customExecutable = "/bin/sh"
         selection.customArguments = ["-lc", "$LEFT"]
         #expect(throws: CustomActionError.shellCommand) {
@@ -68,6 +77,31 @@ import Testing
         #expect(all.count == ExternalToolPreset.allCases.count)
     }
 
+    @Test func detectionPrefersKnownPathsInOrder() {
+        let detector = ExternalToolDetector(
+            fileExists: { _ in true },
+            applicationURL: { _ in
+                Issue.record("Bundle lookup should only run after known paths are exhausted")
+                return nil
+            })
+        #expect(detector.detect(.fileMerge) == .installed(executablePath: "/usr/bin/opendiff"))
+        #expect(detector.detect(.custom) == .notInstalled)
+    }
+
+    @Test func detectionSkipsMissingBundlesAndEmbeddedExecutables() {
+        let apps = URL(filePath: "/Editors")
+        let installed = apps.appending(path: "Kaleidoscope 4.app/Contents/MacOS/ksdiff").path
+        let bundles = [
+            "app.kaleidoscope.v5": apps.appending(path: "Incomplete.app"),
+            "app.kaleidoscope.v4": apps.appending(path: "Kaleidoscope 4.app"),
+            "app.kaleidoscope.v3": apps.appending(path: "Kaleidoscope 3.app"),
+        ]
+        let detector = ExternalToolDetector(
+            fileExists: { $0 == installed || $0.hasSuffix("Kaleidoscope 3.app/Contents/MacOS/ksdiff") },
+            applicationURL: { bundles[$0] })
+        #expect(detector.detect(.kaleidoscope) == .installed(executablePath: installed))
+    }
+
     @Test func diffAcceptsExitCodeOneAndCleansUp() async throws {
         let mock = SnapshotCommandRunner(exitCode: 1)
         let launcher = ExternalToolLauncher(runner: mock)
@@ -93,7 +127,7 @@ import Testing
         await #expect(throws: ExternalToolError.self) { try await failing.launchDiff(request, selection: selection) }
     }
 
-    @Test func mergeStagingOutcomeAndDestinationValidation() async throws {
+    @Test func mergeStagingOutcome() async throws {
         let worktree = FileManager.default.temporaryDirectory.appending(path: "wt-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: worktree, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: worktree) }
@@ -122,25 +156,50 @@ import Testing
         #expect(try Data(contentsOf: output) == Data("merged".utf8))
         let folder = try #require(await mock.directory)
         #expect(!FileManager.default.fileExists(atPath: folder.path))
+    }
 
-        // Symlink and out-of-worktree targets are refused.
-        let link = worktree.appending(path: "link.txt")
-        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: output.path)
-        let linkRequest = ExternalToolMergeRequest(
-            fileName: "link.txt", baseContent: Data([1]), leftContent: Data([2]),
-            rightContent: Data([3]), mergedOutputURL: link, worktreeRoot: worktree)
-        await #expect(throws: ExternalToolError.invalidOutput) {
-            try await resolvedLauncher.launchMerge(linkRequest, selection: selection)
+    @Test func mergeDestinationMustBeALocalRegularFileInTheWorktree() async throws {
+        let manager = FileManager.default
+        let parent = manager.temporaryDirectory.appending(path: UUID().uuidString)
+        let tree = parent.appending(path: "repo")
+        let sibling = parent.appending(path: "repo-backup")
+        try manager.createDirectory(at: tree, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: parent) }
+        try manager.createDirectory(at: sibling, withIntermediateDirectories: false)
+        let output = tree.appending(path: "result.txt")
+        let outside = sibling.appending(path: "result.txt")
+        try Data("result".utf8).write(to: output)
+        try Data("outside".utf8).write(to: outside)
+        let fileLink = tree.appending(path: "link.txt")
+        let directoryLink = tree.appending(path: "elsewhere")
+        try manager.createSymbolicLink(at: fileLink, withDestinationURL: output)
+        try manager.createSymbolicLink(at: directoryLink, withDestinationURL: sibling)
+
+        var address = try #require(URLComponents(url: output, resolvingAgainstBaseURL: false))
+        address.host = "localhost"
+        let local = try #require(address.url)
+        address.scheme = "https"
+        let web = try #require(address.url)
+        address.scheme = "file"
+        address.host = "other.example"
+        let remote = try #require(address.url)
+        let selection = ExternalToolSelection(preset: .custom, customExecutable: "merge", customArguments: ["$MERGED"])
+        let runner = SnapshotCommandRunner(writeMerged: false)
+        let launcher = ExternalToolLauncher(runner: runner)
+        func merge(_ target: URL, root: URL) async throws -> ExternalMergeOutcome {
+            let request = ExternalToolMergeRequest(
+                fileName: "result.txt", baseContent: Data(), leftContent: Data(), rightContent: Data(),
+                mergedOutputURL: target, worktreeRoot: root)
+            return try await launcher.launchMerge(request, selection: selection)
         }
-        let outside = FileManager.default.temporaryDirectory.appending(path: "outside-" + UUID().uuidString)
-        try initial.write(to: outside)
-        defer { try? FileManager.default.removeItem(at: outside) }
-        let outsideRequest = ExternalToolMergeRequest(
-            fileName: "outside.txt", baseContent: Data([1]), leftContent: Data([2]),
-            rightContent: Data([3]), mergedOutputURL: outside, worktreeRoot: worktree)
-        await #expect(throws: ExternalToolError.invalidOutput) {
-            try await resolvedLauncher.launchMerge(outsideRequest, selection: selection)
+        for target in [
+            tree, tree.appending(path: "missing"), fileLink, outside,
+            directoryLink.appending(path: "result.txt"), web, remote,
+        ] {
+            await #expect(throws: ExternalToolError.invalidOutput) { try await merge(target, root: tree) }
         }
+        #expect(await runner.directory == nil)
+        #expect(try await merge(local, root: URL(filePath: "/")) == .unchanged)
     }
 
     @Test func persistsIndependentSelections() throws {

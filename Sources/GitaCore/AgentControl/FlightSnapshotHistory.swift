@@ -34,14 +34,14 @@ struct FlightSnapshotMetadata: Sendable {
         let fields = GitOutput.nulFields(try await git.run(args).stdout)
         var snapshots: [FlightSnapshot] = []
         for i in stride(from: 0, to: max(0, fields.count - 3), by: 4) {
-            guard let snapshot = parse(fields[i...i + 3], ref: ref) else { break }
+            guard let snapshot = parse(fields[i...i + 3]), ref == nil || ref == snapshot.refName else { break }
             snapshots.append(snapshot)
             if snapshot.sequence == 1 { break }
         }
         return snapshots
     }
 
-    private static func parse(_ fields: ArraySlice<String>, ref: String?) -> FlightSnapshot? {
+    private static func parse(_ fields: ArraySlice<String>) -> FlightSnapshot? {
         let i = fields.startIndex
         let lines = fields[i + 3].split(separator: "\n")
         guard lines.first == "Gita flight snapshot", let time = TimeInterval(fields[i + 2]) else { return nil }
@@ -51,7 +51,7 @@ struct FlightSnapshotMetadata: Sendable {
             values[line[..<separator]] = String(line[line.index(after: separator)...].drop(while: { $0 == " " }))
         }
         guard let storedRef = values["Gita-Ref"], storedRef.hasPrefix("refs/gita/snapshots/"),
-            ref == nil || ref == storedRef, let trigger = values["Gita-Trigger"].flatMap(FlightSnapshotTrigger.init),
+            let trigger = values["Gita-Trigger"].flatMap(FlightSnapshotTrigger.init),
             let sequence = values["Gita-Sequence"].flatMap(Int.init), sequence > 0,
             let count = values["Gita-Changed"].flatMap(Int.init),
             let label = string(values["Gita-Label"])

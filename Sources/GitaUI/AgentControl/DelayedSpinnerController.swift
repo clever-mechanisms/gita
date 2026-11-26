@@ -8,6 +8,7 @@ final class DelayedSpinnerController {
     init() {
         indicator.style = .spinning
         indicator.controlSize = .small
+        indicator.usesThreadedAnimation = false
         indicator.isDisplayedWhenStopped = Deck.reduceMotion
         indicator.setAccessibilityLabel(String(localized: "Loading"))
         indicator.isHidden = true

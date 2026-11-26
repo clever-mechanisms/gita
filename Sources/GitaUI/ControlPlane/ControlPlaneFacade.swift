@@ -2,19 +2,19 @@ import AppKit
 import GitaCore
 
 @MainActor
-final class ControlPlaneFacade {
-    static let shared = ControlPlaneFacade()
+public final class ControlPlaneFacade {
+    public static let shared = ControlPlaneFacade()
     private let service = PrePushFlightCheckService()
     private let settings: FlightCheckSettingsStore
     private let presenters = NSHashTable<FlightCheckPresenter>.weakObjects()
     private var sheets: [ObjectIdentifier: ControlPlaneSheet] = [:]
     private var commandCenter: WorkspaceCommandCenterWindowController?
 
-    init(defaults: UserDefaults = .standard) { settings = FlightCheckSettingsStore(defaults: defaults) }
+    public init(defaults: UserDefaults = .standard) { settings = FlightCheckSettingsStore(defaults: defaults) }
 
     // Keep the run, job and step invocation available directly to the workflow details view.
     // swiftlint:disable:next function_parameter_count
-    @discardableResult func presentCIFixSheet(
+    @discardableResult public func presentCIFixSheet(
         from run: WorkflowRunDetail, job: WorkflowJob? = nil,
         step: WorkflowStep? = nil, root: URL, repository: String, account: GitHubAccountUse,
         on window: NSWindow?
@@ -29,7 +29,7 @@ final class ControlPlaneFacade {
         return sheet
     }
 
-    func makeFlightCheckPill(
+    public func makeFlightCheckPill(
         for root: URL, gitService: GitService,
         onPresentSheet: (@MainActor () -> Void)? = nil
     ) -> FlightCheckPillView {
@@ -43,7 +43,7 @@ final class ControlPlaneFacade {
         }
     }
 
-    @discardableResult func presentFlightCheckSheet(
+    @discardableResult public func presentFlightCheckSheet(
         for root: URL, gitService: GitService,
         on window: NSWindow?
     ) -> NSWindowController {
@@ -67,7 +67,7 @@ final class ControlPlaneFacade {
         sheet.present(on: parent)
     }
 
-    @discardableResult func showWorkspaceCommandCenter(
+    @discardableResult public func showWorkspaceCommandCenter(
         workspaceTitle: String, repositories: [WorkspaceRepository],
         providerReports: [URL: [ProviderReport]], onOpenRepository: @escaping @MainActor (URL) -> Void
     ) -> NSWindowController {

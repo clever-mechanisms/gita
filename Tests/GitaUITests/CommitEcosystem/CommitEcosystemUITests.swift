@@ -185,6 +185,7 @@ struct CommitEcosystemUITests {
         try await waitUntil { !presenter.submoduleState.isLoading }
         #expect(presenter.submoduleState.submodules.count == 2)
         #expect(presenter.submoduleTabBadge == "2")
+        try await checkSubmoduleMenus(presenter)
 
         presenter.selectedSubmodulePath = "deps/docs"
         #expect(!presenter.canOpenSelectedSubmodule)
@@ -220,6 +221,29 @@ struct CommitEcosystemUITests {
         try await waitUntil { !forceUnlocked.isEmpty && !presenter.lfsState.isBusy }
         #expect(promptedOwners == ["Bob"])
         #expect(forceUnlocked == ["art/logo.psd"])
+    }
+
+    private func checkSubmoduleMenus(_ presenter: SubmodulesLFSPresenter) async throws {
+        let view = SubmodulesTabView(presenter: presenter)
+        let menu = NSMenu()
+        view.menuNeedsUpdate(menu)
+        #expect(menu.items.isEmpty)
+        for (path, title, canOpen) in [
+            ("deps/docs", "Initialize Submodule", false), ("deps/core", "Update Submodule", true),
+        ] {
+            presenter.selectedSubmodulePath = path
+            view.reload()
+            view.menuNeedsUpdate(menu)
+            #expect(menu.items.first?.title == title)
+            #expect(menu.item(withTitle: "Open in Tab")?.isEnabled == canOpen)
+            #expect(menu.item(withTitle: "Reveal in Finder") != nil)
+            menu.performActionForItem(at: 0)
+            #expect(presenter.submoduleState.isBusy)
+            view.menuNeedsUpdate(menu)
+            #expect(menu.items.first?.isEnabled == false)
+            #expect(menu.item(withTitle: "Sync URL")?.isEnabled == false)
+            try await waitUntil { !presenter.submoduleState.isBusy }
+        }
     }
 
     private func waitUntil(

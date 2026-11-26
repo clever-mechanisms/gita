@@ -47,7 +47,7 @@ struct FlightCheckDisplay {
 }
 
 @MainActor
-final class FlightCheckPillView: NSView {
+public final class FlightCheckPillView: NSView {
     private let presenter: FlightCheckPresenter
     private let button = PartsButton(frame: .zero)
 
@@ -66,8 +66,8 @@ final class FlightCheckPillView: NSView {
         render()
     }
     required init?(coder _: NSCoder) { nil }
-    override var intrinsicContentSize: NSSize { button.intrinsicContentSize }
-    override func viewDidChangeEffectiveAppearance() {
+    public override var intrinsicContentSize: NSSize { button.intrinsicContentSize }
+    public override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         render()
     }

@@ -42,7 +42,7 @@ extension RemoteMonitor {
         let checkID = UUID()
         inFlight[id] = checkID
         let task = Task { [weak self] in
-            defer { Task { @MainActor [weak self] in self?.finishInFlight(id: id, operationID: checkID) } }
+            defer { self?.finishInFlight(id: id, operationID: checkID) }
             do {
                 try await self?.environment.sleep(staggerDelay)
                 try Task.checkCancellation()
@@ -197,7 +197,7 @@ extension RemoteMonitor {
     private func runAutoFetch(
         id: String, fetchID: UUID, remotes: [String], service: GitService, settings: RemoteUpdateSettings
     ) async {
-        defer { Task { @MainActor [weak self] in self?.finishInFlight(id: id, operationID: fetchID) } }
+        defer { finishInFlight(id: id, operationID: fetchID) }
         var fetched: [String] = []
         var fetchFailure: RemoteCheckFailure?
         for remote in remotes {

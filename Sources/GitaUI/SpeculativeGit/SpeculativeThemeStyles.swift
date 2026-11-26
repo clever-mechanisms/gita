@@ -118,6 +118,7 @@ extension ConflictRiskLevel {
         let indicator = NSProgressIndicator()
         indicator.controlSize = .small
         indicator.style = .spinning
+        indicator.usesThreadedAnimation = false
         indicator.isDisplayedWhenStopped = false
         indicator.isHidden = true
         return indicator

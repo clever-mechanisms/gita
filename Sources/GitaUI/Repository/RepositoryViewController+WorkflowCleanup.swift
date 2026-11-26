@@ -3,13 +3,13 @@ import GitaCore
 
 /// Complete stash creation/actions (Feature #5) wired into Local Changes and the sidebar stash rows.
 extension RepositoryViewController {
-    func presentCreateStashSheet(selectedPaths: [String] = []) -> Bool {
+    func presentCreateStashSheet(selectedPaths: [String] = [], alerts: AlertPresenter? = nil) -> Bool {
         guard let window = view.window, let snapshot = model.snapshot, let service = model.service,
             !model.isMutating
         else { return false }
         let paths = selectedPaths.isEmpty ? selectedLocalChangePaths() : selectedPaths
         CreateStashSheet.present(
-            on: window, alerts: model.alerts, changes: snapshot.changes, selectedPaths: paths,
+            on: window, alerts: alerts ?? model.alerts, changes: snapshot.changes, selectedPaths: paths,
             execute: { request in try await service.createStash(request) },
             completion: { [weak self] created in
                 if created { self?.model.refresh() }

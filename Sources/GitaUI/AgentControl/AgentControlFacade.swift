@@ -9,8 +9,6 @@ final class AgentControlFacade {
     private let resolver = AgentCheckoutResolver()
     private let radars = NSHashTable<CollisionRadarViewController>.weakObjects()
     private let recorders = NSHashTable<AgentFlightRecorderViewController>.weakObjects()
-    private let reviews = NSHashTable<ReviewedHunksPresenter>.weakObjects()
-    private var stores: [URL: ReviewedHunksStore] = [:]
     private var radarWindows: [URL: AgentControlWindow] = [:]
     private var flightWindows: [URL: AgentControlWindow] = [:]
     private var arenaWindows: [URL: AgentArenaWindowController] = [:]
@@ -80,29 +78,11 @@ final class AgentControlFacade {
         window.showWindow(nil)
     }
 
-    func makeReviewedHunksPresenter(for repositoryRoot: URL) -> ReviewedHunksPresenter {
-        let root = canonical(repositoryRoot)
-        let store = stores[root] ?? ReviewedHunksStore(storageURL: ReviewedHunksStore.defaultStorageURL(for: root))
-        stores[root] = store
-        let presenter = ReviewedHunksPresenter(store: store)
-        presenter.didWrite = { [weak self, weak presenter] path in
-            guard let self, let presenter else { return }
-            for peer in self.reviews.allObjects where peer !== presenter && peer.store === store {
-                peer.refresh(filePath: path)
-            }
-        }
-        reviews.add(presenter)
-        return presenter
-    }
-
-    func makeReviewedHunksBar(presenter: ReviewedHunksPresenter) -> ReviewedHunksBarView {
-        ReviewedHunksBarView(presenter: presenter)
-    }
-
-    func handleHookEvent(_ event: AgentHookEvent, repositoryRoot: URL) {
+    @discardableResult
+    func handleHookEvent(_ event: AgentHookEvent, repositoryRoot: URL) -> Task<Void, Never> {
         let root = canonical(repositoryRoot)
         let history = FlightHistory(service: flightRecorder, root: root)
-        queue(for: root).append { [weak self, flightRecorder, resolver] in
+        return queue(for: root).append { [weak self, flightRecorder, resolver] in
             do {
                 guard let snapshot = try await flightRecorder.handleHookEvent(event, repositoryRoot: root) else {
                     return
@@ -155,6 +135,7 @@ final class AgentControlFacade {
     func cancelAll() {
         radars.allObjects.forEach { $0.presenter.cancel() }
         recorders.allObjects.forEach { $0.presenter.cancel() }
-        reviews.allObjects.forEach { $0.cancel() }
+        arenaWindows.values.forEach { $0.arena.presenter.cancelAndCleanup() }
+        queues.values.forEach { $0.cancelReads() }
     }
 }

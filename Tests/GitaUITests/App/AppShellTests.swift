@@ -35,6 +35,10 @@ struct AppShellTests {
         #expect(delegate.repositorySession?.repositories.count == 1)
         #expect(!(NSApp.mainMenu?.items.isEmpty ?? true))
         #expect(delegate.panelRepositoryURLs.count == 1)
+        delegate.repositoryController?.syncQuickLookSelection()
+        delegate.repositoryController?.closeQuickLook()
+        #expect(delegate.existingTeleport == nil)
+        #expect(delegate.activeAgentControl == nil)
     }
 
     @Test func everyMenuItemAndToolbarItemValidates() async throws {
@@ -68,33 +72,41 @@ struct AppShellTests {
         }
     }
 
+    private func openStashSheet(in shell: AppShellHarness, repository: TemporaryRepository) async throws {
+        try repository.write("README.md", "changed\n")
+        shell.app.model.refresh()
+        await appWaitUntil { shell.app.model.snapshot?.changes.contains { $0.path == "README.md" } == true }
+        shell.app.commands.stash()
+        #expect(shell.alerts.sheets.last?.title == String(localized: "Create Stash"))
+    }
+
     @Test func aCancelledPromptChangesNothing() async throws {
         let repository = try repository()
         let shell = await launched(repository)
         defer { shell.tearDown() }
-        shell.app.commands.stash()
-        shell.alerts.answer(.cancel)
+        try await openStashSheet(in: shell, repository: repository)
+        let cancel = try #require(
+            shell.alerts.sheetViews(NSButton.self).first { $0.title == String(localized: "Cancel") })
+        cancel.performClick(nil)
         await shell.settle()
         #expect(try repository.git("stash", "list").isEmpty)
+        #expect(try repository.git("diff", "--", "README.md").contains("+changed"))
     }
 
     @Test func stashKeepsTheChangesWithTheMessage() async throws {
         let repository = try repository()
         let shell = await launched(repository)
         defer { shell.tearDown() }
-        try repository.write("README.md", "changed\n")
-        shell.app.refreshModel()
-        await appWaitUntil { shell.app.model.snapshot?.changes.isEmpty == false }
-        shell.app.commands.stash()
-        let fieldCandidate = shell.alerts.sheetViews(NSTextField.self).first { $0.isEditable }
-        let field = try #require(fieldCandidate)
-        field.stringValue = "Parked"
-        field.delegate?.controlTextDidChange?(Notification(name: NSControl.textDidChangeNotification, object: field))
+        try await openStashSheet(in: shell, repository: repository)
+        let field = try #require(shell.alerts.sheetViews(NSTextField.self).first { $0.isEditable })
         let submit = try #require(
             shell.alerts.sheetViews(NSButton.self).first { $0.title == String(localized: "Create Stash") })
+        field.stringValue = "Parked"
+        #expect(submit.isEnabled)
         submit.performClick(nil)
-        await appWaitUntil { (try? repository.git("stash", "list"))?.contains("Parked") == true }
-        shell.alerts.answer(.OK)
+        await appWaitUntil { shell.app.model.snapshot?.stashes.isEmpty == false }
+        #expect(try repository.git("stash", "list").contains("Parked"))
+        #expect(try repository.git("show", "stash@{0}:README.md") == "changed\n")
     }
 
     @Test func newBranchFromAStartPointAndCheckingOut() async throws {

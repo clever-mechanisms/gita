@@ -157,14 +157,13 @@ final class AgentFlightRecorderViewController: NSViewController {
         }
     }
 
-    private static func writingMessage(_ kind: FlightWriteKind) -> String {
-        let messages: [FlightWriteKind: String] = [
-            .enabling: String(localized: "Enabling recording…"),
-            .disabling: String(localized: "Disabling recording…"),
-            .capturing: String(localized: "Capturing snapshot…"),
-            .clearing: String(localized: "Clearing snapshots…"),
-        ]
-        return messages[kind] ?? ""
+    static func writingMessage(_ kind: FlightWriteKind) -> String {
+        switch kind {
+        case .enabling: String(localized: "Enabling recording…")
+        case .disabling: String(localized: "Disabling recording…")
+        case .capturing: String(localized: "Capturing snapshot…")
+        case .clearing: String(localized: "Clearing snapshots…")
+        }
     }
 
     private func message(_ text: String, _ action: String, failed: Bool = false) {

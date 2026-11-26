@@ -20,7 +20,7 @@ public actor CollisionRadarService {
             }
             if remaining == 0 { break }
         }
-        return CollisionRadarReport(repositoryRoot: repositoryRoot, scannedAt: Date(), worktrees: trees, pairs: pairs)
+        return CollisionRadarReport(scannedAt: Date(), worktrees: trees, pairs: pairs)
     }
 
     private func inspect(
@@ -37,8 +37,8 @@ public actor CollisionRadarService {
         guard !paths.isEmpty || merge.conflict else { return nil }
         let files = try await collisions(paths, source: a, target: b, merge: merge, git: git)
         return WorktreeCollisionPair(
-            sourceWorktree: source, targetWorktree: target, mergeBase: base,
-            severity: merge.conflict ? .high : files.map(\.severity).max() ?? .low, collisions: files,
+            sourceWorktree: source, targetWorktree: target,
+            collisions: files,
             mergeTreeMessages: merge.messages, hasTreeConflict: merge.conflict)
     }
 

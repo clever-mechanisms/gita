@@ -8,14 +8,7 @@ public struct BucketSuggestion: Sendable, Equatable, Decodable {
 
 public struct BucketSuggestionResult: Sendable, Equatable {
     public let suggestions: [BucketSuggestion]
-    public let usedAgent: AgentTool?
     public let fallbackReason: String?
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.suggestions == rhs.suggestions
-            && lhs.usedAgent == rhs.usedAgent
-            && lhs.fallbackReason == rhs.fallbackReason
-    }
 }
 
 public struct CommitBucketAgentSuggester: Sendable {
@@ -76,7 +69,7 @@ public struct CommitBucketAgentSuggester: Sendable {
         runner: any CommandRunning = CommandRunner()
     ) async -> BucketSuggestionResult {
         func fallback(_ reason: String?) -> BucketSuggestionResult {
-            .init(suggestions: heuristicFallback(for: items), usedAgent: nil, fallbackReason: reason)
+            .init(suggestions: heuristicFallback(for: items), fallbackReason: reason)
         }
         guard let tool else { return fallback(nil) }
         let command: [String]
@@ -97,7 +90,7 @@ public struct CommitBucketAgentSuggester: Sendable {
             else {
                 return fallback(String(localized: "The agent did not return usable commit groups."))
             }
-            return .init(suggestions: groups, usedAgent: tool, fallbackReason: nil)
+            return .init(suggestions: groups, fallbackReason: nil)
         } catch { return fallback(error.localizedDescription) }
     }
 }

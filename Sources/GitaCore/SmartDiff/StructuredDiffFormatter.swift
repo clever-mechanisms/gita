@@ -16,12 +16,8 @@ public struct StructuredDiffEntry: Identifiable, Sendable, Equatable {
     public let section: String?
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id
-            && lhs.keyPath == rhs.keyPath
-            && lhs.kind == rhs.kind
-            && lhs.oldValue == rhs.oldValue
-            && lhs.newValue == rhs.newValue
-            && lhs.section == rhs.section
+        (lhs.id, lhs.keyPath, lhs.kind) == (rhs.id, rhs.keyPath, rhs.kind)
+            && (lhs.oldValue, lhs.newValue, lhs.section) == (rhs.oldValue, rhs.newValue, rhs.section)
     }
 }
 

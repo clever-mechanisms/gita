@@ -38,7 +38,7 @@ import Testing
         let all = try #require(CIFixTarget(run: run, root: root, repository: "org/example", account: .active))
         let selected = try #require(
             CIFixTarget(run: run, job: job, root: root, repository: "org/example", account: .active))
-        #expect(all.jobID == nil && all.runNumber == 30 && all.attempt == 2)
+        #expect(all.jobID == nil && all.runID == 8 && all.attempt == 2)
         #expect(selected.jobID == 4 && selected.failedStepName == "Unit tests")
     }
 

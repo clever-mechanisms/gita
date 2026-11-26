@@ -46,28 +46,15 @@ enum WorkspaceBatch {
 public struct WorkspaceRepoChanges: Sendable, Equatable {
     public let repository: WorkspaceRepository
     public internal(set) var branch: String?
-    public internal(set) var headSHA: String?
     public internal(set) var ahead = 0
     public internal(set) var behind = 0
     public internal(set) var changes: [FileChange] = []
-    public internal(set) var operation: GitOperationState?
     public internal(set) var error: String?
     public var stagedCount: Int { changes.filter { $0.isStaged && !$0.isConflict }.count }
     public var unstagedCount: Int { changes.filter { $0.isUnstaged && !$0.isUntracked && !$0.isConflict }.count }
     public var untrackedCount: Int { changes.filter(\.isUntracked).count }
     public var conflictCount: Int { changes.filter(\.isConflict).count }
     public var canStageAll: Bool { error == nil && conflictCount == 0 && unstagedCount + untrackedCount > 0 }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.repository == rhs.repository
-            && lhs.branch == rhs.branch
-            && lhs.headSHA == rhs.headSHA
-            && lhs.ahead == rhs.ahead
-            && lhs.behind == rhs.behind
-            && lhs.changes == rhs.changes
-            && lhs.operation == rhs.operation
-            && lhs.error == rhs.error
-    }
 }
 
 public enum WorkspaceChangesState: Sendable, Equatable {
@@ -97,11 +84,9 @@ public struct WorkspaceChangesAggregator: Sendable {
     }
 
     private func inspect(_ repository: WorkspaceRepository, git: GitService) async throws -> WorkspaceRepoChanges {
-        async let status = git.controlPlaneStatus()
-        async let operation = git.operationState()
-        let value = try await status
-        return try await WorkspaceRepoChanges(
-            repository: repository, branch: value.branch, headSHA: value.head,
-            ahead: value.ahead, behind: value.behind, changes: value.changes, operation: operation)
+        let value = try await git.controlPlaneStatus()
+        return WorkspaceRepoChanges(
+            repository: repository, branch: value.branch,
+            ahead: value.ahead, behind: value.behind, changes: value.changes)
     }
 }

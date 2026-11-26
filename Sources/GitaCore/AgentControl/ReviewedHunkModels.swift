@@ -35,6 +35,4 @@ public enum ReviewedHunkFilterMode: String, Sendable, CaseIterable, Hashable {
 public struct ReviewedHunksProgress: Sendable, Equatable {
     public let reviewed: Int
     public let total: Int
-    public var isComplete: Bool { reviewed == total }
-    public var remaining: Int { total - reviewed }
 }

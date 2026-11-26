@@ -49,9 +49,6 @@ final class TeleportFacade {
     }
 
     func retainTriageItems(_ ids: Set<TriageItem.ID>) {
-        for (id, presenter) in triagePresenters where !ids.contains(id) && presenter.state != .running {
-            presenter.reset()
-        }
         triagePresenters = triagePresenters.filter { ids.contains($0.key) || $0.value.state == .running }
     }
 

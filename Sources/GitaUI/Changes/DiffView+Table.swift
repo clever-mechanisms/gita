@@ -130,6 +130,7 @@ extension DiffView {
                 header: line.text, hunkIndex: hunkIndex, totalHunks: document?.hunks.count ?? 1,
                 showsActions: canAct, isStaged: hunkActionState.isStaged, isEnabled: hunkActionState.isEnabled,
                 fontSize: fontSize))
+        bar.setReviewAction(reviewAction?(hunkIndex))
         bar.onStage = { [weak self] in self?.onStageHunk?(hunkIndex) }
         bar.onDiscard = { [weak self] in self?.onDiscardHunk?(hunkIndex) }
         bar.trailingInset = currentTrailingInset
@@ -191,6 +192,30 @@ extension DiffView {
                 configure(bar, for: row)
             }
         }
+    }
+
+    func setHiddenReviewHunks(_ indices: Set<Int>) {
+        guard indices != hiddenReviewHunks else { return }
+        hiddenReviewHunks = indices
+        applyReviewFilter()
+    }
+
+    func applyReviewFilter() {
+        var hidden = IndexSet()
+        if !hiddenReviewHunks.isEmpty {
+            for row in 0..<displayedRowCount {
+                let index =
+                    activeLayout == .split
+                    ? (splitRows[row].left ?? splitRows[row].right)?.hunkIndex : currentLines[row].hunkIndex
+                if let index, hiddenReviewHunks.contains(index) { hidden.insert(row) }
+            }
+        }
+        let previouslyHidden = table.hiddenRowIndexes
+        guard hidden != previouslyHidden else { return }
+        table.unhideRows(at: previouslyHidden.subtracting(hidden), withAnimation: [])
+        let newlyHidden = hidden.subtracting(previouslyHidden)
+        table.selectedRowIndexes.intersection(newlyHidden).forEach { table.deselectRow($0) }
+        table.hideRows(at: newlyHidden, withAnimation: [])
     }
 
     func reconfigureVisibleRows() { refreshDiffCells() }

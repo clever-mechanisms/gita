@@ -40,6 +40,7 @@ final class SmartDiffViewController: NSViewController, NSTableViewDelegate, NSTa
         configureTable()
         spinner.style = .spinning
         spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
         presenter.onChange = { [weak self] state in self?.render(state) }
         render(presenter.state)
     }

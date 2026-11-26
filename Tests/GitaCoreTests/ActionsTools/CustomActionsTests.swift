@@ -4,6 +4,17 @@ import Testing
 @testable import GitaCore
 
 @Suite struct ActionsToolsCustomActionsTests {
+    @Test func scopeSymbols() {
+        let symbols: [CustomActionScope: String] = [
+            .repository: "folder", .commit: "circle.inset.filled", .branch: "arrow.triangle.branch",
+            .file: "doc", .worktree: "folder.badge.gearshape",
+        ]
+        #expect(Set(symbols.keys) == Set(CustomActionScope.allCases))
+        for (scope, symbol) in symbols {
+            #expect(scope.symbolName == symbol)
+        }
+    }
+
     @Test func resolvesOriginalTokensOnlyAndAbsolutizesFile() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "repo-root")
         let branch = "$SHA $(id); rm -rf /"

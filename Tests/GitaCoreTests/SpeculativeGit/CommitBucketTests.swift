@@ -36,7 +36,10 @@ import Testing
         var plan = try await dirtyPlan(repo)
         let hunks = plan.items.filter { $0.path == "tracked" }
         #expect(hunks.map(\.hunkIndex) == [0, 1])
-        #expect(hunks.allSatisfy { $0.addedLines == 1 && $0.removedLines == 1 })
+        for item in hunks {
+            let lines = UnifiedDiff.parse(item.patch).lines
+            #expect(lines.count { $0.kind == "+" } == 1 && lines.count { $0.kind == "-" } == 1)
+        }
         #expect(plan.buckets.count == 2 && CommitBucketPlanner.validate(plan).count == 2)
         let first = plan.buckets[0].id
         let second = plan.buckets[1].id
@@ -161,7 +164,7 @@ import Testing
         #expect(suggester.buildPrompt(for: plan.items, maxPromptBytes: 17).utf8.count <= 17)
         let fallback = await suggester.suggest(items: plan.items, tool: .aider, directory: repo.root)
         #expect(fallback.suggestions.first?.title == "Update App" && fallback.suggestions.first?.itemIDs == [id])
-        #expect(fallback.fallbackReason != nil && fallback.usedAgent == nil)
+        #expect(fallback.fallbackReason != nil)
     }
 
     enum FailurePoint: Sendable { case secondCommit, realIndex }

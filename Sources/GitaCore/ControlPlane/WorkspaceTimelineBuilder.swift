@@ -15,20 +15,6 @@ public struct WorkspaceTimelineEvent: Equatable, Sendable, Identifiable {
     public let state: SignalState
     public let branch: String?
     public let commitSHA: String?
-    public let url: URL?
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id
-            && lhs.repository == rhs.repository
-            && lhs.timestamp == rhs.timestamp
-            && lhs.title == rhs.title
-            && lhs.subtitle == rhs.subtitle
-            && lhs.kind == rhs.kind
-            && lhs.state == rhs.state
-            && lhs.branch == rhs.branch
-            && lhs.commitSHA == rhs.commitSHA
-            && lhs.url == rhs.url
-    }
 }
 
 public struct WorkspaceTimelineSource: Sendable {
@@ -59,7 +45,7 @@ public struct WorkspaceTimelineBuilder: Sendable {
                 .init(
                     id: repo.id + ":commit:" + $0.id, repository: repo, timestamp: $0.date, title: $0.subject,
                     subtitle: $0.author, kind: .commit(sha: $0.id, author: $0.author), state: .neutral,
-                    branch: nil, commitSHA: $0.id, url: nil)
+                    branch: nil, commitSHA: $0.id)
             }
             for report in source.reports {
                 events += report.items.compactMap { event($0, repo: repo) }
@@ -95,7 +81,7 @@ public struct WorkspaceTimelineBuilder: Sendable {
         return .init(
             id: repo.id + ":" + item.provider.rawValue + ":" + item.id, repository: repo,
             timestamp: date, title: item.title, subtitle: item.detail, kind: kind, state: item.state,
-            branch: item.branch, commitSHA: item.commit, url: item.url)
+            branch: item.branch, commitSHA: item.commit)
     }
 
     public func collect(

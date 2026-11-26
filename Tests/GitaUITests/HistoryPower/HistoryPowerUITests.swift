@@ -22,6 +22,22 @@ struct HistoryPowerUITests {
         }
     }
 
+    @Test func reflogActionBadges() {
+        UITestSupport.bootstrap()
+        let cases: [(ReflogActionKind, String, NSColor)] = [
+            (.commit, "Commit", Theme.success), (.amend, "Amend", Theme.needsInputText),
+            (.checkout, "Checkout", Theme.working), (.reset, "Reset", Theme.failure), (.rebase, "Rebase", Theme.merged),
+            (.merge, "Merge", Theme.running), (.cherryPick, "Cherry-pick", Theme.merged),
+            (.pull, "Pull", Theme.running),
+            (.branch, "Branch", Theme.working), (.stash, "Stash", Theme.secondaryText),
+            (.other, "Action", Theme.secondaryText),
+        ]
+        for (kind, title, color) in cases {
+            let badge = ReflogActionBadge.badge(for: kind)
+            #expect(badge.title == title && badge.accentColor == color)
+        }
+    }
+
     @Test("ReflogPresenter filters, loads per-file diffs on demand, and builds window")
     func reflogPresenterAndWindow() async throws {
         UITestSupport.bootstrap()

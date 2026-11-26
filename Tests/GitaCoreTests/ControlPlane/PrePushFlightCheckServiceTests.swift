@@ -53,7 +53,14 @@ import Testing
         for status in [0, 7] {
             let command = FlightCheckCommand(executable: "./check", arguments: [String(status)])
             let run = await service.run(gitService: repo.service, command: command)
-            let value = try #require(await service.cachedResult(for: repo.root, commitSHA: sha))
+            let value: FlightCheckResult
+            switch run.state {
+            case .passed(let result), .failed(let result): value = result
+            default:
+                Issue.record("Expected a completed check")
+                return
+            }
+            #expect(value.commitSHA == sha)
             #expect(run.state == (status == 0 ? .passed(value) : .failed(value)))
             #expect(value.exitCode == Int32(status) && !run.cached)
             #expect(value.output.lines.contains("committed") && value.output.lines.contains("TOKEN=••••"))
@@ -81,11 +88,21 @@ import Testing
         for cancel in [true, false] {
             let command = FlightCheckCommand(
                 executable: "/bin/sh", arguments: ["wait.sh", receipt.path], timeoutSeconds: cancel ? 5 : 0.4)
-            let run = await service.run(gitService: repo.service, command: command) { state in
-                if cancel, case .running(_, _, let tail) = state, tail.lines.contains("started") {
-                    await service.cancel(for: repo.root)
+            let (started, continuation) = AsyncStream<Void>.makeStream()
+            let task = Task {
+                defer { continuation.finish() }
+                return await service.run(gitService: repo.service, command: command) { state in
+                    if case .running(_, _, let tail) = state, tail.lines.contains("started") {
+                        continuation.yield(())
+                    }
                 }
             }
+            if cancel {
+                var iterator = started.makeAsyncIterator()
+                _ = await iterator.next()
+                task.cancel()
+            }
+            let run = await task.value
             if cancel {
                 #expect(run.state == .cancelled)
             } else if case .error = run.state {

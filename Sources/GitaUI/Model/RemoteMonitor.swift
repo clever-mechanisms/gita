@@ -160,7 +160,7 @@ final class RemoteMonitor {
         guard let id = root?.standardizedFileURL.path, var entry = entries[id] else { return }
         let settings = RemoteUpdateSettings.load(from: entry.defaults)
         guard settings.checkEnabled, networkStatus.isSatisfied else { return }
-        if entry.state.isBusy {
+        if entry.state.isBusy || inFlight[id] != nil {
             entry.pendingManualCheck = true
             entries[id] = entry
             return

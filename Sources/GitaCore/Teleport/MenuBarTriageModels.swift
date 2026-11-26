@@ -22,19 +22,8 @@ public struct AgentTerminalJumpTarget: Sendable, Hashable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.workspaceID == rhs.workspaceID
-            && lhs.repoPath == rhs.repoPath
-            && lhs.tabID == rhs.tabID
-            && lhs.sessionID == rhs.sessionID
-            && lhs.agentName == rhs.agentName
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(workspaceID)
-        hasher.combine(repoPath)
-        hasher.combine(tabID)
-        hasher.combine(sessionID)
-        hasher.combine(agentName)
+        (lhs.workspaceID, lhs.repoPath, lhs.tabID) == (rhs.workspaceID, rhs.repoPath, rhs.tabID)
+            && (lhs.sessionID, lhs.agentName) == (rhs.sessionID, rhs.agentName)
     }
 }
 

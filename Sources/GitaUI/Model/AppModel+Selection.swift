@@ -197,6 +197,7 @@ extension AppModel {
         guard !Task.isCancelled, revision == selection.generation else { return }
         selection.isDiffLoading = false
         selection.diff = error.localizedDescription
+        selection.diffFailed = true
         log(String(localized: "Diff failed"), error.localizedDescription, failed: true)
         emit(.diff)
     }

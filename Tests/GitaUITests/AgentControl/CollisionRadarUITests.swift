@@ -39,7 +39,7 @@ struct AgentControlCollisionRadarUITests {
         let pair = try #require(presenter.pair)
         #expect(pair.collisions.count == names.count)
         try await verifySelection(presenter, pair: pair)
-        let lazyFile = try #require(pair.collisions.first { $0.previewContent == nil })
+        let lazyFile = try #require(pair.collisions.first { $0.conflictPreview == nil })
         presenter.selectPair(pair.id)
         try FileManager.default.moveItem(at: repo.url.appending(path: ".git"), to: repo.url.appending(path: ".saved"))
         presenter.selectCollision(lazyFile.id)
@@ -72,7 +72,7 @@ struct AgentControlCollisionRadarUITests {
             throw SetupTestFailure(message: "Missing cached conflict")
         }
         #expect(cached.contains("<<<<<<<"))
-        let lazyFile = try #require(pair.collisions.first { $0.hasMergeConflict && $0.previewContent == nil })
+        let lazyFile = try #require(pair.collisions.first { $0.hasMergeConflict && $0.conflictPreview == nil })
         presenter.selectCollision(lazyFile.id)
         #expect(presenter.preview == .loading(path: lazyFile.path))
         await presenter.previewTask?.value

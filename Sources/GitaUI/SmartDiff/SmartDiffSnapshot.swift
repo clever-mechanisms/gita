@@ -58,22 +58,15 @@ struct SmartDiffSource: Sendable {
         self.document = document
         self.structured = structured
         classifications = DiffNoiseFilter.analyze(document)
-        if related.isEmpty {
-            moves = DiffMoveDetector.detect(in: document, filePath: filePath)
-        } else {
-            var documents = related
-            documents[filePath] = document
-            moves = DiffMoveDetector.detect(in: documents)
-        }
+        var documents = related
+        documents[filePath] = document
+        moves = DiffMoveDetector.detect(in: documents)
     }
 
     func snapshot(options: SmartDiffOptions, expanded: Set<Int>) -> SmartDiffSnapshot {
-        let filtered =
-            classifications.isEmpty
-            ? DiffNoiseFilter.filter(document, hideNoise: options.hideNoise, expandedHunks: expanded)
-            : DiffNoiseFilter.filter(
-                document, classifications: classifications, hideNoise: options.hideNoise,
-                expandedHunks: expanded)
+        let filtered = DiffNoiseFilter.filter(
+            document, classifications: classifications, hideNoise: options.hideNoise,
+            expandedHunks: expanded)
         let moves = options.detectMoves ? self.moves : .empty
         var indices: [Int: Int] = [:]
         var rows: [SmartDiffRow] = []
