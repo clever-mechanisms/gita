@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-/// Closed-Loop Control Plane wiring: Workspace Command Center and Pre-Push Flight Check.
+/// Closed-Loop Control Plane wiring: Workspace Command Center.
 extension AppDelegate {
     @objc func showWorkspaceCommandCenter() {
         statusItem?.closePanel()
@@ -19,14 +19,5 @@ extension AppDelegate {
         ) { [weak self] url in
             self?.openRepositoryTab(url)
         }
-    }
-
-    @objc func showFlightCheck() {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        showWindow()
-        ControlPlaneFacade.shared.presentFlightCheckSheet(for: root, gitService: service, on: mainWindow)
     }
 }

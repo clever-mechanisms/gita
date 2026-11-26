@@ -60,9 +60,6 @@ extension AppDelegate {
         #selector(showWorkspaceCommandCenter): [
             "workspace", "command center", "control plane", "multi-repo", "lockstep", "timeline", "all repositories",
         ],
-        #selector(showFlightCheck): [
-            "flight check", "pre-push", "checks", "tests", "preflight", "control plane",
-        ],
         #selector(showCommitBuckets): [
             "buckets", "commit buckets", "organize commits", "split commits", "hunks", "atomic commits",
         ],

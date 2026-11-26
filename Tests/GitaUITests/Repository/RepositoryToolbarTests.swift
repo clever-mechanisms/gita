@@ -24,7 +24,7 @@ struct RepositoryToolbarTests {
         #expect(toolbar.item(.init("unknown")) == nil)
         toolbar.refresh()
         MainToolbar.refreshAll()
-        #expect(MainToolbar.defaultItems.count == 11)
+        #expect(MainToolbar.defaultItems.count == 10)
         let workspaces = toolbar.item(.init(MainToolbar.ID.workspaces.rawValue))
         #expect((workspaces?.view as? PartsButton)?.accessibilityRole() == .popUpButton)
         #expect(MainToolbar.allowedItems.count == MainToolbar.ID.allCases.count + 2)

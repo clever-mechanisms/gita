@@ -4,13 +4,10 @@ import GitaCore
 @MainActor
 public final class ControlPlaneFacade {
     public static let shared = ControlPlaneFacade()
-    private let service = PrePushFlightCheckService()
-    private let settings: FlightCheckSettingsStore
-    private let presenters = NSHashTable<FlightCheckPresenter>.weakObjects()
     private var sheets: [ObjectIdentifier: ControlPlaneSheet] = [:]
     private var commandCenter: WorkspaceCommandCenterWindowController?
 
-    public init(defaults: UserDefaults = .standard) { settings = FlightCheckSettingsStore(defaults: defaults) }
+    public init() {}
 
     // Keep the run, job and step invocation available directly to the workflow details view.
     // swiftlint:disable:next function_parameter_count
@@ -27,37 +24,6 @@ public final class ControlPlaneFacade {
         let sheet = CIFixSheetController(presenter: CIFixPresenter(target: target, git: GitService(root: root)))
         present(sheet, on: window)
         return sheet
-    }
-
-    public func makeFlightCheckPill(
-        for root: URL, gitService: GitService,
-        onPresentSheet: (@MainActor () -> Void)? = nil
-    ) -> FlightCheckPillView {
-        let presenter = flightPresenter(root, git: gitService)
-        return FlightCheckPillView(presenter: presenter) { [weak self] in
-            if let onPresentSheet {
-                onPresentSheet()
-            } else {
-                self?.presentFlightCheckSheet(for: root, gitService: gitService, on: NSApp.keyWindow)
-            }
-        }
-    }
-
-    @discardableResult public func presentFlightCheckSheet(
-        for root: URL, gitService: GitService,
-        on window: NSWindow?
-    ) -> NSWindowController {
-        let sheet = FlightCheckSheetController(presenter: flightPresenter(root, git: gitService))
-        present(sheet, on: window)
-        return sheet
-    }
-
-    private func flightPresenter(_ root: URL, git: GitService) -> FlightCheckPresenter {
-        let key = root.standardizedFileURL.resolvingSymlinksInPath().path
-        if let existing = presenters.allObjects.first(where: { $0.root.path == key }) { return existing }
-        let presenter = FlightCheckPresenter(root: root, git: git, service: service, store: settings)
-        presenters.add(presenter)
-        return presenter
     }
 
     private func present(_ sheet: ControlPlaneSheet, on parent: NSWindow?) {

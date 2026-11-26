@@ -187,9 +187,6 @@ struct MainMenu {
             String(localized: "Storage & Health…"), #selector(AppDelegate.showStorageInspector), in: repo,
             symbol: "internaldrive")
         item(
-            String(localized: "Run Pre-Push Flight Check…"), #selector(AppDelegate.showFlightCheck),
-            in: repo, symbol: "checkmark.shield")
-        item(
             String(localized: "Organize into Commits…"), #selector(AppDelegate.showCommitBuckets),
             in: repo, symbol: "square.stack.3d.forward.dottedline")
         target.installAgentControlMenuItems(in: repo)

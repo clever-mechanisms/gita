@@ -50,37 +50,6 @@ import Testing
         #expect(presenter.state == .idle)
     }
 
-    @Test func flightCommandValidationCacheAndAccessiblePill() async throws {
-        UITestSupport.bootstrap()
-        let repo = try TemporaryRepository()
-        let sha = try repo.commit("file", "text", message: "First")
-        let suite = UUID().uuidString
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let presenter = FlightCheckPresenter(
-            root: repo.url, git: GitService(root: repo.url),
-            service: PrePushFlightCheckService(), store: FlightCheckSettingsStore(defaults: defaults))
-        #expect(presenter.state == .unconfigured)
-        #expect(!presenter.configure(.init(executable: "foo bar", arguments: [])))
-        #expect(presenter.configure(.init(executable: "git", arguments: ["rev-parse", "HEAD"])))
-        var pressed = false
-        let pill = FlightCheckPillView(presenter: presenter) { pressed = true }
-        let control = try #require(pill.subviews.first as? PartsButton)
-        #expect(control.accessibilityIdentifier() == "controlPlane.flightCheck.pill")
-        await presenter.run()?.value
-        guard case .passed(let result) = presenter.state else {
-            Issue.record("Expected pass")
-            return
-        }
-        #expect(result.output.lines == [sha] && !presenter.cached)
-        await presenter.run()?.value
-        #expect(presenter.cached && presenter.state == .passed(result))
-        pill.viewDidChangeEffectiveAppearance()
-        NotificationCenter.default.post(name: .gitaThemeChanged, object: nil)
-        #expect(control.accessibilityLabel()?.contains(String(localized: "Passed")) == true)
-        #expect(control.accessibilityPerformPress() && pressed)
-    }
-
     @Test func workspacePersistsTabFiltersTimelineAndExecutesReviewedPlan() async throws {
         let repo = try TemporaryRepository()
         try repo.commit("file", "text", message: "First")
@@ -129,16 +98,10 @@ import Testing
                 fetch: {
                     throw CancellationError()
                 }, launch: { _, _, _ in }))
-        let presenter = FlightCheckPresenter(
-            root: repo.url, git: GitService(root: repo.url),
-            service: PrePushFlightCheckService(), store: FlightCheckSettingsStore())
-        let flight = FlightCheckSheetController(presenter: presenter)
-        for sheet: ControlPlaneSheet in [ci, flight] {
-            sheet.chrome.window.layoutIfNeeded()
-            #expect(sheet.chrome.footer.arrangedSubviews.last === sheet.primary)
-            #expect(sheet.primary.keyEquivalent == "\r" && sheet.closeButton.keyEquivalent == "\u{1b}")
-            #expect(sheet.chrome.window.contentView is ThemedBackgroundView)
-        }
+        ci.chrome.window.layoutIfNeeded()
+        #expect(ci.chrome.footer.arrangedSubviews.last === ci.primary)
+        #expect(ci.primary.keyEquivalent == "\r" && ci.closeButton.keyEquivalent == "\u{1b}")
+        #expect(ci.chrome.window.contentView is ThemedBackgroundView)
         let suite = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -326,37 +289,6 @@ extension ControlPlanePresenterTests {
         #expect(opened == repo.root)
         try await SheetsSupport.wait { controller.presenter.timeline != .loading }
         #expect(controller.presenter.filteredEvents.map(\.title) == ["New review"])
-    }
-
-    @Test func flightSheetValidatesInputFiltersArgumentsAndChangesStopShortcut() async throws {
-        UITestSupport.bootstrap()
-        let git = try TemporaryRepository()
-        try git.commit("file", "base", message: "Base")
-        let suite = UUID().uuidString
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let presenter = FlightCheckPresenter(
-            root: git.url, git: GitService(root: git.url), service: PrePushFlightCheckService(),
-            store: FlightCheckSettingsStore(defaults: defaults))
-        let sheet = FlightCheckSheetController(presenter: presenter)
-        let executable: NSTextField = try SheetsSupport.require("controlPlane.flightCheck.executable", in: sheet.window)
-        let args: NSTextView = try SheetsSupport.require("controlPlane.flightCheck.arguments", in: sheet.window)
-        #expect(!sheet.primary.isEnabled)
-        SheetsSupport.type("git", into: executable)
-        #expect(sheet.primary.isEnabled)
-        SheetsSupport.type(" \t ", into: executable)
-        #expect(!sheet.primary.isEnabled)
-        SheetsSupport.type("git", into: executable)
-        args.string = "\n rev-parse \r\n \t \nHEAD\n"
-        sheet.performPrimary()
-        #expect(presenter.command?.arguments == ["rev-parse", "HEAD"])
-        #expect(sheet.primary.isEnabled && sheet.primary.title == String(localized: "Stop"))
-        #expect(sheet.primary.keyEquivalent == "." && sheet.primary.keyEquivalentModifierMask == .command)
-        let stop = try #require(SharedEvents.key(".", code: 47, modifiers: .command))
-        #expect(sheet.primary.performKeyEquivalent(with: stop))
-        try await SheetsSupport.wait { !presenter.busy }
-        #expect(presenter.state == .cancelled)
-        #expect(sheet.primary.keyEquivalent == "\r" && sheet.primary.keyEquivalentModifierMask.isEmpty)
     }
 
     @Test func ciRetryRestoresDefaultTitleWithNoAgent() async throws {

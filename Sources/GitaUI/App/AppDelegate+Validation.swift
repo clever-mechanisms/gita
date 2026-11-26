@@ -72,7 +72,6 @@ extension AppDelegate {
         #selector(showStackedBranches),
         #selector(showReflogBrowser),
         #selector(showCodeSearch),
-        #selector(showFlightCheck),
         #selector(showCommitBuckets),
         #selector(exportPatch),
         #selector(showCollisionRadar),

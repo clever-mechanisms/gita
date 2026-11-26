@@ -162,7 +162,7 @@ struct MenuAvailability {
         switch id {
         case .sidebar, .agents, .workspaces: return true
         case .open: return canChangeRepository
-        case .repository, .openIn, .flightCheck: return gate.hasSnapshot
+        case .repository, .openIn: return gate.hasSnapshot
         case .fetch: return hasRemote && !gate.isMutating
         case .pull, .push: return operation == nil && hasRemote && !gate.isMutating
         default: return canWrite && (operation == nil || id == .refresh || id == nil)
