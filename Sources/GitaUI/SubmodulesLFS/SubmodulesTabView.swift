@@ -131,38 +131,39 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
         guard items.indices.contains(targetRow) else { return }
         let submodule = items[targetRow]
         let isBusy = presenter.submoduleState.isBusy
-        let initTitle =
-            submodule.status == .uninitialized
-            ? String(localized: "Initialize Submodule")
-            : String(localized: "Update Submodule")
-        let initItem = MenuAction(initTitle) { [weak self] in
-            if submodule.status == .uninitialized {
-                self?.presenter.initializeSubmodules(path: submodule.path)
-            } else {
-                self?.presenter.updateSubmodules(path: submodule.path)
-            }
-        }
-        initItem.isEnabled = !isBusy
-        menu.addItem(initItem)
-
+        menu.addItem(makePrimarySubmoduleMenuItem(for: submodule, isBusy: isBusy))
         let syncItem = MenuAction(String(localized: "Sync URL")) { [weak self] in
             self?.presenter.syncSubmodules(path: submodule.path)
         }
         syncItem.isEnabled = !isBusy
         menu.addItem(syncItem)
-
         menu.addItem(.separator())
-
         let openItem = MenuAction(String(localized: "Open in Tab")) { [weak self] in
             self?.presenter.openSubmoduleInTab(submodule)
         }
         openItem.isEnabled = submodule.status != .uninitialized
         menu.addItem(openItem)
-
         let revealItem = MenuAction(String(localized: "Reveal in Finder")) { [weak self] in
             self?.presenter.revealSubmoduleInFinder(submodule)
         }
         menu.addItem(revealItem)
+    }
+
+    private func makePrimarySubmoduleMenuItem(for submodule: GitSubmodule, isBusy: Bool) -> NSMenuItem {
+        let isUninitialized = submodule.status == .uninitialized
+        let title =
+            isUninitialized
+            ? String(localized: "Initialize Submodule")
+            : String(localized: "Update Submodule")
+        let item = MenuAction(title) { [weak self] in
+            if isUninitialized {
+                self?.presenter.initializeSubmodules(path: submodule.path)
+            } else {
+                self?.presenter.updateSubmodules(path: submodule.path)
+            }
+        }
+        item.isEnabled = !isBusy
+        return item
     }
 
     private func configureControls() {
@@ -191,18 +192,9 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
         statusCol.width = 120
         statusCol.minWidth = 96
         for column in [pathCol, revCol, statusCol] { table.addTableColumn(column) }
-        table.style = .fullWidth
-        table.rowHeight = 40
-        table.intercellSpacing = NSSize(width: 8, height: 2)
-        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        table.backgroundColor = Theme.window
-        table.dataSource = self
-        table.delegate = self
-        table.allowsEmptySelection = true
-        table.setAccessibilityLabel(String(localized: "Submodules"))
-        let menu = NSMenu()
-        menu.delegate = self
-        table.menu = menu
+        EcosystemTabChrome.configureTable(
+            table, dataSource: self, delegate: self, menuDelegate: self,
+            accessibilityLabel: String(localized: "Submodules"))
     }
 
     private func layoutContent() {
@@ -211,21 +203,9 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
             spacing: 6
         )
         actionsRow.edgeInsets = NSEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
-        let divider = Deck.separator()
-        let scroll = Style.scroll(table)
-        let stack = Deck.vstack([actionsRow, divider, statusBanner, scroll], spacing: 0)
-        Deck.pin(stack, in: self)
-        for view in [actionsRow, divider, scroll] as [NSView] {
-            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        }
-        statusBanner.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -28).isActive = true
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(emptyLabel)
-        NSLayoutConstraint.activate([
-            emptyLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
-            emptyLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 420),
-        ])
+        EcosystemTabChrome.layout(
+            in: self, header: actionsRow, statusBanner: statusBanner, table: table, emptyLabel: emptyLabel,
+            emptyWidth: 420)
     }
 
     private func syncSelection() {
@@ -271,6 +251,7 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
         let subtitle = submodule.url ?? String(localized: "No remote URL in .gitmodules")
         let urlLabel = Deck.caption(subtitle)
         urlLabel.lineBreakMode = .byTruncatingMiddle
+        pathLabel.toolTip = submodule.name == submodule.path ? submodule.path : "\(submodule.name) (\(submodule.path))"
         let stack = Deck.vstack([pathLabel, urlLabel], spacing: 1)
         let container = NSView()
         Deck.pin(stack, in: container, insets: NSEdgeInsets(top: 4, left: 4, bottom: 4, right: 4))

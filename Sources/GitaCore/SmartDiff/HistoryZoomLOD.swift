@@ -25,6 +25,20 @@ public struct HistoryZoomMetrics: Sendable, Equatable {
     public let graphNodeRadius: CGFloat
     public let graphLineWidth: CGFloat
 
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.lod == rhs.lod
+            && lhs.zoomScale == rhs.zoomScale
+            && lhs.rowHeight == rhs.rowHeight
+            && lhs.badgeVisibility == rhs.badgeVisibility
+            && lhs.authorRibbonMode == rhs.authorRibbonMode
+            && lhs.milestoneEmphasis == rhs.milestoneEmphasis
+            && lhs.showSubject == rhs.showSubject
+            && lhs.showSHA == rhs.showSHA
+            && lhs.showTimestamp == rhs.showTimestamp
+            && lhs.graphNodeRadius == rhs.graphNodeRadius
+            && lhs.graphLineWidth == rhs.graphLineWidth
+    }
+
     public static func lod(for zoomScale: CGFloat) -> HistoryZoomLOD {
         if zoomScale < 0.65 { return .overview }
         return zoomScale >= 1.15 ? .detailed : .compact

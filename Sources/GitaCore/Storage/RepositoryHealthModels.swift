@@ -39,7 +39,6 @@ public struct GitMaintenanceInfo: Sendable, Equatable {
 }
 
 public struct RepositoryHealthSnapshot: Sendable, Equatable {
-    public let repositoryRoot: URL
     public let worktreePaths: [String]
     public let fsMonitor: FSMonitorSetting
     public let untrackedCache: GitConfigSwitch
@@ -49,5 +48,4 @@ public struct RepositoryHealthSnapshot: Sendable, Equatable {
 
 public struct HealthActionResult: Sendable, Equatable {
     public let message: String
-    public let duration: TimeInterval
 }

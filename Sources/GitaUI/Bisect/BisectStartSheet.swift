@@ -2,20 +2,20 @@ import AppKit
 import GitaCore
 
 /// Validation and submission state for `BisectStartSheet`.
-public struct BisectStartState: Equatable, Sendable {
-    public var badRef: String
-    public var goodRef: String
-    public var errorMessage: String?
+struct BisectStartState: Equatable, Sendable {
+    var badRef: String
+    var goodRef: String
+    var errorMessage: String?
 
-    public init(badRef: String = "HEAD", goodRef: String = "") {
+    init(badRef: String = "HEAD", goodRef: String = "") {
         self.badRef = badRef
         self.goodRef = goodRef
     }
 
-    public var trimmedBad: String { badRef.trimmingCharacters(in: .whitespacesAndNewlines) }
-    public var trimmedGood: String { goodRef.trimmingCharacters(in: .whitespacesAndNewlines) }
+    var trimmedBad: String { badRef.trimmingCharacters(in: .whitespacesAndNewlines) }
+    var trimmedGood: String { goodRef.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    public var validationError: String? {
+    var validationError: String? {
         if trimmedBad.isEmpty || trimmedGood.isEmpty {
             return String(localized: "Choose both a Bad commit and a Good commit.")
         }
@@ -25,7 +25,7 @@ public struct BisectStartState: Equatable, Sendable {
         return nil
     }
 
-    public var canStart: Bool { validationError == nil }
+    var canStart: Bool { validationError == nil }
 }
 
 /// Sheet for starting a visual `git bisect` session by selecting Bad and Good commits.

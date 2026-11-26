@@ -73,7 +73,7 @@ struct AppShellTests {
         let shell = await launched(repository)
         defer { shell.tearDown() }
         shell.app.commands.stash()
-        shell.alerts.answer(.alertSecondButtonReturn)
+        shell.alerts.answer(.cancel)
         await shell.settle()
         #expect(try repository.git("stash", "list").isEmpty)
     }
@@ -83,10 +83,18 @@ struct AppShellTests {
         let shell = await launched(repository)
         defer { shell.tearDown() }
         try repository.write("README.md", "changed\n")
+        shell.app.refreshModel()
+        await appWaitUntil { shell.app.model.snapshot?.changes.isEmpty == false }
         shell.app.commands.stash()
-        shell.alerts.fields.first?.stringValue = "Parked"
-        shell.alerts.answer()
+        let fieldCandidate = shell.alerts.sheetViews(NSTextField.self).first { $0.isEditable }
+        let field = try #require(fieldCandidate)
+        field.stringValue = "Parked"
+        field.delegate?.controlTextDidChange?(Notification(name: NSControl.textDidChangeNotification, object: field))
+        let submit = try #require(
+            shell.alerts.sheetViews(NSButton.self).first { $0.title == String(localized: "Create Stash") })
+        submit.performClick(nil)
         await appWaitUntil { (try? repository.git("stash", "list"))?.contains("Parked") == true }
+        shell.alerts.answer(.OK)
     }
 
     @Test func newBranchFromAStartPointAndCheckingOut() async throws {

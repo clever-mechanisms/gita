@@ -8,6 +8,22 @@ public struct DiffMoveEndpoint: Sendable, Equatable, Hashable {
     public let displayEndLine: Int
 
     fileprivate var summary: String { String(localized: "\(filePath), lines \(displayStartLine)–\(displayEndLine)") }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.filePath == rhs.filePath
+            && lhs.hunkIndex == rhs.hunkIndex
+            && lhs.lineIndices == rhs.lineIndices
+            && lhs.displayStartLine == rhs.displayStartLine
+            && lhs.displayEndLine == rhs.displayEndLine
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(filePath)
+        hasher.combine(hunkIndex)
+        hasher.combine(lineIndices)
+        hasher.combine(displayStartLine)
+        hasher.combine(displayEndLine)
+    }
 }
 
 public struct DiffMoveMatch: Identifiable, Sendable, Equatable {
@@ -17,6 +33,15 @@ public struct DiffMoveMatch: Identifiable, Sendable, Equatable {
     public let lineCount: Int
     public let nonTrivialLineCount: Int
     public let previewLine: String
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+            && lhs.source == rhs.source
+            && lhs.destination == rhs.destination
+            && lhs.lineCount == rhs.lineCount
+            && lhs.nonTrivialLineCount == rhs.nonTrivialLineCount
+            && lhs.previewLine == rhs.previewLine
+    }
 }
 
 public enum DiffMoveRole: Sendable, Equatable {

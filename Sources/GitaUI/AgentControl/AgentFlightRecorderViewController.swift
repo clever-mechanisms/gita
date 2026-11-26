@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class AgentFlightRecorderViewController: NSViewController {
+final class AgentFlightRecorderViewController: NSViewController {
     let presenter: FlightRecorderPresenter
     let scrubber = FlightTurnScrubberView()
     private let recording = NSSwitch()
@@ -38,7 +38,7 @@ public final class AgentFlightRecorderViewController: NSViewController {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Programmatic controller") }
 
-    override public func loadView() {
+    override func loadView() {
         let label = String(localized: "Recording")
         recording.setAccessibilityLabel(label)
         AgentControlUI.identify(recording, "flight.recording")
@@ -71,12 +71,12 @@ public final class AgentFlightRecorderViewController: NSViewController {
         pane.diff.table.nextKeyView = recording
     }
 
-    override public func viewWillAppear() {
+    override func viewWillAppear() {
         super.viewWillAppear()
         presenter.load()
     }
 
-    override public func viewWillDisappear() {
+    override func viewWillDisappear() {
         super.viewWillDisappear()
         presenter.cancel()
         body.spinner.stop()
@@ -158,12 +158,13 @@ public final class AgentFlightRecorderViewController: NSViewController {
     }
 
     private static func writingMessage(_ kind: FlightWriteKind) -> String {
-        switch kind {
-        case .enabling: String(localized: "Enabling recording…")
-        case .disabling: String(localized: "Disabling recording…")
-        case .capturing: String(localized: "Capturing snapshot…")
-        case .clearing: String(localized: "Clearing snapshots…")
-        }
+        let messages: [FlightWriteKind: String] = [
+            .enabling: String(localized: "Enabling recording…"),
+            .disabling: String(localized: "Disabling recording…"),
+            .capturing: String(localized: "Capturing snapshot…"),
+            .clearing: String(localized: "Clearing snapshots…"),
+        ]
+        return messages[kind] ?? ""
     }
 
     private func message(_ text: String, _ action: String, failed: Bool = false) {

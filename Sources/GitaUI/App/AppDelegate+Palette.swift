@@ -46,11 +46,9 @@ extension AppDelegate {
         ],
         #selector(showStorageInspector): [
             "storage", "disk", "space", "bloat", "clean", "node_modules", "trash", "worktree size", "reclaim",
-        ],
-        #selector(showRepositoryHealth): [
             "health", "maintenance", "gc", "garbage collection", "fsmonitor", "untracked cache", "commit-graph",
         ],
-        #selector(exportPatch): ["patch", "diff", "format-patch", "export"],
+        #selector(exportPatch): ["patch", "diff", "format-patch", "export", "staged", "working", "commit"],
         #selector(applyPatch): ["patch", "apply", "3way", "import patch"],
         #selector(copyPermalink): ["permalink", "link", "github", "gitlab", "bitbucket", "url"],
         #selector(openInExternalDiffTool): [
@@ -124,22 +122,14 @@ extension AppDelegate {
                 action.item, group: String(localized: "Repository"), keywords: action.keywords,
                 isEnabled: action.item.isEnabled)
         }
-        let hasRepo = model.snapshot != nil && model.service != nil
-        let submodules = MenuAction(String(localized: "Manage Submodules"), symbol: "shippingbox") { [weak self] in
-            self?.openSubmodulesAndLFS(initialTab: .submodules)
-        }
-        let lfs = MenuAction(String(localized: "Manage Git LFS"), symbol: "externaldrive.badge.checkmark") {
-            [weak self] in
-            self?.openSubmodulesAndLFS(initialTab: .lfs)
-        }
+        let hasRoot = (tabsController?.selectedRepository ?? model.snapshot?.root) != nil
+        let health = MenuAction(String(localized: "Repository Health & Maintenance…"), symbol: "wrench.and.screwdriver")
+        { [weak self] in self?.showRepositoryHealth() }
         items.append(
             PaletteItems.command(
-                submodules, group: String(localized: "Repository"),
-                keywords: ["submodule", "submodules", "init", "sync", "update"], isEnabled: hasRepo))
-        items.append(
-            PaletteItems.command(
-                lfs, group: String(localized: "Repository"),
-                keywords: ["lfs", "git lfs", "locks", "large files", "unlock"], isEnabled: hasRepo))
+                health, group: String(localized: "Repository"),
+                keywords: ["health", "maintenance", "gc", "fsmonitor", "untracked cache", "commit-graph"],
+                isEnabled: hasRoot))
         return items
     }
 

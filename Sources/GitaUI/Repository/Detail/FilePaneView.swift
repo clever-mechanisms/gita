@@ -50,17 +50,19 @@ final class FilePaneView: NSView {
     let changesSplit = DeckSplitView()
     private let filter = NSSearchField()
     private let orderControl = SmartDiffFacade.shared.makeNarrativeOrderModeControl(mode: .pathTree)
-    private var orderMode: FileOrderMode = .pathTree
-    private var rawChanges: [FileChange] = []
-    private var rawAmendStaging = AmendStaging.off
-    private var rawCommitFiles: [FileChange] = []
+    let narrativePresenter = NarrativeOrderPresenter(mode: .pathTree)
+    let narrativeHeaders = Deck.vstack([], spacing: 0)
+    var orderMode: FileOrderMode = .pathTree
+    var rawChanges: [FileChange] = []
+    var rawAmendStaging = AmendStaging.off
+    var rawCommitFiles: [FileChange] = []
     private let filterBar: NSStackView
     private let expandButton: PartsButton
     private let treeButton: PartsButton
     private let cleanEmptyOverlay = FillView(color: Theme.inset)
     private let cleanEmptyLabel = Deck.wrapping("", font: Theme.caption, color: Theme.secondaryText)
     private let cleanPushButton: PartsButton
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
     private var positionedChanges = false
     private var isPlacingChangesSplit = false
     private(set) var content = Content.commitFiles
@@ -173,7 +175,8 @@ final class FilePaneView: NSView {
     }
 
     private func layoutPanes() {
-        for view in [filterBar, commitFiles, changesSplit, cleanEmptyOverlay, tree] as [NSView] {
+        narrativeHeaders.isHidden = true
+        for view in [filterBar, narrativeHeaders, commitFiles, changesSplit, cleanEmptyOverlay, tree] as [NSView] {
             addSubview(view)
             view.translatesAutoresizingMaskIntoConstraints = false
         }
@@ -182,12 +185,15 @@ final class FilePaneView: NSView {
             filterBar.trailingAnchor.constraint(equalTo: trailingAnchor),
             filterBar.topAnchor.constraint(equalTo: topAnchor),
             filterBar.heightAnchor.constraint(equalToConstant: Self.filterHeight),
+            narrativeHeaders.leadingAnchor.constraint(equalTo: leadingAnchor),
+            narrativeHeaders.trailingAnchor.constraint(equalTo: trailingAnchor),
+            narrativeHeaders.topAnchor.constraint(equalTo: filterBar.bottomAnchor),
         ])
         for view in [commitFiles, changesSplit, cleanEmptyOverlay] as [NSView] {
             NSLayoutConstraint.activate([
                 view.leadingAnchor.constraint(equalTo: leadingAnchor),
                 view.trailingAnchor.constraint(equalTo: trailingAnchor),
-                view.topAnchor.constraint(equalTo: filterBar.bottomAnchor),
+                view.topAnchor.constraint(equalTo: narrativeHeaders.bottomAnchor),
                 view.bottomAnchor.constraint(equalTo: bottomAnchor),
             ])
         }
@@ -206,7 +212,7 @@ final class FilePaneView: NSView {
         Style.fill(tree, in: self)
     }
 
-    private var allLists: [ChangedFilesView] { [commitFiles, unstaged.list, staged.list] }
+    var allLists: [ChangedFilesView] { [commitFiles, unstaged.list, staged.list] }
     private var visibleLists: [ChangedFilesView] {
         content == .localChanges ? [unstaged.list, staged.list] : [commitFiles]
     }
@@ -217,6 +223,7 @@ final class FilePaneView: NSView {
         filterBar.isHidden = next == .tree
         commitFiles.isHidden = next != .commitFiles
         changesSplit.isHidden = next != .localChanges
+        refreshNarrativeHeaders()
         updateCleanEmptyState()
         updateFolderButtons()
     }
@@ -236,6 +243,7 @@ final class FilePaneView: NSView {
             staged.update(ordered(changes.filter { !$0.isConflict && $0.isStaged }))
         }
         isWorkingTreeClean = changes.isEmpty && amendFiles.isEmpty
+        refreshNarrativeHeaders()
         updateCleanEmptyState()
         updateFolderButtons()
     }
@@ -252,23 +260,8 @@ final class FilePaneView: NSView {
     func showCommitFiles(_ files: [FileChange]) {
         rawCommitFiles = files
         commitFiles.update(ordered(files))
+        refreshNarrativeHeaders()
         updateFolderButtons()
-    }
-
-    private func applyOrderMode(_ mode: FileOrderMode) {
-        guard orderMode != mode else { return }
-        orderMode = mode
-        let useTree = mode == .pathTree && Preference.filesAsTree.bool(defaults)
-        for list in allLists { list.showsTree = useTree }
-        showChanges(rawChanges, amendStaging: rawAmendStaging)
-        showCommitFiles(rawCommitFiles)
-    }
-
-    private func ordered(_ files: [FileChange]) -> [FileChange] {
-        guard orderMode != .pathTree else { return files }
-        return SmartDiffFacade.shared.orderFiles(files, mode: orderMode)
-            .flatMap(\.entries)
-            .compactMap(\.fileChange)
     }
 
     /// Highlights the selected file in its list (in Local Changes, in the staged or unstaged section only).

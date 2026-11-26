@@ -41,19 +41,24 @@ enum RepositoryPrompts {
         window.attachedSheet?.makeFirstResponder(fields.first)
     }
 
+    /// Confirmation and optional conflict-preview callbacks for a prompt.
+    struct PromptCallbacks<Value> {
+        var onPreview: (@MainActor (Value) -> Void)?
+        var action: @MainActor (Value) -> Void
+    }
+
     /// Merge (with a strategy) or rebase: the branch or commit, preselected when given, else main or master.
     static func reference(
         rebase: Bool, snapshot: RepositorySnapshot, preselect: String?, on window: NSWindow,
         alerts: AlertPresenter,
-        onPreview: (@MainActor (_ ref: String, _ mode: GitMergeMode) -> Void)? = nil,
-        action: @escaping @MainActor (_ ref: String, _ mode: GitMergeMode) -> Void
+        callbacks: PromptCallbacks<(ref: String, mode: GitMergeMode)>
     ) {
         let title = rebase ? GitOperationKind.rebase.localizedTitle : GitOperationKind.merge.localizedTitle
         let alert = NSAlert()
         alert.messageText = String(localized: "\(title) · \(snapshot.localizedBranch)")
         alert.addButton(withTitle: title)
         alert.addButton(withTitle: String(localized: "Cancel"))
-        if onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
+        if callbacks.onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
         let pick = ReferencePick(references: snapshot.references)
         let picker = NSComboBox()
         picker.addItems(withObjectValues: pick.names)
@@ -78,9 +83,9 @@ enum RepositoryPrompts {
             let ref = pick.resolve(selectedIndex: picker.indexOfSelectedItem, text: picker.stringValue)
             let chosenMode = GitMergeMode.allCases[max(0, mode.indexOfSelectedItem)]
             if response == .alertFirstButtonReturn {
-                action(ref, chosenMode)
+                callbacks.action((ref, chosenMode))
             } else if response == .alertThirdButtonReturn {
-                onPreview?(ref, chosenMode)
+                callbacks.onPreview?((ref, chosenMode))
             }
         }
         window.attachedSheet?.makeFirstResponder(picker)
@@ -90,15 +95,14 @@ enum RepositoryPrompts {
     static func commitOperation(
         _ title: String, commit: GitCommit, branch: String, on window: NSWindow,
         alerts: AlertPresenter,
-        onPreview: (@MainActor (_ mainline: Int?) -> Void)? = nil,
-        action: @escaping @MainActor (_ mainline: Int?) -> Void
+        callbacks: PromptCallbacks<Int?>
     ) {
         let alert = NSAlert()
         alert.messageText = String(localized: "\(title) · \(branch)")
         alert.informativeText = commit.subject + "\n" + commit.id
         alert.addButton(withTitle: title)
         alert.addButton(withTitle: String(localized: "Cancel"))
-        if onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
+        if callbacks.onPreview != nil { alert.addButton(withTitle: String(localized: "Preview Conflicts…")) }
         let parent = NSPopUpButton()
         let isMerge = commit.parents.count > 1
         if isMerge {
@@ -115,9 +119,9 @@ enum RepositoryPrompts {
         alerts.present(alert, on: window) { response in
             let mainline = isMerge ? parent.indexOfSelectedItem + 1 : nil
             if response == .alertFirstButtonReturn {
-                action(mainline)
+                callbacks.action(mainline)
             } else if response == .alertThirdButtonReturn {
-                onPreview?(mainline)
+                callbacks.onPreview?(mainline)
             }
         }
     }

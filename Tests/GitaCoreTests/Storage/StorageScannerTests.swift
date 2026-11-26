@@ -39,7 +39,8 @@ import Testing
         #expect(report.gitStore.totalAllocatedBytes == git.allocatedBytes)
         #expect(report.gitStore.lfsAllocatedBytes > 0)
         #expect(report.gitStore.objectsAllocatedBytes > 0)
-        #expect(report.totalLogicalBytes == git.logicalBytes + 149)
+        let totalLogical = report.gitStore.totalLogicalBytes + report.checkouts.reduce(0) { $0 + $1.totalLogicalBytes }
+        #expect(totalLogical == git.logicalBytes + 149)
     }
 
     @Test func bareMainAndMissingPrunableCheckoutHaveNoWorkingFiles() async throws {
@@ -55,8 +56,9 @@ import Testing
         let report = try await StorageScanner().scan(repositoryRoot: bare)
         #expect(report.checkouts.count == 2)
         #expect(report.checkouts.first?.isBare == true)
-        #expect(report.checkouts.last?.isPrunable == true)
-        #expect(report.totalLogicalBytes == report.gitStore.totalLogicalBytes)
+        #expect(report.checkouts.last?.worktree.isPrunable == true)
+        let totalLogical = report.gitStore.totalLogicalBytes + report.checkouts.reduce(0) { $0 + $1.totalLogicalBytes }
+        #expect(totalLogical == report.gitStore.totalLogicalBytes)
     }
 
     @Test func handlesMissingLockedWorktreeAndTracksNestedFileMtime() async throws {
@@ -75,7 +77,7 @@ import Testing
         let report = try await StorageScanner().scan(repositoryRoot: fixture.root)
         let missing = try #require(report.checkouts.first(where: { $0.branch == "locked-branch" }))
         #expect(missing.isLocked)
-        #expect(!missing.isPrunable)
+        #expect(!missing.worktree.isPrunable)
         #expect(missing.isUnavailable)
         let main = try #require(report.checkouts.first(where: { $0.isMainWorktree }))
         let modified = try #require(main.lastModifiedDate)

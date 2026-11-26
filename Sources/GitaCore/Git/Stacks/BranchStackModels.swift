@@ -131,13 +131,13 @@ public struct BranchStackRestackResult: Sendable, Equatable {
     }
 }
 
-public enum BranchStackError: Error, LocalizedError, Sendable {
+enum BranchStackError: Error, LocalizedError, Sendable {
     case updateRefsUnsupported
     case branchCheckedOutInOtherWorktree(String)
     case emptyStack
     case noBaseBranch
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .updateRefsUnsupported: String(localized: "Restacking requires Git 2.38 or later.")
         case .branchCheckedOutInOtherWorktree(let path): String(localized: "A branch is checked out at \(path).")

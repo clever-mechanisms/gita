@@ -3,39 +3,38 @@ import GitaCore
 
 /// Coordinates `git log -L` line history loading, selection, and presentation without requiring a window.
 @MainActor
-public final class LineHistoryPresenter {
-    public typealias Loader = @Sendable (LineRangeSpec, Int) async throws -> [LineHistoryEntry]
+final class LineHistoryPresenter {
+    typealias Loader = @Sendable (LineRangeSpec, Int) async throws -> [LineHistoryEntry]
 
-    public private(set) var range: LineRangeSpec
-    public private(set) var state: LineHistoryLoadState = .idle
-    public private(set) var selectedCommitID: String?
-    public var onChange: (() -> Void)?
+    private(set) var range: LineRangeSpec
+    private(set) var state: LineHistoryLoadState = .idle
+    private(set) var selectedCommitID: String?
+    var onChange: (() -> Void)?
 
     private let loader: Loader
     private let task = LatestTask()
 
-    public init(service: GitService, range: LineRangeSpec) {
-        self.range = range
-        self.loader = { spec, limit in try await service.lineHistory(range: spec, limit: limit) }
+    convenience init(service: GitService, range: LineRangeSpec) {
+        self.init(range: range) { spec, limit in try await service.lineHistory(range: spec, limit: limit) }
     }
 
-    public init(range: LineRangeSpec, loader: @escaping Loader) {
+    init(range: LineRangeSpec, loader: @escaping Loader) {
         self.range = range
         self.loader = loader
     }
 
-    public var entries: [LineHistoryEntry] { state.entries }
+    var entries: [LineHistoryEntry] { state.entries }
 
-    public var selectedEntry: LineHistoryEntry? {
+    var selectedEntry: LineHistoryEntry? {
         guard let selectedCommitID else { return nil }
         return entries.first { $0.commit.id == selectedCommitID }
     }
 
-    public var headerTitle: String {
+    var headerTitle: String {
         String(localized: "Line History · \(range.path) (\(range.rangeLabel))")
     }
 
-    public var summaryText: String {
+    var summaryText: String {
         switch state {
         case .idle:
             return ""
@@ -50,7 +49,7 @@ public final class LineHistoryPresenter {
         }
     }
 
-    public func reload(range newRange: LineRangeSpec? = nil, limit: Int = 100) {
+    func reload(range newRange: LineRangeSpec? = nil, limit: Int = 100) {
         if let newRange { range = newRange }
         let spec = range
         state = .loading
@@ -76,13 +75,13 @@ public final class LineHistoryPresenter {
         )
     }
 
-    public func select(commitID: String?) {
+    func select(commitID: String?) {
         guard selectedCommitID != commitID else { return }
         selectedCommitID = commitID
         onChange?()
     }
 
-    public func cancel() {
+    func cancel() {
         task.cancel()
     }
 }

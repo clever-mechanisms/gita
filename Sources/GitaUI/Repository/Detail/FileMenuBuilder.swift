@@ -1,6 +1,14 @@
 import AppKit
 import GitaCore
 
+/// Which two revisions an external diff tool should compare for a file.
+enum ExternalDiffTarget: Sendable, Equatable {
+    case staged
+    case unstaged
+    case commit(id: String, parent: String?)
+    case stash(ref: String, parent: String?)
+}
+
 /// What the file menus' items do; the repository window performs them.
 @MainActor
 protocol FileMenuActions: AnyObject {
@@ -14,14 +22,14 @@ protocol FileMenuActions: AnyObject {
     func saveFile(_ path: String, commit: String)
     func showInFileTree(_ path: String)
     func copyFilePermalink(_ path: String, commit: String?)
-    func openFileInExternalDiff(_ path: String, staged: Bool?)
+    func openFileInExternalDiff(_ path: String, target: ExternalDiffTarget)
     func openFileInExternalMerge(_ path: String)
     func customActionsMenu(forFile path: String) -> NSMenuItem?
 }
 
 extension FileMenuActions {
     func copyFilePermalink(_: String, commit _: String?) {}
-    func openFileInExternalDiff(_: String, staged _: Bool?) {}
+    func openFileInExternalDiff(_: String, target _: ExternalDiffTarget) {}
     func openFileInExternalMerge(_: String) {}
     func customActionsMenu(forFile _: String) -> NSMenuItem? { nil }
 }
@@ -42,6 +50,8 @@ struct FileMenuBuilder {
     var wording = MergeWording(operation: nil)
     /// A merge, rebase, cherry-pick or revert is stopped: a resolved file's conflict can be reopened.
     var hasOperation = false
+    /// Whether the repository has a configured remote URL for building web permalinks.
+    var hasRemote = false
     var workspace = NSWorkspace.shared
     var fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
 
@@ -146,14 +156,17 @@ struct FileMenuBuilder {
                         [weak actions] in actions?.openFileInExternalMerge(file.path)
                     })
             } else {
+                let target: ExternalDiffTarget = staged ? .staged : .unstaged
                 menu.addItem(
                     MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square")
-                    { [weak actions] in actions?.openFileInExternalDiff(file.path, staged: staged) })
+                    { [weak actions] in actions?.openFileInExternalDiff(file.path, target: target) })
             }
-            menu.addItem(
-                MenuAction(String(localized: "Copy Permalink"), symbol: "link") { [weak actions] in
-                    actions?.copyFilePermalink(file.path, commit: nil)
-                })
+            if hasRemote, file.worktreeCode != .untracked, file.indexCode != .added {
+                menu.addItem(
+                    MenuAction(String(localized: "Copy Permalink"), symbol: "link") { [weak actions] in
+                        actions?.copyFilePermalink(file.path, commit: nil)
+                    })
+            }
             if let custom = actions?.customActionsMenu(forFile: file.path) { menu.addItem(custom) }
         }
         menu.addItem(.separator())
@@ -192,11 +205,15 @@ struct FileMenuBuilder {
         menu.addItem(fileHistoryItem(paths))
         menu.addItem(fileBlameItem(paths, commit: reference.isCommit ? reference.id : nil))
         if files.count == 1, let file = files.first {
+            let target: ExternalDiffTarget =
+                reference.isCommit
+                ? .commit(id: reference.id, parent: reference.before)
+                : .stash(ref: reference.id, parent: reference.before)
             menu.addItem(
                 MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square") {
-                    [weak actions] in actions?.openFileInExternalDiff(file.path, staged: nil)
+                    [weak actions] in actions?.openFileInExternalDiff(file.path, target: target)
                 })
-            if reference.isCommit {
+            if reference.isCommit, hasRemote {
                 menu.addItem(
                     MenuAction(String(localized: "Copy Permalink"), symbol: "link") { [weak actions] in
                         actions?.copyFilePermalink(file.path, commit: reference.id)

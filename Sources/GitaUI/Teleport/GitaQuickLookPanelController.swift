@@ -1,26 +1,26 @@
 import AppKit
 import GitaCore
 
-public enum QuickLookNavigationDirection: Sendable { case previous, next }
+enum QuickLookNavigationDirection: Sendable { case previous, next }
 
 @MainActor
-public final class GitaQuickLookPanelController {
-    public var onNavigate: ((QuickLookNavigationDirection) -> Void)?
-    public var onOpenFullInMainWindow: ((QuickLookTarget) -> Void)?
-    public var isVisible: Bool { panel?.isVisible == true }
+final class GitaQuickLookPanelController {
+    var onNavigate: ((QuickLookNavigationDirection) -> Void)?
+    var onOpenFullInMainWindow: ((QuickLookTarget) -> Void)?
+    var isVisible: Bool { panel?.isVisible == true }
     private(set) var panel: QuickLookPanel?
     private weak var anchorWindow: NSWindow?
     private let presenter: QuickLookPresenter
 
-    public init(presenter: QuickLookPresenter = .init()) { self.presenter = presenter }
+    init(presenter: QuickLookPresenter = .init()) { self.presenter = presenter }
 
     isolated deinit { close() }
 
-    public func toggle(for target: QuickLookTarget, relativeTo anchorWindow: NSWindow? = nil) {
+    func toggle(for target: QuickLookTarget, relativeTo anchorWindow: NSWindow? = nil) {
         if isVisible, presenter.currentTarget == target { close() } else { show(for: target, relativeTo: anchorWindow) }
     }
 
-    public func show(for target: QuickLookTarget, relativeTo anchorWindow: NSWindow? = nil) {
+    func show(for target: QuickLookTarget, relativeTo anchorWindow: NSWindow? = nil) {
         self.anchorWindow = anchorWindow
         let window = panel ?? makePanel(relativeTo: anchorWindow)
         presenter.select(target)
@@ -29,12 +29,12 @@ public final class GitaQuickLookPanelController {
         window.makeFirstResponder(window.contentView)
     }
 
-    public func updateSelection(_ target: QuickLookTarget) {
+    func updateSelection(_ target: QuickLookTarget) {
         guard isVisible, target != presenter.currentTarget else { return }
         presenter.select(target)
     }
 
-    public func close() {
+    func close() {
         panel?.orderOut(nil)
         presenter.clear()
         if anchorWindow?.isVisible == true { anchorWindow?.makeKey() }

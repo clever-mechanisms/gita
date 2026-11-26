@@ -140,13 +140,13 @@ public enum CustomActionRunState: Equatable, Sendable {
     }
 }
 
-public enum CustomActionError: Error, LocalizedError, Equatable, Sendable {
+enum CustomActionError: Error, LocalizedError, Equatable, Sendable {
     case emptyName, invalidExecutable, invalidArgument, invalidTimeout, shellCommand, missingAction, duplicateID
     case missingPlaceholder(String)
     case unsupportedPlaceholder(String, scope: CustomActionScope)
     case execution(String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .emptyName: String(localized: "Enter an action name.")
         case .invalidExecutable: String(localized: "Enter an executable without control characters.")

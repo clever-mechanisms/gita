@@ -81,52 +81,70 @@ extension RepositoryViewController {
 
     private func stepQuickLookSelection(kind: QuickLookSourceKind, direction: QuickLookNavigationDirection) {
         let delta = direction == .next ? 1 : -1
-        switch kind {
-        case .history:
-            let commits = historyTable.commits
-            guard !commits.isEmpty else { return }
-            let current = model.selectedCommit.flatMap { id in commits.firstIndex(where: { $0.id == id.id }) } ?? 0
-            let nextIndex = min(max(0, current + delta), commits.count - 1)
-            guard nextIndex != current else { return }
-            model.select(commits[nextIndex])
-            if let target = commitQuickLookTarget() { quickLookFacade.updateQuickLookSelection(target) }
-        case .commitFile, .unstagedFile, .stagedFile:
-            let list: [FileChange] =
-                switch kind {
-                case .commitFile: model.files
-                case .unstagedFile: model.snapshot?.changes.filter(\.isUnstaged) ?? []
-                case .stagedFile: model.snapshot?.changes.filter(\.isStaged) ?? []
-                default: []
-                }
-            guard !list.isEmpty, let root = model.snapshot?.root else { return }
-            let current = model.selectedFile.flatMap { f in list.firstIndex(where: { $0.path == f.path }) } ?? 0
-            let nextIndex = min(max(0, current + delta), list.count - 1)
-            guard nextIndex != current else { return }
-            let file = list[nextIndex]
-            let staged = kind == .stagedFile
-            if kind == .commitFile {
-                model.selectFile(file)
-            } else {
-                chooseChange(file, staged: staged)
-            }
-            let sha = kind == .commitFile ? model.selectedCommit?.id : nil
-            let status =
-                kind == .commitFile
-                ? (file.indexCode != .unmodified ? file.indexCode : file.worktreeCode)
-                : (staged ? file.indexCode : file.worktreeCode)
-            quickLookFacade.updateQuickLookSelection(
-                .changedFile(repoPath: root, path: file.path, staged: staged, statusCode: status, commitSHA: sha))
-        case .stash:
-            let stashes = model.snapshot?.stashes ?? []
-            guard !stashes.isEmpty, let root = model.snapshot?.root else { return }
-            let current = model.selectedStash.flatMap { s in stashes.firstIndex(where: { $0.ref == s.ref }) } ?? 0
-            let nextIndex = min(max(0, current + delta), stashes.count - 1)
-            guard nextIndex != current else { return }
-            let stash = stashes[nextIndex]
-            model.selectStash(stash)
-            quickLookFacade.updateQuickLookSelection(
-                .stash(repoPath: root, ref: stash.ref, message: stash.subject))
+        if kind == .history {
+            stepHistoryQuickLook(delta: delta)
+        } else if kind == .stash {
+            stepStashQuickLook(delta: delta)
+        } else {
+            stepFileQuickLook(kind: kind, delta: delta)
         }
+    }
+
+    private func stepHistoryQuickLook(delta: Int) {
+        let commits = historyTable.commits
+        guard !commits.isEmpty else { return }
+        let current = model.selectedCommit.flatMap { id in commits.firstIndex(where: { $0.id == id.id }) } ?? 0
+        let nextIndex = min(max(0, current + delta), commits.count - 1)
+        guard nextIndex != current else { return }
+        model.select(commits[nextIndex])
+        if let target = commitQuickLookTarget() { quickLookFacade.updateQuickLookSelection(target) }
+    }
+
+    private func stepFileQuickLook(kind: QuickLookSourceKind, delta: Int) {
+        let list = quickLookFiles(for: kind)
+        guard let root = model.snapshot?.root, let file = nextQuickLookFile(in: list, delta: delta) else { return }
+        let staged = kind == .stagedFile
+        selectQuickLookFile(file, kind: kind, staged: staged)
+        let sha = kind == .commitFile ? model.selectedCommit?.id : nil
+        let status = quickLookStatus(for: file, kind: kind, staged: staged)
+        quickLookFacade.updateQuickLookSelection(
+            .changedFile(repoPath: root, path: file.path, staged: staged, statusCode: status, commitSHA: sha))
+    }
+
+    private func nextQuickLookFile(in list: [FileChange], delta: Int) -> FileChange? {
+        guard !list.isEmpty else { return nil }
+        let current = model.selectedFile.flatMap { file in list.firstIndex { $0.path == file.path } } ?? 0
+        let nextIndex = min(max(0, current + delta), list.count - 1)
+        return nextIndex == current ? nil : list[nextIndex]
+    }
+
+    private func selectQuickLookFile(_ file: FileChange, kind: QuickLookSourceKind, staged: Bool) {
+        if kind == .commitFile { model.selectFile(file) } else { chooseChange(file, staged: staged) }
+    }
+
+    private func quickLookFiles(for kind: QuickLookSourceKind) -> [FileChange] {
+        if kind == .commitFile { return model.files }
+        let changes = model.snapshot?.changes ?? []
+        if kind == .unstagedFile { return changes.filter(\.isUnstaged) }
+        return kind == .stagedFile ? changes.filter(\.isStaged) : []
+    }
+
+    private func quickLookStatus(for file: FileChange, kind: QuickLookSourceKind, staged: Bool) -> FileChange.Code {
+        if kind == .commitFile {
+            return file.indexCode != .unmodified ? file.indexCode : file.worktreeCode
+        }
+        return staged ? file.indexCode : file.worktreeCode
+    }
+
+    private func stepStashQuickLook(delta: Int) {
+        let stashes = model.snapshot?.stashes ?? []
+        guard !stashes.isEmpty, let root = model.snapshot?.root else { return }
+        let current = model.selectedStash.flatMap { stash in stashes.firstIndex(where: { $0.ref == stash.ref }) } ?? 0
+        let nextIndex = min(max(0, current + delta), stashes.count - 1)
+        guard nextIndex != current else { return }
+        let stash = stashes[nextIndex]
+        model.selectStash(stash)
+        quickLookFacade.updateQuickLookSelection(.stash(repoPath: root, ref: stash.ref, message: stash.subject))
     }
 
     private func openQuickLookTargetInMainWindow(_ target: QuickLookTarget) {
@@ -136,18 +154,26 @@ extension RepositoryViewController {
             model.section = .history
             showCommit(id: sha)
         case .changedFile(_, let path, let staged, _, let commitSHA):
-            if let commitSHA {
-                model.section = .history
-                showCommit(id: commitSHA)
-                if let file = model.files.first(where: { $0.path == path }) { model.selectFile(file) }
-            } else {
-                model.section = .changes
-                if let file = model.snapshot?.changes.first(where: { $0.path == path }) {
-                    chooseChange(file, staged: staged)
-                }
-            }
+            openQuickLookFileInMainWindow(path: path, staged: staged, commitSHA: commitSHA)
         case .stash(_, let ref, _):
-            if let stash = model.snapshot?.stashes.first(where: { $0.ref == ref }) { model.selectStash(stash) }
+            selectQuickLookStash(ref: ref)
+        }
+    }
+
+    private func selectQuickLookStash(ref: String) {
+        if let stash = model.snapshot?.stashes.first(where: { $0.ref == ref }) { model.selectStash(stash) }
+    }
+
+    private func openQuickLookFileInMainWindow(path: String, staged: Bool, commitSHA: String?) {
+        if let commitSHA {
+            model.section = .history
+            showCommit(id: commitSHA)
+            if let file = model.files.first(where: { $0.path == path }) { model.selectFile(file) }
+            return
+        }
+        model.section = .changes
+        if let file = model.snapshot?.changes.first(where: { $0.path == path }) {
+            chooseChange(file, staged: staged)
         }
     }
 

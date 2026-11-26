@@ -1,20 +1,14 @@
 import Foundation
 
-public struct BranchStackTopologyInput: Sendable {
-    public let branches: [GitReference]
-    public let base: GitReference
+struct BranchStackTopologyInput: Sendable {
+    let branches: [GitReference]
+    let base: GitReference
     /// Topological order, newest first. A shared history prefix may be represented by a single root.
-    public let commits: [GitCommit]
-
-    public init(branches: [GitReference], base: GitReference, commits: [GitCommit]) {
-        self.branches = branches
-        self.base = base
-        self.commits = commits
-    }
+    let commits: [GitCommit]
 }
 
-public enum BranchStackDetector {
-    public static func detect(
+enum BranchStackDetector {
+    static func detect(
         _ input: BranchStackTopologyInput, includeSingleLayerBranches: Bool = false
     )
         -> [BranchStack]

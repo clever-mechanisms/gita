@@ -63,10 +63,6 @@ public struct CustomActionStore: Sendable {
         }
     }
 
-    public func actions(for scope: CustomActionScope) throws -> [CustomAction] {
-        try load().filter { $0.scope == scope }
-    }
-
     public func exportJSON(_ actions: [CustomAction]) throws -> Data {
         try Self.validateCollection(actions)
         return try encodeLibrary(actions)

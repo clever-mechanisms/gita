@@ -29,7 +29,7 @@ struct SettingsWindowControllerTests {
         }
     }
 
-    @Test func preparesTheSavedPaneAndRemembersAllTenSidebarSelections() throws {
+    @Test func preparesTheSavedPaneAndRemembersAllSidebarSelections() throws {
         let recorder = SettingsRecorder()
         defer { recorder.tearDown() }
         recorder.defaults.set("menuBar", forKey: Preference.settingsPane.rawValue)
@@ -41,7 +41,7 @@ struct SettingsWindowControllerTests {
         #expect(window.contentMinSize == SettingsWindowController.minSize)
         #expect(window.frame.width == SettingsWindowController.width)
         #expect(window.contentViewController is NSSplitViewController)
-        #expect(SettingsPane.allCases.count == 10)
+        #expect(SettingsPane.allCases.count == 12)
         #expect(controller.sidebarController.displayedPanes == SettingsPane.allCases)
 
         for (index, pane) in SettingsPane.allCases.enumerated() {
@@ -122,7 +122,7 @@ struct SettingsWindowControllerTests {
         controller.search("Squash")
         #expect(controller.searchResult.matchingPanes.contains(.history))
 
-        // Clearing search restores all 10 panes and clears highlights.
+        // Clearing search restores all panes and clears highlights.
         controller.search("")
         #expect(controller.sidebarController.displayedPanes == SettingsPane.allCases)
         let remainingHighlights =
@@ -164,7 +164,7 @@ struct SettingsWindowControllerTests {
     }
 
     @Test func paneMetadataHasTitlesAndValidSymbols() {
-        #expect(SettingsPane.allCases.count == 10)
+        #expect(SettingsPane.allCases.count == 12)
         for pane in SettingsPane.allCases {
             #expect(SettingsPane(rawValue: pane.rawValue) == pane)
             #expect(!pane.title.isEmpty)

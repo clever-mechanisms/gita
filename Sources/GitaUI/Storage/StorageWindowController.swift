@@ -5,7 +5,7 @@ struct StorageWindowContext {
     var repositoryRoot: URL?
     var knownRepositories: [URL] = []
     var activeAgentPaths: Set<String> = []
-    var onRemoveWorktree: ((URL, GitWorktree) -> Void)?
+    var onRemoveWorktree: ((URL, GitWorktree) -> Bool)?
     var onOpenRepository: ((URL) -> Void)?
 }
 
@@ -76,61 +76,70 @@ final class StorageWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func loadScope(refresh: Bool = false) {
-        switch scope {
-        case .repository:
-            if let root = context.repositoryRoot { store.scanRepository(root, refresh: refresh) }
-        case .workspace:
+        if scope == .workspace {
             store.scanWorkspace(context.knownRepositories, refresh: refresh)
-        case .health:
-            if let root = context.repositoryRoot { store.inspect(root) }
+        } else if let root = context.repositoryRoot {
+            loadRepositoryScope(root, refresh: refresh)
         }
         render()
+    }
+
+    private func loadRepositoryScope(_ root: URL, refresh: Bool) {
+        if scope == .health { store.inspect(root) } else { store.scanRepository(root, refresh: refresh) }
     }
 
     @objc private func render() {
         window?.backgroundColor = Theme.window
         selector.selectedSegment = scope.rawValue
-        selector.setEnabled(context.repositoryRoot != nil, forSegment: Scope.repository.rawValue)
-        selector.setEnabled(context.repositoryRoot != nil, forSegment: Scope.health.rawValue)
+        let hasRoot = context.repositoryRoot != nil
+        selector.setEnabled(hasRoot, forSegment: Scope.repository.rawValue)
+        selector.setEnabled(hasRoot, forSegment: Scope.health.rawValue)
         content.subviews.forEach { $0.removeFromSuperview() }
         let stack = Deck.vstack([], spacing: 12)
         Deck.pin(stack, in: content)
-        switch scope {
-        case .workspace: workspace(in: stack)
-        case .repository, .health:
-            if let root = context.repositoryRoot {
-                if scope == .health { health(root, in: stack) } else { repository(root, in: stack) }
-            }
-        }
+        renderCurrentScope(in: stack)
         for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         if !(stack.arrangedSubviews.last is NSScrollView) { stack.addArrangedSubview(NSView()) }
+    }
+
+    private func renderCurrentScope(in stack: NSStackView) {
+        if scope == .workspace {
+            workspace(in: stack)
+            return
+        }
+        guard let root = context.repositoryRoot else { return }
+        if scope == .health { health(root, in: stack) } else { repository(root, in: stack) }
     }
 
     private func repository(_ root: URL, in stack: NSStackView) {
         let state = store.state(for: root)
         if let banner = StorageHealthView.banner(store.actionState(for: root)) { stack.addArrangedSubview(banner) }
-        if case .scanning(_, let progress, _) = state {
-            let label = progress.currentLabel
-            let count = progress.scannedCheckouts
-            let total = progress.totalCheckouts
-            stack.addArrangedSubview(
-                Deck.caption(
-                    String(
-                        localized:
-                            "Scanning \(label) · \(count) of \(total) checkouts"
-                    )))
-        }
+        appendScanningCaption(state, to: stack)
         guard let report = state.report ?? state.partialReport else {
-            if let error = state.errorMessage {
-                failure(error, in: stack)
-            } else if !state.isScanning {
-                stack.addArrangedSubview(
-                    ActionButton(title: String(localized: "Refresh")) { [weak self] in
-                        self?.loadScope()
-                    })
-            }
+            renderEmptyRepository(state, in: stack)
             return
         }
+        renderRepositoryReport(report, in: stack)
+    }
+
+    private func appendScanningCaption(_ state: StorageScanState, to stack: NSStackView) {
+        guard case .scanning(_, let progress, _) = state else { return }
+        let label = progress.currentLabel
+        let count = progress.scannedCheckouts
+        let total = progress.totalCheckouts
+        stack.addArrangedSubview(Deck.caption(String(localized: "Scanning \(label) · \(count) of \(total) checkouts")))
+    }
+
+    private func renderEmptyRepository(_ state: StorageScanState, in stack: NSStackView) {
+        if let error = state.errorMessage {
+            failure(error, in: stack)
+        } else if !state.isScanning {
+            stack.addArrangedSubview(
+                ActionButton(title: String(localized: "Refresh")) { [weak self] in self?.loadScope() })
+        }
+    }
+
+    private func renderRepositoryReport(_ report: RepositoryStorageReport, in stack: NSStackView) {
         let summary = StorageSummaryBar(
             report: report, refresh: { [weak self] in self?.loadScope(refresh: true) },
             trash: { [weak self] in self?.confirmTrash(report, entry: nil) })
@@ -145,22 +154,7 @@ final class StorageWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func workspace(in stack: NSStackView) {
-        var rows = [RepositoryStorageReport]()
-        var failures = [WorkspaceScanFailure]()
-        switch store.workspaceState {
-        case .idle: break
-        case .failed(let message): failure(message, in: stack)
-        case .scanning(let completed, let total, let partial, let partialFailures):
-            stack.addArrangedSubview(Deck.caption(String(localized: "Scanned \(completed) of \(total) repositories")))
-            rows = partial
-            failures = partialFailures
-        case .loaded(let reports, let scanFailures):
-            rows = reports
-            failures = scanFailures
-            if rows.isEmpty && failures.isEmpty {
-                stack.addArrangedSubview(Deck.caption(String(localized: "No repositories in this workspace.")))
-            }
-        }
+        let (rows, failures) = workspaceRowsAndFailures(in: stack)
         if !failures.isEmpty {
             let summary = failures.map { "\($0.root.lastPathComponent): \($0.message)" }.joined(separator: "\n")
             stack.addArrangedSubview(Deck.wrapping(summary, color: Theme.failure))
@@ -168,14 +162,45 @@ final class StorageWindowController: NSWindowController, NSWindowDelegate {
         stack.addArrangedSubview(
             ActionButton(title: String(localized: "Refresh")) { [weak self] in self?.loadScope(refresh: true) })
         let list = StorageWorkspaceListView(rows: StoragePresenter().workspaceRows(for: rows)) { [weak self] root in
-            guard let self else { return }
-            context.repositoryRoot = root
-            context.onOpenRepository?(root)
-            scope = .repository
-            outline = StorageOutlineView(frame: .zero)
-            loadScope()
+            self?.openWorkspaceRepository(root)
         }
         stack.addArrangedSubview(list)
+    }
+
+    private func workspaceRowsAndFailures(
+        in stack: NSStackView
+    ) -> ([RepositoryStorageReport], [WorkspaceScanFailure]) {
+        switch store.workspaceState {
+        case .scanning(let completed, let total, let partial, let partialFailures):
+            stack.addArrangedSubview(Deck.caption(String(localized: "Scanned \(completed) of \(total) repositories")))
+            return (partial, partialFailures)
+        case .loaded(let reports, let scanFailures):
+            renderEmptyWorkspaceIfNeeded(rows: reports, failures: scanFailures, in: stack)
+            return (reports, scanFailures)
+        case .idle, .failed:
+            renderWorkspaceFailureIfNeeded(in: stack)
+            return ([], [])
+        }
+    }
+
+    private func renderEmptyWorkspaceIfNeeded(
+        rows: [RepositoryStorageReport], failures: [WorkspaceScanFailure], in stack: NSStackView
+    ) {
+        if rows.isEmpty && failures.isEmpty {
+            stack.addArrangedSubview(Deck.caption(String(localized: "No repositories in this workspace.")))
+        }
+    }
+
+    private func renderWorkspaceFailureIfNeeded(in stack: NSStackView) {
+        if case .failed(let message) = store.workspaceState { failure(message, in: stack) }
+    }
+
+    private func openWorkspaceRepository(_ root: URL) {
+        context.repositoryRoot = root
+        context.onOpenRepository?(root)
+        scope = .repository
+        outline = StorageOutlineView(frame: .zero)
+        loadScope()
     }
 
     private func health(_ root: URL, in stack: NSStackView) {

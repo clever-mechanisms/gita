@@ -71,6 +71,7 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
             switch outcome {
             case .success(let saved):
                 actions = saved
+                CustomActionLibrary.shared.invalidate()
                 renderList()
             case .failure(let error):
                 report(error)
@@ -111,6 +112,7 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
             name: String(localized: "New action"), executable: "/bin/echo", arguments: ["$REPO_ROOT"])
         do {
             actions = try store.upsert(action)
+            CustomActionLibrary.shared.invalidate()
             select(action.id)
         } catch { report(error) }
     }
@@ -120,6 +122,7 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
         do {
             let result = try store.duplicate(id: id)
             actions = result.actions
+            CustomActionLibrary.shared.invalidate()
             select(result.copy.id)
         } catch { report(error) }
     }
@@ -128,6 +131,7 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
         guard let id = editor.draft?.id else { return }
         do {
             actions = try store.delete(id: id)
+            CustomActionLibrary.shared.invalidate()
             select(nil)
         } catch { report(error) }
     }
@@ -147,6 +151,7 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
             guard let self else { return }
             do {
                 actions = try presenter.commitImport(data, store: store)
+                CustomActionLibrary.shared.invalidate()
                 select(nil)
             } catch { report(error) }
         }

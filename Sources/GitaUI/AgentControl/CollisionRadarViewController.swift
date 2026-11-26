@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class CollisionRadarViewController: NSViewController {
+final class CollisionRadarViewController: NSViewController {
     let presenter: CollisionRadarPresenter
     private let list = AgentControlList(title: String(localized: "Colliding worktrees and files"), id: "radar.list")
     private let diff = DiffView()
@@ -36,7 +36,7 @@ public final class CollisionRadarViewController: NSViewController {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Programmatic controller") }
 
-    override public func loadView() {
+    override func loadView() {
         let header = Deck.hstack([AgentControlUI.label(title ?? "", font: Theme.title), summary, Deck.spacer(), scan])
         let surface = AgentControlSurface([header, Deck.separator(), body], primary: scan, id: "radar.root")
         view = surface
@@ -53,12 +53,12 @@ public final class CollisionRadarViewController: NSViewController {
         render()
     }
 
-    override public func viewWillAppear() {
+    override func viewWillAppear() {
         super.viewWillAppear()
         if presenter.state == .idle { presenter.scan() } else { presenter.loadPreviewIfNeeded() }
     }
 
-    override public func viewWillDisappear() {
+    override func viewWillDisappear() {
         super.viewWillDisappear()
         presenter.cancel()
         body.spinner.stop()

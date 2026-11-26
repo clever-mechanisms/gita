@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-public enum TeleportState: Equatable, Sendable {
+enum TeleportState: Equatable, Sendable {
     case idle
     case resolving(ParsedTeleportInput)
     case resolved(TeleportDestination)
@@ -11,8 +11,8 @@ public enum TeleportState: Equatable, Sendable {
 }
 
 @MainActor
-public final class TeleportPresenter {
-    public private(set) var state: TeleportState = .idle {
+final class TeleportPresenter {
+    private(set) var state: TeleportState = .idle {
         didSet {
             for banner in banners.allObjects { banner.display(state) }
             switch state {
@@ -24,12 +24,12 @@ public final class TeleportPresenter {
             }
         }
     }
-    public var onTeleport: ((TeleportDestination) -> Void)?
+    var onTeleport: ((TeleportDestination) -> Void)?
     private let resolver: TeleportResolver
     private let banners = NSHashTable<TeleportBannerView>.weakObjects()
     private var task: Task<Void, Never>?
 
-    public init(resolver: TeleportResolver = .init()) { self.resolver = resolver }
+    init(resolver: TeleportResolver = .init()) { self.resolver = resolver }
     deinit { task?.cancel() }
 
     func attach(_ view: TeleportBannerView) {
@@ -37,7 +37,7 @@ public final class TeleportPresenter {
         view.display(state)
     }
 
-    public func inspect(_ input: String, repositories: [TeleportRepositoryEntry]) {
+    func inspect(_ input: String, repositories: [TeleportRepositoryEntry]) {
         guard let parsed = TeleportParser.parse(input) else {
             dismiss()
             return
@@ -63,18 +63,18 @@ public final class TeleportPresenter {
         state = .resolving(parsed)
     }
 
-    public func selectAmbiguous(at index: Int) {
+    func selectAmbiguous(at index: Int) {
         guard case .ambiguous(_, let options) = state, options.indices.contains(index) else { return }
         state = .resolved(options[index])
     }
 
-    public func confirmTeleport() {
+    func confirmTeleport() {
         guard case .resolved(let destination) = state else { return }
         dismiss()
         onTeleport?(destination)
     }
 
-    public func dismiss() {
+    func dismiss() {
         task?.cancel()
         task = nil
         state = .idle

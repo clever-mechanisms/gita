@@ -17,8 +17,8 @@ enum ControlPlaneLog {
     }
 }
 
-public enum CIFixLogSanitizer {
-    public static func excerpt(_ raw: String, failedStep: String? = nil) -> (text: String, truncated: Bool) {
+enum CIFixLogSanitizer {
+    static func excerpt(_ raw: String, failedStep: String? = nil) -> (text: String, truncated: Bool) {
         let clean = ControlPlaneLog.clean(raw)
         let lines = clean.split(separator: "\n", omittingEmptySubsequences: false)
         var end = lines.count

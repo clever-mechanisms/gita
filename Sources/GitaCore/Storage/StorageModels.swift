@@ -59,13 +59,11 @@ public enum HeavyFolderCategory: Sendable, Hashable {
 
 public struct HeavyFolderEntry: Identifiable, Sendable, Hashable {
     public var id: String { url.path }
-    public var name: String { url.lastPathComponent }
     public let relativePath: String
     public let url: URL
     public let category: HeavyFolderCategory
     public internal(set) var status: HeavyFolderStatus
     public let allocatedBytes: UInt64
-    public let logicalBytes: UInt64
     public let fileCount: Int
     // An excluded checkout or embedded Git marker anywhere below this candidate protects its entire subtree.
     var containsProtectedContent = false
@@ -81,6 +79,24 @@ public struct GitStoreBreakdown: Sendable, Hashable {
         totalAllocatedBytes - objectsAllocatedBytes - lfsAllocatedBytes
     }
     public let fileCount: Int
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.gitCommonDirectory == rhs.gitCommonDirectory
+            && lhs.totalAllocatedBytes == rhs.totalAllocatedBytes
+            && lhs.totalLogicalBytes == rhs.totalLogicalBytes
+            && lhs.objectsAllocatedBytes == rhs.objectsAllocatedBytes
+            && lhs.lfsAllocatedBytes == rhs.lfsAllocatedBytes
+            && lhs.fileCount == rhs.fileCount
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(gitCommonDirectory)
+        hasher.combine(totalAllocatedBytes)
+        hasher.combine(totalLogicalBytes)
+        hasher.combine(objectsAllocatedBytes)
+        hasher.combine(lfsAllocatedBytes)
+        hasher.combine(fileCount)
+    }
 }
 
 public struct CheckoutStorageReport: Identifiable, Sendable, Hashable {
@@ -92,7 +108,6 @@ public struct CheckoutStorageReport: Identifiable, Sendable, Hashable {
     public var isUnavailable = false
     public var isBare: Bool { worktree.isBare }
     public var isLocked: Bool { worktree.isLocked }
-    public var isPrunable: Bool { worktree.isPrunable }
     public let worktree: GitWorktree
     public let totalAllocatedBytes: UInt64
     public let totalLogicalBytes: UInt64
@@ -102,6 +117,30 @@ public struct CheckoutStorageReport: Identifiable, Sendable, Hashable {
         heavyFolders.lazy.filter { $0.status == .reclaimable }.reduce(0) { $0 + $1.allocatedBytes }
     }
     public let lastModifiedDate: Date?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.path == rhs.path
+            && lhs.isMainWorktree == rhs.isMainWorktree
+            && lhs.isUnavailable == rhs.isUnavailable
+            && lhs.worktree == rhs.worktree
+            && lhs.totalAllocatedBytes == rhs.totalAllocatedBytes
+            && lhs.totalLogicalBytes == rhs.totalLogicalBytes
+            && lhs.fileCount == rhs.fileCount
+            && lhs.heavyFolders == rhs.heavyFolders
+            && lhs.lastModifiedDate == rhs.lastModifiedDate
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(isMainWorktree)
+        hasher.combine(isUnavailable)
+        hasher.combine(worktree)
+        hasher.combine(totalAllocatedBytes)
+        hasher.combine(totalLogicalBytes)
+        hasher.combine(fileCount)
+        hasher.combine(heavyFolders)
+        hasher.combine(lastModifiedDate)
+    }
 }
 
 public struct RepositoryStorageReport: Identifiable, Sendable, Equatable {
@@ -114,11 +153,6 @@ public struct RepositoryStorageReport: Identifiable, Sendable, Equatable {
     public var totalAllocatedBytes: UInt64 {
         checkouts.reduce(gitStore.totalAllocatedBytes) { $0 + $1.totalAllocatedBytes }
     }
-    public var totalLogicalBytes: UInt64 {
-        checkouts.reduce(gitStore.totalLogicalBytes) { $0 + $1.totalLogicalBytes }
-    }
     public var reclaimableBytes: UInt64 { checkouts.reduce(0) { $0 + $1.reclaimableBytes } }
-    public internal(set) var scannedAt: Date
-    public internal(set) var duration: TimeInterval = 0
     public internal(set) var isPartial = true
 }

@@ -4,8 +4,6 @@ import GitaCore
 struct StorageBarSegment: Equatable {
     enum ColorRole { case gitStore, reclaimable, workingTrees }
     let colorRole: ColorRole
-    let label: String
-    let bytes: UInt64
     let fraction: Double
     let tooltip: String
 }
@@ -54,7 +52,7 @@ struct StoragePresenter {
         func segment(_ role: StorageBarSegment.ColorRole, _ label: String, _ bytes: UInt64) -> StorageBarSegment {
             let size = formatBytes(bytes)
             return StorageBarSegment(
-                colorRole: role, label: label, bytes: bytes,
+                colorRole: role,
                 fraction: Double(bytes) / Double(max(1, report.totalAllocatedBytes)),
                 tooltip: String(localized: "\(label) · \(size)"))
         }
@@ -158,10 +156,11 @@ struct StoragePresenter {
     }
 
     private func folderCaption(_ entry: HeavyFolderEntry) -> String {
+        let files = entry.fileCount == 1 ? String(localized: "1 file") : String(localized: "\(entry.fileCount) files")
         switch entry.status {
-        case .reclaimable: String(localized: "\(entry.category.displayName) · Reclaimable")
-        case .trackedOrUnignored: String(localized: "\(entry.category.displayName) · Protected")
-        case .otherLarge: entry.category.displayName
+        case .reclaimable: return String(localized: "\(entry.category.displayName) · \(files) · Reclaimable")
+        case .trackedOrUnignored: return String(localized: "\(entry.category.displayName) · \(files) · Protected")
+        case .otherLarge: return String(localized: "\(entry.category.displayName) · \(files)")
         }
     }
 

@@ -53,10 +53,10 @@ final class ExternalToolsSettingsView: NSView {
             then: { [weak self] result in
                 guard let self, case .success(let found) = result else { return }
                 detections = found
-                diff.updateDetections(found)
-                merge.updateDetections(found)
+                diff.updateDetections(detections)
+                merge.updateDetections(detections)
                 let badges = ExternalToolPreset.allCases.compactMap { preset -> ActionToolBadge? in
-                    guard case .installed = found[preset] else { return nil }
+                    guard case .installed = detections[preset] else { return nil }
                     return ActionToolBadge(preset.displayName, color: Theme.success)
                 }
                 let rows = stride(from: 0, to: badges.count, by: 3).map { index in

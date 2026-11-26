@@ -110,6 +110,7 @@ extension RepositoryViewController {
             self?.showBlame(path: path, revision: commit)
         }
         view.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
+        view.canCopyPermalink = { [weak self] in self?.model.snapshot?.remoteURL != nil }
         view.onCopyPermalink = { [weak self] path, revision, lines in
             self?.copyFilePermalink(path: path, revision: revision, lines: lines)
         }

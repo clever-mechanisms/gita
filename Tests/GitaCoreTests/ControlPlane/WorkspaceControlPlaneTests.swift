@@ -30,7 +30,7 @@ import Testing
         let row = try #require(rows.first)
         #expect(row.ahead == 1 && row.behind == 1 && row.branch == "main")
         #expect(row.stagedCount == 1 && row.unstagedCount == 1 && row.untrackedCount == 1)
-        let staged = try await service.stageAll(in: a.root)
+        let staged = try await service.stageAll(in: WorkspaceRepository(root: a.root))
         #expect(staged.stagedCount == 3 && staged.unstagedCount == 0 && staged.untrackedCount == 0)
         #expect(rows.last?.changes.isEmpty == true)
     }
@@ -93,7 +93,9 @@ import Testing
         try await repo.git(["merge", "incoming"], allowFailure: true)
         let before = try await repo.git(["ls-files", "--stage"]).text
         #expect(try await repo.git(["ls-files", "-u"]).text.isEmpty == false)
-        let error = await #expect(throws: GitError.self) { try await service.stageAll(in: repo.root) }
+        let error = await #expect(throws: GitError.self) {
+            try await service.stageAll(in: WorkspaceRepository(root: repo.root))
+        }
         #expect(error?.localizedDescription == GitError.unresolvedConflicts.localizedDescription)
         #expect(try await repo.git(["ls-files", "--stage"]).text == before)
     }

@@ -2,11 +2,11 @@ import Foundation
 import GitaCore
 
 @MainActor
-public final class MenuBarTriagePresenter {
-    public let item: TriageItem
-    public var onJumpToTerminal: ((AgentTerminalJumpTarget) -> Void)?
+final class MenuBarTriagePresenter {
+    let item: TriageItem
+    var onJumpToTerminal: ((AgentTerminalJumpTarget) -> Void)?
     weak var row: MenuBarTriageRowView?
-    public private(set) var state: TriageActionState = .idle {
+    private(set) var state: TriageActionState = .idle {
         didSet {
             row?.display(state)
             switch state {
@@ -18,21 +18,21 @@ public final class MenuBarTriagePresenter {
     private let service: MenuBarTriageService
     private var task: Task<Void, Never>?
 
-    public init(item: TriageItem, service: MenuBarTriageService = .init()) {
+    init(item: TriageItem, service: MenuBarTriageService = .init()) {
         self.item = item
         self.service = service
     }
 
-    public func triggerPrimaryAction() {
+    func triggerPrimaryAction() {
         guard state == .idle else { return }
         if item.requiresConfirmation { state = .confirming } else { execute() }
     }
 
-    public func confirmAction() { if state == .confirming { execute() } }
-    public func cancelConfirmation() { if state == .confirming { state = .idle } }
-    public func retry() { if case .failed = state { execute() } }
+    func confirmAction() { if state == .confirming { execute() } }
+    func cancelConfirmation() { if state == .confirming { state = .idle } }
+    func retry() { if case .failed = state { execute() } }
 
-    public func reset() {
+    func reset() {
         task?.cancel()
         task = nil
         state = .idle

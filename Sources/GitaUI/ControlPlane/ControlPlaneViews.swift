@@ -62,7 +62,21 @@ enum ControlPlaneViews {
 }
 
 @MainActor
-final class ControlPlaneBadge: NSView {
+class ControlPlaneThemedView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: .gitaThemeChanged, object: nil)
+    }
+    required init?(coder _: NSCoder) { nil }
+    @objc private func redraw() { needsDisplay = true }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        redraw()
+    }
+}
+
+@MainActor
+final class ControlPlaneBadge: ControlPlaneThemedView {
     private let fill: NSColor
     private let border: NSColor
 
@@ -83,14 +97,8 @@ final class ControlPlaneBadge: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.staticText)
         setAccessibilityLabel(name)
-        NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: .gitaThemeChanged, object: nil)
     }
     required init?(coder _: NSCoder) { nil }
-    @objc private func redraw() { needsDisplay = true }
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        redraw()
-    }
     override func draw(_: NSRect) {
         ControlPlaneViews.drawInset(
             bounds, radius: bounds.height / 2, scale: window?.backingScaleFactor,
@@ -99,18 +107,12 @@ final class ControlPlaneBadge: NSView {
 }
 
 @MainActor
-final class ControlPlaneCard: NSView {
+final class ControlPlaneCard: ControlPlaneThemedView {
     init(_ content: NSView) {
         super.init(frame: .zero)
         Style.fill(content, in: self, inset: 8)
-        NotificationCenter.default.addObserver(self, selector: #selector(redraw), name: .gitaThemeChanged, object: nil)
     }
     required init?(coder _: NSCoder) { nil }
-    @objc private func redraw() { needsDisplay = true }
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        redraw()
-    }
     override func draw(_: NSRect) {
         ControlPlaneViews.drawInset(
             bounds, radius: 8, scale: window?.backingScaleFactor, fill: Theme.inset, border: Theme.separator)

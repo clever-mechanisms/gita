@@ -85,28 +85,44 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
 
     private func render() {
         rows = presenter.visibleRows()
+        updateFilterSegments()
+        updateActionControls()
+        let empty = emptyStateMessage()
+        content.feedback(
+            presenter.status, emptyMessage: empty, isError: presenter.hasStatusError)
+        content.table.reloadData()
+    }
+
+    private func updateFilterSegments() {
         for (index, item) in CleanupFilter.allCases.enumerated() {
             let count = presenter.filterCount(for: item)
             filter.setLabel(String(localized: "\(item.title) (\(count))"), forSegment: index)
         }
         filter.selectedSegment = CleanupFilter.allCases.firstIndex(of: presenter.activeFilter) ?? 0
+    }
+
+    private func updateActionControls() {
+        let busy = presenter.isBusy
         selectAll.state = presenter.isAllVisibleSelected ? .on : .off
-        selectAll.isEnabled = !rows.isEmpty && !presenter.isBusy
-        content.action.isEnabled = presenter.selectionCount > 0 && !presenter.isBusy
-        content.refresh.isEnabled = !presenter.isBusy
-        threshold.isEnabled = !presenter.isBusy
+        selectAll.isEnabled = !rows.isEmpty && !busy
+        content.action.isEnabled = presenter.selectionCount > 0 && !busy
+        content.refresh.isEnabled = !busy
+        threshold.isEnabled = !busy
         content.summary.stringValue = presenter.selectionText
-        if let base = presenter.scanState.report?.defaultBranch {
-            content.subtitle.stringValue = String(localized: "Merged against \(base). Space toggles selection.")
-        }
-        let empty =
-            presenter.scanState.isScanning
+        updateDefaultBranchSubtitle()
+    }
+
+    private func updateDefaultBranchSubtitle() {
+        guard let base = presenter.scanState.report?.defaultBranch else { return }
+        content.subtitle.stringValue = String(localized: "Merged against \(base). Space toggles selection.")
+    }
+
+    private func emptyStateMessage() -> String {
+        guard rows.isEmpty else { return "" }
+        if let error = presenter.scanState.errorMessage { return error }
+        return presenter.scanState.isScanning
             ? String(localized: "Scanning repository…")
             : String(localized: "No cleanup candidates match this filter.")
-        content.feedback(
-            presenter.status, emptyMessage: rows.isEmpty ? presenter.scanState.errorMessage ?? empty : "",
-            isError: presenter.hasStatusError)
-        content.table.reloadData()
     }
 
     func numberOfRows(in _: NSTableView) -> Int { rows.count }

@@ -116,32 +116,22 @@ public enum TeleportParser {
         return n
     }
 
+    private enum DeepLinkFields {
+        case invalid
+        case valid([String: String])
+    }
+
     private static func deepLink(_ url: URLComponents, raw: String, depth: Int) -> ParsedTeleportInput? {
-        guard url.host == "open", ["", "/"].contains(url.path), url.fragment == nil else { return nil }
-        var fields: [String: String] = [:]
-        let aliases = ["pull": "pr", "sha": "commit", "ref": "branch"]
-        for item in url.queryItems ?? [] {
-            let key = aliases[item.name] ?? item.name
-            guard let value = item.value, safe(value), fields.updateValue(value, forKey: key) == nil else { return nil }
-        }
+        guard url.host == "open", ["", "/"].contains(url.path), url.fragment == nil,
+            case .valid(var fields) = deepLinkFields(from: url.queryItems ?? [])
+        else { return nil }
         let workspace = fields.removeValue(forKey: "workspace")
         let hint = fields.removeValue(forKey: "repo")
-        guard
-            [workspace, hint].compactMap({ $0 }).allSatisfy({ value in
-                value == value.trimmingCharacters(in: .whitespacesAndNewlines)
-                    && !value.contains(where: { ";|&$`".contains($0) })
-            })
-        else { return nil }
+        guard validHint(workspace), validHint(hint) else { return nil }
         let job = fields.removeValue(forKey: "job")
         guard fields.count == 1, let (key, value) = fields.first, job == nil || key == "run" else { return nil }
         if key == "url" {
-            guard let inner = parse(value, depth: depth + 1),
-                workspace == nil || inner.workspaceHint == nil || workspace == inner.workspaceHint,
-                hint == nil || inner.repoHint == nil || hint == inner.repoHint
-            else { return nil }
-            return .init(
-                query: inner.query, workspaceHint: workspace ?? inner.workspaceHint, repoHint: hint ?? inner.repoHint,
-                rawInput: raw)
+            return nestedDeepLink(value, workspace: workspace, hint: hint, raw: raw, depth: depth)
         }
         guard
             let query = deepLinkQuery(
@@ -150,34 +140,74 @@ public enum TeleportParser {
         return .init(query: query, workspaceHint: workspace, repoHint: hint, rawInput: raw)
     }
 
+    private static func deepLinkFields(from items: [URLQueryItem]) -> DeepLinkFields {
+        var fields: [String: String] = [:]
+        let aliases = ["pull": "pr", "sha": "commit", "ref": "branch"]
+        for item in items {
+            let key = aliases[item.name] ?? item.name
+            guard let value = item.value, safe(value), fields.updateValue(value, forKey: key) == nil else {
+                return .invalid
+            }
+        }
+        return .valid(fields)
+    }
+
+    private static func validHint(_ hint: String?) -> Bool {
+        guard let value = hint else { return true }
+        return value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+            && !value.contains(where: { ";|&$`".contains($0) })
+    }
+
+    private static func nestedDeepLink(
+        _ value: String, workspace: String?, hint: String?, raw: String, depth: Int
+    ) -> ParsedTeleportInput? {
+        guard let inner = parse(value, depth: depth + 1),
+            workspace == nil || inner.workspaceHint == nil || workspace == inner.workspaceHint,
+            hint == nil || inner.repoHint == nil || hint == inner.repoHint
+        else { return nil }
+        return .init(
+            query: inner.query, workspaceHint: workspace ?? inner.workspaceHint, repoHint: hint ?? inner.repoHint,
+            rawInput: raw)
+    }
+
     private static func deepLinkQuery(
         _ key: String, value: String, job: String?, repo: GitHubRepository?
     ) -> TeleportQuery? {
         switch key {
         case "pr":
             guard let n = positive(value).flatMap(Int.init(exactly:)) else { return nil }
-            guard let repo else { return .deepLink(inner: .pullRequest(number: n)) }
-            return .pullRequest(owner: repo.owner, repo: repo.name, number: n, sourceURL: nil)
+            return repo.map { .pullRequest(owner: $0.owner, repo: $0.name, number: n, sourceURL: nil) }
+                ?? .deepLink(inner: .pullRequest(number: n))
         case "run":
-            guard let n = positive(value), job == nil || job.flatMap(positive) != nil else { return nil }
-            guard let repo else { return .deepLink(inner: .workflowRun(runID: n, jobID: job.flatMap(positive))) }
-            return .workflowRun(
-                owner: repo.owner, repo: repo.name, runID: n, jobID: job.flatMap(positive), sourceURL: nil)
+            return deepLinkRunQuery(value: value, job: job, repo: repo)
         case "commit":
-            guard let id = sha(value) else { return nil }
-            return .commit(owner: repo?.owner, repo: repo?.name, sha: id, sourceURL: nil)
+            return sha(value).map { .commit(owner: repo?.owner, repo: repo?.name, sha: $0, sourceURL: nil) }
         case "branch":
-            guard let name = branch(value) else { return nil }
-            return .branch(owner: repo?.owner, repo: repo?.name, name: name)
+            return branch(value).map { .branch(owner: repo?.owner, repo: repo?.name, name: $0) }
         case "deployment":
-            guard
-                let ref = VercelIdentifiers.deploymentReference(value)
-                    ?? (ProviderValidation.isSlug(value) ? value : nil)
-            else { return nil }
-            return .deployment(
-                teamSlug: nil, projectName: ref.hasSuffix(".vercel.app") ? previewProject(ref) : nil,
-                deploymentRef: ref, sourceURL: nil)
+            return deepLinkDeploymentQuery(value: value)
         default: return nil
         }
+    }
+
+    private static func deepLinkRunQuery(value: String, job: String?, repo: GitHubRepository?) -> TeleportQuery? {
+        guard let runID = positive(value) else { return nil }
+        let jobID: Int64?
+        if let job {
+            guard let parsedJob = positive(job) else { return nil }
+            jobID = parsedJob
+        } else {
+            jobID = nil
+        }
+        return repo.map { .workflowRun(owner: $0.owner, repo: $0.name, runID: runID, jobID: jobID, sourceURL: nil) }
+            ?? .deepLink(inner: .workflowRun(runID: runID, jobID: jobID))
+    }
+
+    private static func deepLinkDeploymentQuery(value: String) -> TeleportQuery? {
+        let ref = VercelIdentifiers.deploymentReference(value) ?? (ProviderValidation.isSlug(value) ? value : nil)
+        guard let ref else { return nil }
+        return .deployment(
+            teamSlug: nil, projectName: ref.hasSuffix(".vercel.app") ? previewProject(ref) : nil,
+            deploymentRef: ref, sourceURL: nil)
     }
 }

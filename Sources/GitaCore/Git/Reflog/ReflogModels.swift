@@ -88,12 +88,12 @@ public enum ReflogLoadState: Sendable, Equatable {
 }
 
 /// Parses NUL-delimited `git reflog` records.
-public enum ReflogParser {
+enum ReflogParser {
     /// Format passed to `git reflog show`: selector, full hash, reflog subject, commit subject, author, timestamp.
     static let format = "%gd%x00%H%x00%gs%x00%s%x00%an%x00%ct"
     private static let fieldCount = 6
 
-    public static func parse(_ data: Data, orphanedIDs: Set<String> = []) -> [ReflogEntry] {
+    static func parse(_ data: Data, orphanedIDs: Set<String> = []) -> [ReflogEntry] {
         let fields = GitOutput.nulFields(data)
         var entries: [ReflogEntry] = []
         entries.reserveCapacity(fields.count / fieldCount)

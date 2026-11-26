@@ -1,11 +1,11 @@
 import Foundation
 
-public struct GitIgnoreClassifier: Sendable {
+struct GitIgnoreClassifier: Sendable {
     private let git: StorageGit
 
-    public init(runner: any CommandRunning = CommandRunner()) { git = StorageGit(runner: runner) }
+    init(runner: any CommandRunning = CommandRunner()) { git = StorageGit(runner: runner) }
 
-    public func classify(candidates: [HeavyFolderEntry], in root: URL) async throws -> [HeavyFolderEntry] {
+    func classify(candidates: [HeavyFolderEntry], in root: URL) async throws -> [HeavyFolderEntry] {
         let known = candidates.filter { $0.category != .otherLarge && !$0.containsProtectedContent }
         var verified = Set<String>()
         for batch in batches(known.map(\.relativePath)) {

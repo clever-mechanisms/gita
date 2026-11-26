@@ -9,11 +9,6 @@ public enum LFSAvailability: Sendable, Equatable, Hashable {
         if case .available = self { return true }
         return false
     }
-
-    public var versionString: String? {
-        if case .available(let version) = self { return version }
-        return nil
-    }
 }
 
 /// One Git LFS track pattern from `.gitattributes` reported by `git lfs track`.
@@ -93,7 +88,6 @@ public struct LFSStatus: Sendable, Equatable, Hashable {
     }
 
     public var isAvailable: Bool { availability.isAvailable }
-    public var isEmpty: Bool { patterns.isEmpty && files.isEmpty && locks.isEmpty }
 
     public func lock(forPath path: String) -> LFSLockEntry? {
         locks.first { $0.path == path }

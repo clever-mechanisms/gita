@@ -70,12 +70,19 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
     }
 
     private func loadIfNeeded() {
-        switch presenter.selectedTab {
-        case .submodules:
-            if case .idle = presenter.submoduleState { presenter.loadSubmodules() }
-        case .lfs:
-            if case .idle = presenter.lfsState { presenter.loadLFS() }
+        if presenter.selectedTab == .submodules {
+            loadSubmodulesIfIdle()
+        } else {
+            loadLFSIfIdle()
         }
+    }
+
+    private func loadSubmodulesIfIdle() {
+        if case .idle = presenter.submoduleState { presenter.loadSubmodules() }
+    }
+
+    private func loadLFSIfIdle() {
+        if case .idle = presenter.lfsState { presenter.loadLFS() }
     }
 
     private func makeWindow() -> NSWindow {

@@ -16,11 +16,16 @@ final class CustomActionOutputWindowController: NSWindowController, NSWindowDele
     private lazy var cancel = ActionButton(title: String(localized: "Cancel")) { [weak self] in self?.cancelRun() }
     private lazy var copy = ActionButton(title: String(localized: "Copy output")) { [weak self] in self?.copyOutput() }
     var onStateChange: ((CustomActionRunState) -> Void)?
+    var onComplete: (() -> Void)?
+    private var didNotifyComplete = false
     private(set) var state = CustomActionRunState.idle {
         didSet {
             render()
             surfaceFailureIfNeeded()
             onStateChange?(state)
+            if !action.showsOutput, case .finished(let output) = state, output.succeeded {
+                notifyComplete()
+            }
         }
     }
 
@@ -81,7 +86,13 @@ final class CustomActionOutputWindowController: NSWindowController, NSWindowDele
         alert.informativeText = String(localized: "Directory: \(resolved.directory.path)\n\n\(resolved.displayCommand)")
         alert.addButton(withTitle: String(localized: "Run"))
         alert.addButton(withTitle: String(localized: "Cancel"))
-        alerts.confirm(alert, on: parent, onConfirm: launch)
+        alerts.present(alert, on: parent) { [weak self] response in
+            if response == .alertFirstButtonReturn {
+                launch()
+            } else {
+                self?.notifyComplete()
+            }
+        }
     }
 
     private func showSheet(on parent: NSWindow) {
@@ -124,9 +135,19 @@ final class CustomActionOutputWindowController: NSWindowController, NSWindowDele
         cancelRun()
         if let window, let parent = window.sheetParent { parent.endSheet(window) }
         super.close()
+        notifyComplete()
     }
 
-    func windowWillClose(_: Notification) { cancelRun() }
+    func windowWillClose(_: Notification) {
+        cancelRun()
+        notifyComplete()
+    }
+
+    private func notifyComplete() {
+        guard !didNotifyComplete else { return }
+        didNotifyComplete = true
+        onComplete?()
+    }
 
     private func addTab(_ title: String, text: NSTextView, tabs: NSTabView) {
         let item = NSTabViewItem()

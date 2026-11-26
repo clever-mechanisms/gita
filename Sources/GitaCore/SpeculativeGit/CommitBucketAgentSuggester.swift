@@ -10,6 +10,12 @@ public struct BucketSuggestionResult: Sendable, Equatable {
     public let suggestions: [BucketSuggestion]
     public let usedAgent: AgentTool?
     public let fallbackReason: String?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.suggestions == rhs.suggestions
+            && lhs.usedAgent == rhs.usedAgent
+            && lhs.fallbackReason == rhs.fallbackReason
+    }
 }
 
 public struct CommitBucketAgentSuggester: Sendable {

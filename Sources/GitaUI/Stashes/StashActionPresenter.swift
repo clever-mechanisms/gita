@@ -65,11 +65,16 @@ enum StashActionPresenter {
             && parts.allSatisfy { !$0.isEmpty && !$0.hasPrefix(".") && !$0.hasSuffix(".lock") }
     }
 
-    @MainActor static func menu(for stash: GitStash, perform: @escaping (StashAction, GitStash) -> Void) -> NSMenu {
+    @MainActor static func menu(
+        for stash: GitStash, enabled: Bool = true, perform: @escaping (StashAction, GitStash) -> Void
+    ) -> NSMenu {
         let menu = NSMenu()
+        menu.autoenablesItems = false
         for item in Self.items {
             if item.action == .drop { menu.addItem(.separator()) }
-            menu.addItem(MenuAction(item.title, symbol: item.symbol) { perform(item.action, stash) })
+            let menuItem = MenuAction(item.title, symbol: item.symbol) { perform(item.action, stash) }
+            menuItem.isEnabled = enabled
+            menu.addItem(menuItem)
         }
         return menu
     }
@@ -87,18 +92,22 @@ enum StashActionPresenter {
         retryWithoutIndex: @escaping @MainActor () -> Void
     ) {
         guard let copy = Self.popRecoveryPrompt(for: outcome, stash: stash) else { return }
+        let canRetry: Bool
+        if case .indexConflictRetryWithoutIndex = outcome { canRetry = true } else { canRetry = false }
+        let alert = makePopOutcomeAlert(copy: copy, canRetry: canRetry)
+        alert.beginSheetModal(for: window) { response in
+            if canRetry, response == .alertFirstButtonReturn { retryWithoutIndex() }
+        }
+    }
+
+    @MainActor private static func makePopOutcomeAlert(copy: Confirmation, canRetry: Bool) -> NSAlert {
         let alert = NSAlert()
+        alert.alertStyle = copy.isDestructive ? .warning : .informational
         alert.messageText = copy.title
         alert.informativeText = copy.informativeText
         alert.addButton(withTitle: copy.confirmTitle)
-        if case .indexConflictRetryWithoutIndex = outcome {
-            alert.addButton(withTitle: String(localized: "Cancel"))
-        }
-        alert.beginSheetModal(for: window) { response in
-            if case .indexConflictRetryWithoutIndex = outcome, response == .alertFirstButtonReturn {
-                retryWithoutIndex()
-            }
-        }
+        if canRetry { alert.addButton(withTitle: String(localized: "Cancel")) }
+        return alert
     }
 
     @MainActor static func promptForBranch(_ stash: GitStash, on window: NSWindow, submit: @escaping (String) -> Void) {

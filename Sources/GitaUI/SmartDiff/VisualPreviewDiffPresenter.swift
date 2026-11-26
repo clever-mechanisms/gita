@@ -2,25 +2,25 @@ import Foundation
 import GitaCore
 
 @MainActor
-public final class VisualPreviewDiffPresenter {
-    public private(set) var state = VisualPreviewDiffState.idle
-    public private(set) var mode = VisualPreviewDiffMode.sideBySide
-    public private(set) var viewport = VisualPreviewViewport.responsive
-    public private(set) var route: String
-    public private(set) var curtainPosition: CGFloat = 0.5
-    public private(set) var onionOpacity: CGFloat = 0.5
-    public let productionURL: URL?
-    public let previewURL: URL?
-    public var onCurtainChange: (() -> Void)?
-    public var onChange: (() -> Void)?
+final class VisualPreviewDiffPresenter {
+    private(set) var state = VisualPreviewDiffState.idle
+    private(set) var mode = VisualPreviewDiffMode.sideBySide
+    private(set) var viewport = VisualPreviewViewport.responsive
+    private(set) var route: String
+    private(set) var curtainPosition: CGFloat = 0.5
+    private(set) var onionOpacity: CGFloat = 0.5
+    let productionURL: URL?
+    let previewURL: URL?
+    var onCurtainChange: (() -> Void)?
+    var onChange: (() -> Void)?
 
-    public init(productionURL: URL, previewURL: URL, initialRoute: String = "/") {
+    init(productionURL: URL, previewURL: URL, initialRoute: String = "/") {
         self.productionURL = VisualPreviewURLValidator.validatedHTTPSURL(productionURL)
         self.previewURL = VisualPreviewURLValidator.validatedHTTPSURL(previewURL)
         route = VisualPreviewURLValidator.normalizedRoute(initialRoute)
     }
 
-    public var resolvedURLs: (production: URL, preview: URL)? {
+    var resolvedURLs: (production: URL, preview: URL)? {
         guard let productionURL, let previewURL,
             let production = VisualPreviewURLValidator.resolvedURL(base: productionURL, route: route),
             let preview = VisualPreviewURLValidator.resolvedURL(base: previewURL, route: route)
@@ -28,30 +28,30 @@ public final class VisualPreviewDiffPresenter {
         return (production, preview)
     }
 
-    public func setMode(_ mode: VisualPreviewDiffMode) {
+    func setMode(_ mode: VisualPreviewDiffMode) {
         self.mode = mode
         onChange?()
     }
-    public func setViewport(_ viewport: VisualPreviewViewport) {
+    func setViewport(_ viewport: VisualPreviewViewport) {
         self.viewport = viewport
         onChange?()
     }
-    public func setRoute(_ route: String) {
+    func setRoute(_ route: String) {
         self.route = VisualPreviewURLValidator.normalizedRoute(route)
         onChange?()
     }
 
-    public func setCurtainPosition(_ value: CGFloat) {
+    func setCurtainPosition(_ value: CGFloat) {
         curtainPosition = value.isNaN ? 0.5 : min(0.95, max(0.05, value))
         onCurtainChange?()
     }
 
-    public func setOnionOpacity(_ value: CGFloat) {
+    func setOnionOpacity(_ value: CGFloat) {
         onionOpacity = value.isNaN ? 0.5 : min(1, max(0, value))
         onChange?()
     }
 
-    public func beginLoading() {
+    func beginLoading() {
         guard resolvedURLs != nil else {
             fail(String(localized: "Both deployments need a valid HTTPS address."))
             return
@@ -70,19 +70,19 @@ public final class VisualPreviewDiffPresenter {
         onChange?()
     }
 
-    public func finished(production: Bool) {
+    func finished(production: Bool) {
         guard case .loading(let live, let preview) = state else { return }
         let both = (live || production) && (preview || !production)
         state = both ? .ready : .loading(productionLoaded: live || production, previewLoaded: preview || !production)
         onChange?()
     }
 
-    public func fail(_ reason: String) {
+    func fail(_ reason: String) {
         state = .failed(reason)
         onChange?()
     }
 
-    public var statusCaption: String {
+    var statusCaption: String {
         switch state {
         case .idle: String(localized: "Waiting for deployments")
         case .loading(true, _): String(localized: "Loading preview…")

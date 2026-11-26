@@ -3,12 +3,12 @@ import GitaCore
 import WebKit
 
 @MainActor
-public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
-    public let presenter: VisualPreviewDiffPresenter
+final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
+    let presenter: VisualPreviewDiffPresenter
     private let canvas: VisualPreviewCanvas
     private let toolbar: VisualPreviewToolbar
-    public var productionWebView: WKWebView { canvas.productionWebView }
-    public var previewWebView: WKWebView { canvas.previewWebView }
+    var productionWebView: WKWebView { canvas.productionWebView }
+    var previewWebView: WKWebView { canvas.previewWebView }
     private let sync: VisualPreviewScrollSync
     private var pending: [ObjectIdentifier: WKNavigation] = [:]
     private let superseded = NSHashTable<WKNavigation>.weakObjects()
@@ -21,7 +21,7 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
     private lazy var stateView = Deck.vstack([stateMessage, stateButton])
     private lazy var status = Deck.hstack([spinner, caption, Deck.spacer()])
 
-    public init(presenter: VisualPreviewDiffPresenter) {
+    init(presenter: VisualPreviewDiffPresenter) {
         self.presenter = presenter
         canvas = VisualPreviewCanvas(presenter)
         toolbar = VisualPreviewToolbar(presenter)
@@ -117,7 +117,7 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         if moveFocus { window?.makeFirstResponder(stateButton) }
     }
 
-    public func reload() {
+    func reload() {
         for navigation in pending.values { superseded.add(navigation) }
         pending.removeAll()
         productionWebView.isHidden = true
@@ -138,7 +138,7 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         pending[ObjectIdentifier(web)] = navigation
     }
 
-    public func webView(
+    func webView(
         _: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
     ) {
@@ -149,7 +149,7 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         decisionHandler(allowed ? .allow : .cancel)
     }
 
-    public func webView(
+    func webView(
         _: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
         decisionHandler: @escaping @MainActor (WKNavigationResponsePolicy) -> Void
     ) {
@@ -172,28 +172,28 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         return false
     }
 
-    public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
         guard let navigation, !superseded.contains(navigation) else { return }
         pending[ObjectIdentifier(webView)] = navigation
         presenter.started(production: webView === productionWebView)
     }
 
-    public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
         guard let navigation, pending[ObjectIdentifier(webView)] === navigation else { return }
         webView.isHidden = false
     }
 
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
         guard let navigation, pending[ObjectIdentifier(webView)] === navigation else { return }
         pending.removeValue(forKey: ObjectIdentifier(webView))
         presenter.finished(production: webView === productionWebView)
     }
 
-    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: any Error) {
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: any Error) {
         failed(webView, navigation, error)
     }
 
-    public func webView(
+    func webView(
         _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation?,
         withError error: any Error
     ) {
@@ -218,11 +218,11 @@ public final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
         presenter.fail(String(localized: "Couldn’t load deployment. \(reason)"))
     }
 
-    public func webViewWebContentProcessDidTerminate(_: WKWebView) {
+    func webViewWebContentProcessDidTerminate(_: WKWebView) {
         presenter.fail(String(localized: "The deployment page stopped responding."))
     }
 
-    public func tearDown() {
+    func tearDown() {
         delay?.cancel()
         spinner.stopAnimation(nil)
         presenter.onCurtainChange = nil

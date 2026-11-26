@@ -8,7 +8,8 @@ extension RepositoryViewController: FileMenuActions {
         let operation = model.snapshot?.operation
         return FileMenuBuilder(
             root: model.snapshot?.root, isMutating: model.isMutating, actions: self,
-            wording: MergeWording(operation: operation), hasOperation: operation != nil)
+            wording: MergeWording(operation: operation), hasOperation: operation != nil,
+            hasRemote: model.snapshot?.remoteURL != nil)
     }
 
     func changeMenu(_ files: [FileChange], staged: Bool) -> NSMenu { fileMenus.changeMenu(files, staged: staged) }
@@ -85,8 +86,8 @@ extension RepositoryViewController: FileMenuActions {
         copyFilePermalink(path: path, revision: commit, lines: nil)
     }
 
-    func openFileInExternalDiff(_ path: String, staged: Bool?) {
-        openInExternalDiffTool(path: path, staged: staged)
+    func openFileInExternalDiff(_ path: String, target: ExternalDiffTarget) {
+        openInExternalDiffTool(path: path, target: target)
     }
 
     func openFileInExternalMerge(_ path: String) {

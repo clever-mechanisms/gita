@@ -8,6 +8,12 @@ public struct DiffHunkClassification: Sendable, Equatable {
     public let hunkIndex: Int
     public let noiseKind: DiffHunkNoiseKind
     public let changedLineCount: Int
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.hunkIndex == rhs.hunkIndex
+            && lhs.noiseKind == rhs.noiseKind
+            && lhs.changedLineCount == rhs.changedLineCount
+    }
 }
 
 public struct CollapsedNoiseRun: Sendable, Equatable {
@@ -25,6 +31,13 @@ public struct FilteredDiffResult: Sendable, Equatable {
     public let collapsedNoiseRuns: [CollapsedNoiseRun]
     public var hiddenNoiseHunkCount: Int { hiddenNoiseHunkIndices.count }
     public var summaryText: String { DiffNoiseFilter.summary(hiddenNoiseHunkCount) }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.classifications == rhs.classifications
+            && lhs.hiddenNoiseHunkIndices == rhs.hiddenNoiseHunkIndices
+            && lhs.visibleLines == rhs.visibleLines
+            && lhs.collapsedNoiseRuns == rhs.collapsedNoiseRuns
+    }
 }
 
 public enum DiffNoiseFilter {

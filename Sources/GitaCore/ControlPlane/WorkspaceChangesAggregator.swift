@@ -57,6 +57,17 @@ public struct WorkspaceRepoChanges: Sendable, Equatable {
     public var untrackedCount: Int { changes.filter(\.isUntracked).count }
     public var conflictCount: Int { changes.filter(\.isConflict).count }
     public var canStageAll: Bool { error == nil && conflictCount == 0 && unstagedCount + untrackedCount > 0 }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.repository == rhs.repository
+            && lhs.branch == rhs.branch
+            && lhs.headSHA == rhs.headSHA
+            && lhs.ahead == rhs.ahead
+            && lhs.behind == rhs.behind
+            && lhs.changes == rhs.changes
+            && lhs.operation == rhs.operation
+            && lhs.error == rhs.error
+    }
 }
 
 public enum WorkspaceChangesState: Sendable, Equatable {
@@ -74,10 +85,6 @@ public struct WorkspaceChangesAggregator: Sendable {
                 return WorkspaceRepoChanges(repository: repository, error: error.localizedDescription)
             }
         }
-    }
-
-    public func stageAll(in root: URL) async throws -> WorkspaceRepoChanges {
-        try await stageAll(in: WorkspaceRepository(root: root))
     }
 
     public func stageAll(in repository: WorkspaceRepository) async throws -> WorkspaceRepoChanges {

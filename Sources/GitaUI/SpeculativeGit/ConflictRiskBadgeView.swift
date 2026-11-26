@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-public enum ConflictBadgeState: Sendable, Equatable {
+enum ConflictBadgeState: Sendable, Equatable {
     case idle, checking, clean
     case unavailable(String)
     case warning(count: Int, detail: String)
@@ -38,12 +38,12 @@ public enum ConflictBadgeState: Sendable, Equatable {
     }
 }
 
-public final class ConflictRiskBadgeView: NSControl {
-    public var badgeState = ConflictBadgeState.idle { didSet { update() } }
-    public var onPress: (() -> Void)?
+final class ConflictRiskBadgeView: NSControl {
+    var badgeState = ConflictBadgeState.idle { didSet { update() } }
+    var onPress: (() -> Void)?
     private let button = PartsButton([], background: .quiet, accessibility: String(localized: "Conflict risk"))
 
-    public override init(frame: NSRect) {
+    override init(frame: NSRect) {
         super.init(frame: frame)
         setAccessibilityElement(false)
         button.cornerRadius = Theme.rowHeight / 2
@@ -69,19 +69,19 @@ public final class ConflictRiskBadgeView: NSControl {
         button.setAccessibilityValue(badgeState.title)
         invalidateIntrinsicContentSize()
     }
-    public override var isEnabled: Bool { didSet { button.isEnabled = isEnabled } }
-    public override var toolTip: String? { didSet { button.toolTip = toolTip } }
-    public override var intrinsicContentSize: NSSize { button.intrinsicContentSize }
-    public override func accessibilityIdentifier() -> String { button.accessibilityIdentifier() }
-    public override func accessibilityLabel() -> String? { button.accessibilityLabel() }
-    public override func accessibilityValue() -> Any? { button.accessibilityValue() }
-    public override func setAccessibilityLabel(_ label: String?) { button.setAccessibilityLabel(label) }
-    public override func setAccessibilityIdentifier(_ identifier: String?) {
+    override var isEnabled: Bool { didSet { button.isEnabled = isEnabled } }
+    override var toolTip: String? { didSet { button.toolTip = toolTip } }
+    override var intrinsicContentSize: NSSize { button.intrinsicContentSize }
+    override func accessibilityIdentifier() -> String { button.accessibilityIdentifier() }
+    override func accessibilityLabel() -> String? { button.accessibilityLabel() }
+    override func accessibilityValue() -> Any? { button.accessibilityValue() }
+    override func setAccessibilityLabel(_ label: String?) { button.setAccessibilityLabel(label) }
+    override func setAccessibilityIdentifier(_ identifier: String?) {
         button.setAccessibilityIdentifier(identifier)
     }
-    public override func setAccessibilityValue(_ value: Any?) { button.setAccessibilityValue(value) }
-    public override func accessibilityPerformPress() -> Bool { button.accessibilityPerformPress() }
-    public override func viewDidChangeEffectiveAppearance() {
+    override func setAccessibilityValue(_ value: Any?) { button.setAccessibilityValue(value) }
+    override func accessibilityPerformPress() -> Bool { button.accessibilityPerformPress() }
+    override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         update()
     }

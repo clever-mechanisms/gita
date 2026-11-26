@@ -26,12 +26,12 @@ import Testing
             #expect(file.path == path)
             #expect(file.hasMergeConflict)
             #expect(file.overlappingRanges.map(\.overlapStart) == [10])
-            let preview = try #require(file.conflictPreview)
+            let preview = try #require(file.previewContent?.text)
             #expect(["<<<<<<<", "|||||||", "line 10", "ours", "theirs", ">>>>>>>"].allSatisfy(preview.contains))
             #expect(
-                try await radar.conflictPreview(
+                try await radar.conflictPreviewContent(
                     repositoryRoot: repo.root, sourceRef: "main",
-                    targetRef: "other", path: path) == preview)
+                    targetRef: "other", path: path)?.text == preview)
         }
     }
 
@@ -82,7 +82,7 @@ import Testing
             let radar = CollisionRadarService()
             let report = try await radar.scan(repositoryRoot: repo.root)
             let pair = try #require(report.pairs.first)
-            let previews = pair.collisions.compactMap(\.conflictPreview)
+            let previews = pair.collisions.compactMap { $0.previewContent?.text }
             #expect(pair.collisions.count == 11)
             #expect(previews.count == 10)
             #expect(pair.collisions.compactMap(\.previewContent).allSatisfy { $0.isTruncated })

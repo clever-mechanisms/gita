@@ -135,16 +135,18 @@ final class ExternalToolSettingsGroup {
         test.isEnabled = validation == nil && launchState != .launching
         status.stringValue = validation ?? presenter.banner(launchState)
         status.toolTip = status.stringValue
-        if validation != nil {
-            status.textColor = invalidArguments != nil ? Theme.failure : Theme.secondaryText
-            return
-        }
-        switch launchState {
-        case .failed: status.textColor = Theme.failure
-        case .launched: status.textColor = Theme.success
-        case .launching: status.textColor = Theme.running
-        case .idle: status.textColor = Theme.secondaryText
-        }
+        status.textColor = statusColor(validation: validation)
+    }
+
+    private func statusColor(validation: String?) -> NSColor {
+        if validation != nil { return invalidArguments != nil ? Theme.failure : Theme.secondaryText }
+        return launchStateColor()
+    }
+
+    private func launchStateColor() -> NSColor {
+        if case .failed = launchState { return Theme.failure }
+        if case .launched = launchState { return Theme.success }
+        return launchState == .launching ? Theme.running : Theme.secondaryText
     }
 
     private func launch() {
@@ -153,14 +155,14 @@ final class ExternalToolSettingsGroup {
         updateStatus()
         work.run(
             { [launcher, selection, kind] in try await launcher.testLaunch(selection: selection, kind: kind) },
-            then: {
-                [weak self] result in
-                guard let self else { return }
-                switch result {
-                case .success: launchState = .launched(toolName: selection.preset.displayName)
-                case .failure(let error): launchState = .failed(error.localizedDescription)
-                }
-                updateStatus()
-            })
+            then: { [weak self] result in self?.applyLaunchResult(result) })
+    }
+
+    private func applyLaunchResult(_ result: Result<Void, Error>) {
+        switch result {
+        case .success: launchState = .launched(toolName: selection.preset.displayName)
+        case .failure(let error): launchState = .failed(error.localizedDescription)
+        }
+        updateStatus()
     }
 }

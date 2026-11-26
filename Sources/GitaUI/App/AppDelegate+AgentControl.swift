@@ -41,20 +41,27 @@ extension AppDelegate {
         agentControl.showArena(for: root, baseCommit: model.selectedCommit?.id ?? "HEAD")
     }
 
+    private struct AgentControlMenuItemSpec {
+        let id: String
+        let title: String
+        let action: Selector
+        let symbol: String
+    }
+
     func installAgentControlMenuItemsIfNeeded(in menu: NSMenu?) {
         guard let repoMenu = menu?.item(withTitle: String(localized: "Repository"))?.submenu else { return }
-        let items: [(id: String, title: String, action: Selector, symbol: String)] = [
-            (
-                "gita.menu.agentControl.collisionRadar", String(localized: "Collision Radar…"),
-                #selector(showCollisionRadar), "dot.radiowaves.left.and.right"
+        let items: [AgentControlMenuItemSpec] = [
+            .init(
+                id: "gita.menu.agentControl.collisionRadar", title: String(localized: "Collision Radar…"),
+                action: #selector(showCollisionRadar), symbol: "dot.radiowaves.left.and.right"
             ),
-            (
-                "gita.menu.agentControl.flightRecorder", String(localized: "Agent Flight Recorder…"),
-                #selector(showAgentFlightRecorder), "waveform.path.ecg"
+            .init(
+                id: "gita.menu.agentControl.flightRecorder", title: String(localized: "Agent Flight Recorder…"),
+                action: #selector(showAgentFlightRecorder), symbol: "waveform.path.ecg"
             ),
-            (
-                "gita.menu.agentControl.arena", String(localized: "Fork & Race Arena…"),
-                #selector(showAgentArena), "flag.checkered.2.crossed"
+            .init(
+                id: "gita.menu.agentControl.arena", title: String(localized: "Fork & Race Arena…"),
+                action: #selector(showAgentArena), symbol: "flag.checkered.2.crossed"
             ),
         ]
         var inserted = false

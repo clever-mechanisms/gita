@@ -3,13 +3,11 @@ import Foundation
 /// Parsed `.gitmodules` metadata for one submodule entry.
 public struct GitmoduleConfigEntry: Sendable, Equatable, Hashable {
     public let name: String
-    public let path: String
     public let url: String?
     public let branch: String?
 
-    public init(name: String, path: String, url: String?, branch: String?) {
+    public init(name: String, url: String?, branch: String?) {
         self.name = name
-        self.path = path
         self.url = url
         self.branch = branch
     }
@@ -98,7 +96,7 @@ extension GitService {
         var byPath: [String: GitmoduleConfigEntry] = [:]
         for (name, builder) in byName {
             guard let path = builder.path, !path.isEmpty else { continue }
-            byPath[path] = GitmoduleConfigEntry(name: name, path: path, url: builder.url, branch: builder.branch)
+            byPath[path] = GitmoduleConfigEntry(name: name, url: builder.url, branch: builder.branch)
         }
         return byPath
     }

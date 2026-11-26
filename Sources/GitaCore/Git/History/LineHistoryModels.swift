@@ -68,13 +68,13 @@ public enum LineHistoryLoadState: Sendable, Equatable {
 }
 
 /// Parses record-framed `git log -L` output into per-commit line evolution entries.
-public enum LineHistoryParser {
+enum LineHistoryParser {
     /// Record separator (`\u{1E}`) starts each commit; unit separator (`\u{1F}`) separates header from diff patch.
     static let recordSeparator: Character = "\u{1E}"
     static let patchSeparator: Character = "\u{1F}"
     static let format = "%x1e" + GitArguments.commitFormat + "%x1f"
 
-    public static func parse(_ text: String) -> [LineHistoryEntry] {
+    static func parse(_ text: String) -> [LineHistoryEntry] {
         let chunks = text.split(separator: recordSeparator, omittingEmptySubsequences: true)
         var entries: [LineHistoryEntry] = []
         entries.reserveCapacity(chunks.count)

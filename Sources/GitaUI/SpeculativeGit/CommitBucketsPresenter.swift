@@ -1,17 +1,17 @@
 import Foundation
 import GitaCore
 
-@MainActor public final class CommitBucketsPresenter {
-    public private(set) var state = CommitBucketState.idle
-    public private(set) var plan = CommitBucketPlan(items: [], buckets: [], baseHeadID: nil)
-    public private(set) var selectedBucket: UUID?
-    public private(set) var selectedItem: String?
-    public var filterQuery = "" { didSet { onChange?() } }
-    public private(set) var showsLoadingIndicator = false
-    public private(set) var groupingNote: String?
-    public var onChange: (() -> Void)?
-    public var onCommitted: ((CommitBucketExecutionResult) -> Void)?
-    public var isCommitting: Bool {
+@MainActor final class CommitBucketsPresenter {
+    private(set) var state = CommitBucketState.idle
+    private(set) var plan = CommitBucketPlan(items: [], buckets: [], baseHeadID: nil)
+    private(set) var selectedBucket: UUID?
+    private(set) var selectedItem: String?
+    var filterQuery = "" { didSet { onChange?() } }
+    private(set) var showsLoadingIndicator = false
+    private(set) var groupingNote: String?
+    var onChange: (() -> Void)?
+    var onCommitted: ((CommitBucketExecutionResult) -> Void)?
+    var isCommitting: Bool {
         if case .committing = state { return true }
         return false
     }
@@ -21,19 +21,19 @@ import GitaCore
         default: false
         }
     }
-    public var canUndo: Bool { !undoStack.isEmpty && canEdit }
-    public var validationIssues: [BucketValidationIssue] { CommitBucketPlanner.validate(plan) }
-    public var canCommit: Bool { canCommit(with: validationIssues) }
+    var canUndo: Bool { !undoStack.isEmpty && canEdit }
+    var validationIssues: [BucketValidationIssue] { CommitBucketPlanner.validate(plan) }
+    var canCommit: Bool { canCommit(with: validationIssues) }
     func canCommit(with issues: [BucketValidationIssue]) -> Bool {
         canEdit && plan.buckets.contains { !$0.itemIDs.isEmpty } && issues.isEmpty
     }
-    public var unassignedItems: [BucketHunkItem] {
+    var unassignedItems: [BucketHunkItem] {
         CommitBucketPlanner.unassignedItems(in: plan).filter {
             filterQuery.isEmpty || $0.path.localizedCaseInsensitiveContains(filterQuery)
                 || $0.summary.localizedCaseInsensitiveContains(filterQuery)
         }
     }
-    public var synthesizedDiff: String {
+    var synthesizedDiff: String {
         if let selectedItem, let item = plan.items.first(where: { $0.id == selectedItem }) { return item.patch }
         guard let bucket = plan.buckets.first(where: { $0.id == selectedBucket }) else { return "" }
         return CommitBucketPlanner.synthesizedDiff(for: bucket, in: plan)
@@ -53,13 +53,13 @@ import GitaCore
         set { UserDefaults.standard.set(newValue, forKey: selectionKey) }
     }
 
-    public init(gitService: GitService, agent: AgentTool? = nil) {
+    init(gitService: GitService, agent: AgentTool? = nil) {
         git = gitService
         self.agent = agent
         executor = CommitBucketExecutor(gitService: gitService)
     }
 
-    public func load() {
+    func load() {
         if case .committing = state { return }
         let previous = plan
         begin(.loading)
@@ -99,7 +99,7 @@ import GitaCore
         return restored
     }
 
-    public func selectBucket(_ id: UUID) {
+    func selectBucket(_ id: UUID) {
         guard let index = plan.buckets.firstIndex(where: { $0.id == id }) else { return }
         if !selectionKey.isEmpty {
             if preferredBucketIndex != index { preferredBucketIndex = index }
@@ -111,34 +111,34 @@ import GitaCore
         onChange?()
     }
 
-    public func selectItem(_ id: String) {
+    func selectItem(_ id: String) {
         guard plan.items.contains(where: { $0.id == id }) else { return }
         if !selectionKey.isEmpty { UserDefaults.standard.set(id, forKey: selectionKey + ".item") }
         selectedItem = id
         onChange?()
     }
 
-    public func addBucket() {
+    func addBucket() {
         guard canEdit else { return }
         apply(CommitBucketPlanner.addBucket(to: plan))
         if let id = plan.buckets.last?.id { selectBucket(id) }
     }
-    public func removeBucket(_ id: UUID) { apply(CommitBucketPlanner.removeBucket(id, from: plan)) }
-    public func moveBucket(from: Int, to: Int) { apply(CommitBucketPlanner.moveBucket(from: from, to: to, in: plan)) }
-    public func updateMessage(_ id: UUID, title: String, body: String) {
+    func removeBucket(_ id: UUID) { apply(CommitBucketPlanner.removeBucket(id, from: plan)) }
+    func moveBucket(from: Int, to: Int) { apply(CommitBucketPlanner.moveBucket(from: from, to: to, in: plan)) }
+    func updateMessage(_ id: UUID, title: String, body: String) {
         apply(CommitBucketPlanner.updateBucketMessage(id, title: title, body: body, in: plan), messageBucket: id)
     }
-    public func assign(itemID: String, to id: UUID) {
+    func assign(itemID: String, to id: UUID) {
         guard canEdit else { return }
         apply(CommitBucketPlanner.assign(itemID: itemID, to: id, in: plan))
         selectBucket(id)
     }
-    public func assignFile(path: String, to id: UUID) {
+    func assignFile(path: String, to id: UUID) {
         guard canEdit else { return }
         apply(CommitBucketPlanner.assignFile(path: path, to: id, in: plan))
         selectBucket(id)
     }
-    public func unassign(_ id: String) { apply(CommitBucketPlanner.unassign(itemID: id, in: plan)) }
+    func unassign(_ id: String) { apply(CommitBucketPlanner.unassign(itemID: id, in: plan)) }
 
     private func apply(_ next: CommitBucketPlan, messageBucket id: UUID? = nil) {
         guard canEdit, plan != next else { return }
@@ -156,13 +156,13 @@ import GitaCore
         selectedItem = nil
         onChange?()
     }
-    public func undo() {
+    func undo() {
         guard canUndo, let previous = undoStack.popLast() else { return }
         messageBucket = nil
         replace(previous)
     }
 
-    public func autoGroup() {
+    func autoGroup() {
         guard canEdit, !plan.items.isEmpty else { return }
         let items = plan.items
         begin(.suggesting)
@@ -184,7 +184,7 @@ import GitaCore
         }
     }
 
-    public func commit() {
+    func commit() {
         guard canCommit else { return }
         let total = plan.buckets.count { !$0.itemIDs.isEmpty }
         begin(.committing(step: 0, total: total))
@@ -227,9 +227,9 @@ import GitaCore
         state = next
         onChange?()
     }
-    public func cancel() { cancelBackgroundWork() }
+    func cancel() { cancelBackgroundWork() }
 
-    public func cancelBackgroundWork() {
+    func cancelBackgroundWork() {
         switch state {
         case .suggesting, .loading:
             work.cancel()

@@ -154,13 +154,13 @@ public enum ExternalToolLaunchState: Equatable, Sendable {
     case failed(String)
 }
 
-public enum ExternalToolError: Error, LocalizedError, Equatable, Sendable {
+enum ExternalToolError: Error, LocalizedError, Equatable, Sendable {
     case unavailable(String)
     case missingPath(String)
     case temporaryDirectory, invalidOutput
     case exited(Int32, String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .unavailable(let name): String(localized: "\(name) is not installed.")
         case .missingPath(let key): String(localized: "No file is available for \(key).")

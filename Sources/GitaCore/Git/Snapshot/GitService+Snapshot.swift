@@ -21,7 +21,7 @@ extension GitService {
         return try await withThrowingTaskGroup(of: SnapshotPart.self) { group in
             group.addTask { .status(try await self.timedStatus()) }
             async let worktreesRead = execute(["worktree", "list", "--porcelain", "-z"])
-            async let stashesRead = execute(["stash", "list", "-n", "250", "--format=%gd%x00%s", "-z"])
+            async let stashesRead = execute(["stash", "list", "-n", "250", "--format=%gd%x00%H%x00%s", "-z"])
             async let originRead = execute(["remote", "get-url", "origin"], allowFailure: true)
             let walk = try await historyWalk(limit: maximum, scope: scope, root: repoRoot)
             group.addTask { .history(try await self.cachedHistory(key: walk.key, commonDirectory: walk.common)) }

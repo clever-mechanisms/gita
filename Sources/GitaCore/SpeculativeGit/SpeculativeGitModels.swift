@@ -50,6 +50,13 @@ public struct RebaseSimulationResult: Sendable, Equatable {
     public var overallRisk: ConflictRiskLevel { steps.map(\.outcome.risk).max() ?? .clean }
     public var conflictingStepCount: Int { steps.count { $0.outcome.risk == .conflict } }
     public var conflictingFiles: [String] { Set(steps.flatMap(\.outcome.conflictingFiles)).sorted() }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.ontoCommit == rhs.ontoCommit
+            && lhs.baseTreeID == rhs.baseTreeID
+            && lhs.steps == rhs.steps
+            && lhs.finalTreeID == rhs.finalTreeID
+    }
 }
 
 public enum PairwiseMergeOutcome: Sendable, Equatable {
@@ -80,6 +87,14 @@ public struct PairwiseMergePrediction: Sendable, Equatable {
     public let oursCommitID: String
     public let theirsCommitID: String
     public let outcome: PairwiseMergeOutcome
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.oursRef == rhs.oursRef
+            && lhs.theirsRef == rhs.theirsRef
+            && lhs.oursCommitID == rhs.oursCommitID
+            && lhs.theirsCommitID == rhs.theirsCommitID
+            && lhs.outcome == rhs.outcome
+    }
 }
 
 public enum PreFlightKind: String, Sendable, Equatable { case cherryPick, stash }
@@ -98,4 +113,12 @@ public struct ConflictPreview: Sendable, Equatable {
     public let excerpt: String
     public let truncated: Bool
     public let totalByteCount: Int
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.path == rhs.path
+            && lhs.treeID == rhs.treeID
+            && lhs.excerpt == rhs.excerpt
+            && lhs.truncated == rhs.truncated
+            && lhs.totalByteCount == rhs.totalByteCount
+    }
 }

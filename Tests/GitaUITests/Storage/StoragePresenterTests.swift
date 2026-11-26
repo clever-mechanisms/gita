@@ -13,7 +13,6 @@ import Testing
         let report = StoragePresentationFixture.report(root)
         #expect(presenter.formatBytes(1_000) == ByteCountFormatter.string(fromByteCount: 1_000, countStyle: .file))
         let segments = presenter.summarySegments(for: report)
-        #expect(segments.map(\.bytes) == [40, 8, 52])
         #expect(segments.map(\.fraction) == [0.40, 0.08, 0.52])
         #expect(segments.allSatisfy { !$0.tooltip.isEmpty })
     }
@@ -65,7 +64,7 @@ import Testing
     @Test func healthCardsDescribeCustomHookAndSafeGCForActiveAgents() {
         let external = "/external/orca-worktree"
         let health = RepositoryHealthSnapshot(
-            repositoryRoot: root, worktreePaths: [root.path, external], fsMonitor: .customHook("./monitor"),
+            worktreePaths: [root.path, external], fsMonitor: .customHook("./monitor"),
             untrackedCache: .enabled, commitGraph: CommitGraphInfo(path: nil, modifiedAt: nil),
             maintenance: GitMaintenanceInfo(
                 automatic: .disabled, isRegistered: true, looseObjects: 12,

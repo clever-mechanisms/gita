@@ -2,19 +2,19 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class VelocitySparklineOverlayView: NSView {
-    public let presenter = VelocitySparklinePresenter()
-    public var onSelectBucket: ((VelocityBucket) -> Void)?
-    public override var isFlipped: Bool { true }
-    public override var acceptsFirstResponder: Bool { true }
-    public override var intrinsicContentSize: NSSize { NSSize(width: 240, height: 64) }
+final class VelocitySparklineOverlayView: NSView {
+    let presenter = VelocitySparklinePresenter()
+    var onSelectBucket: ((VelocityBucket) -> Void)?
+    override var isFlipped: Bool { true }
+    override var acceptsFirstResponder: Bool { true }
+    override var intrinsicContentSize: NSSize { NSSize(width: 240, height: 64) }
     private static let homeKey: UInt16 = 115
     private static let endKey: UInt16 = 119
     private let spinner = NSProgressIndicator()
     private var spinnerDelay: Task<Void, Never>?
     private var plot: CGRect { bounds.insetBy(dx: 4, dy: 8) }
 
-    public override init(frame: NSRect) {
+    override init(frame: NSRect) {
         super.init(frame: frame)
         spinner.style = .spinning
         spinner.controlSize = .small
@@ -36,11 +36,11 @@ public final class VelocitySparklineOverlayView: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Use init(frame:)") }
 
-    public func update(_ buckets: [VelocityBucket]) {
+    func update(_ buckets: [VelocityBucket]) {
         presenter.update(buckets)
     }
 
-    public override func draw(_ dirtyRect: NSRect) {
+    override func draw(_ dirtyRect: NSRect) {
         Theme.inset.setFill()
         dirtyRect.fill()
         guard case .loaded(let buckets, let hover, let selected) = presenter.state,
@@ -120,7 +120,7 @@ public final class VelocitySparklineOverlayView: NSView {
         text.draw(in: pill.insetBy(dx: 8, dy: max(0, (pill.height - text.size().height) / 2)))
     }
 
-    public override func updateTrackingAreas() {
+    override func updateTrackingAreas() {
         super.updateTrackingAreas()
         replaceHoverTrackingArea()
         addTrackingArea(
@@ -133,16 +133,16 @@ public final class VelocitySparklineOverlayView: NSView {
         (convert(event.locationInWindow, from: nil).x - plot.minX) / max(1, plot.width)
     }
 
-    public override func mouseMoved(with event: NSEvent) {
+    override func mouseMoved(with event: NSEvent) {
         let x = position(event)
         guard case .loaded(_, let hover, _) = presenter.state, presenter.index(at: x) != hover else { return }
         presenter.hover(at: x)
     }
-    public override func mouseExited(with _: NSEvent) {
+    override func mouseExited(with _: NSEvent) {
         presenter.hover(at: nil)
     }
 
-    public override func mouseDown(with event: NSEvent) {
+    override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         if let index = presenter.index(at: position(event)) {
             presenter.select(index: index)
@@ -150,7 +150,7 @@ public final class VelocitySparklineOverlayView: NSView {
         }
     }
 
-    public override func keyDown(with event: NSEvent) {
+    override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case KeyPress.leftArrow: presenter.step(-1)
         case KeyPress.rightArrow: presenter.step(1)
@@ -173,15 +173,15 @@ public final class VelocitySparklineOverlayView: NSView {
         return true
     }
 
-    public override func accessibilityPerformIncrement() -> Bool {
+    override func accessibilityPerformIncrement() -> Bool {
         presenter.step(1)
         return presenter.activeBucket != nil
     }
-    public override func accessibilityPerformDecrement() -> Bool {
+    override func accessibilityPerformDecrement() -> Bool {
         presenter.step(-1)
         return presenter.activeBucket != nil
     }
-    public override func accessibilityPerformPress() -> Bool { activate() }
+    override func accessibilityPerformPress() -> Bool { activate() }
 
     private func refresh() {
         toolTip = presenter.activeBucket.map(presenter.tooltip)
@@ -205,11 +205,11 @@ public final class VelocitySparklineOverlayView: NSView {
 
     deinit { spinnerDelay?.cancel() }
 
-    public override func viewDidChangeEffectiveAppearance() {
+    override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
     }
 
-    public override func drawFocusRingMask() { bounds.fill() }
-    public override var focusRingMaskBounds: NSRect { bounds }
+    override func drawFocusRingMask() { bounds.fill() }
+    override var focusRingMaskBounds: NSRect { bounds }
 }

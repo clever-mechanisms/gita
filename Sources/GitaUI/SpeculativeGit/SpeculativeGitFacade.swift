@@ -1,8 +1,8 @@
 import AppKit
 import GitaCore
 
-@MainActor public enum SpeculativeGitFacade {
-    public static func rebasePreview(
+@MainActor enum SpeculativeGitFacade {
+    static func rebasePreview(
         service: SpeculativeGitService, onto: String, steps: [GitRebaseStep]
     )
         -> SpeculativePreviewPanelController
@@ -10,7 +10,7 @@ import GitaCore
         panel(service) { .rebase(try await service.simulateRebase(onto: onto, steps: steps)) }
     }
 
-    public static func pairwisePreview(
+    static func pairwisePreview(
         service: SpeculativeGitService, ours: String, theirs: String
     )
         -> SpeculativePreviewPanelController
@@ -18,7 +18,7 @@ import GitaCore
         panel(service) { .pairwiseMerge(try await service.checkPairwiseMerge(ours: ours, theirs: theirs)) }
     }
 
-    public static func preFlightPreview(
+    static func preFlightPreview(
         service: SpeculativeGitService, kind: PreFlightKind, target: String,
         onto: String = "HEAD"
     ) -> SpeculativePreviewPanelController {
@@ -40,7 +40,7 @@ import GitaCore
         return SpeculativePreviewPanelController(presenter: presenter)
     }
 
-    public static func presentPreview(
+    static func presentPreview(
         _ panel: SpeculativePreviewPanelController, on parent: NSWindow, proceedTitle: String? = nil,
         onProceed: (@MainActor () -> Void)? = nil
     ) {
@@ -87,10 +87,10 @@ import GitaCore
         sheet.fit()
     }
 
-    public static func makeBadgeView() -> ConflictRiskBadgeView { ConflictRiskBadgeView() }
+    static func makeBadgeView() -> ConflictRiskBadgeView { ConflictRiskBadgeView() }
 
     /// Keep the returned controller to preserve the editable plan and selection across window closures.
-    public static func makeCommitBucketsWindow(
+    static func makeCommitBucketsWindow(
         gitService: GitService, agent: AgentTool? = nil,
         onCommitted: ((CommitBucketExecutionResult) -> Void)? = nil
     ) -> CommitBucketsWindowController {

@@ -1,8 +1,8 @@
 import AppKit
 import GitaCore
 
-public final class SpeculativePreviewPanelController: NSViewController {
-    public let presenter: SpeculativePreviewPresenter
+final class SpeculativePreviewPanelController: NSViewController {
+    let presenter: SpeculativePreviewPresenter
     var isHostedInSheet = false { didSet { if isViewLoaded { render() } } }
     var onStatusChange: ((SheetStatus) -> Void)?
     private let badge = ConflictRiskBadgeView()
@@ -39,14 +39,14 @@ public final class SpeculativePreviewPanelController: NSViewController {
     }
     private var entries: [Entry] = []
 
-    public init(presenter: SpeculativePreviewPresenter) {
+    init(presenter: SpeculativePreviewPresenter) {
         self.presenter = presenter
         super.init(nibName: nil, bundle: nil)
     }
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    public override func loadView() {
+    override func loadView() {
         view = ThemedBackgroundView()
         view.setAccessibilityIdentifier("speculative.preview.panel")
         split.isVertical = true
@@ -86,15 +86,15 @@ public final class SpeculativePreviewPanelController: NSViewController {
         render()
     }
 
-    public override func viewWillAppear() {
+    override func viewWillAppear() {
         super.viewWillAppear()
         if case .idle = presenter.state { presenter.refresh() }
     }
-    public override func viewWillDisappear() {
+    override func viewWillDisappear() {
         super.viewWillDisappear()
         presenter.cancel()
     }
-    public override func cancelOperation(_ sender: Any?) {
+    override func cancelOperation(_ sender: Any?) {
         if let window = view.window, let parent = window.sheetParent {
             parent.endSheet(window, returnCode: .cancel)
         } else {

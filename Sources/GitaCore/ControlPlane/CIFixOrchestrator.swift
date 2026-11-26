@@ -50,6 +50,21 @@ public struct CIFixTarget: Sendable, Equatable {
             jobName: job?.name, failedStepName: failedStep?.name, branch: run.branch,
             commitSHA: run.commit, url: job?.url ?? run.url, account: account)
     }
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.root == rhs.root
+            && lhs.repositoryNameWithOwner == rhs.repositoryNameWithOwner
+            && lhs.runID == rhs.runID
+            && lhs.runNumber == rhs.runNumber
+            && lhs.attempt == rhs.attempt
+            && lhs.workflowName == rhs.workflowName
+            && lhs.jobID == rhs.jobID
+            && lhs.jobName == rhs.jobName
+            && lhs.failedStepName == rhs.failedStepName
+            && lhs.branch == rhs.branch
+            && lhs.commitSHA == rhs.commitSHA
+            && lhs.url == rhs.url
+            && lhs.account == rhs.account
+    }
 }
 
 public struct CIFixContext: Sendable, Equatable {
@@ -61,6 +76,17 @@ public struct CIFixContext: Sendable, Equatable {
     public let changedFiles: [String]
     public let prompt: String
     public let wasLogTruncated: Bool
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.target == rhs.target
+            && lhs.branch == rhs.branch
+            && lhs.commitSHA == rhs.commitSHA
+            && lhs.failedStepName == rhs.failedStepName
+            && lhs.logExcerpt == rhs.logExcerpt
+            && lhs.changedFiles == rhs.changedFiles
+            && lhs.prompt == rhs.prompt
+            && lhs.wasLogTruncated == rhs.wasLogTruncated
+    }
 }
 
 public enum CIFixState: Sendable, Equatable {

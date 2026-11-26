@@ -171,19 +171,15 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = root.standardizedFileURL.path
-        let controller: SubmodulesLFSWindowController
-        if let existing = submodulesLFSWindows[key] {
-            controller = existing
-        } else {
-            controller = SubmodulesLFSWindowController(
+        let controller = auxiliaryWindows.controller(for: root, kind: .submodulesLFS, service: service) {
+            SubmodulesLFSWindowController(
                 repositoryRoot: root, service: service,
                 onOpenInTab: { [weak self] url in self?.openRepositoryTab(url) },
                 onRevealInFinder: { [weak self] url in self?.environment.system.revealInFinder(url) }
             )
-            submodulesLFSWindows[key] = controller
         }
         controller.show(initialTab: initialTab)
+        auxiliaryWindows.observeClose(for: root, kind: .submodulesLFS)
     }
 
     @objc func showCleanupAssistant() {
@@ -192,12 +188,13 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = root.standardizedFileURL.path
-        let controller =
-            cleanupWindows[key]
-            ?? CleanupAssistantWindowController(gitService: service) { [weak self] in self?.model.refresh() }
-        cleanupWindows[key] = controller
+        let controller = auxiliaryWindows.controller(for: root, kind: .cleanup, service: service) {
+            CleanupAssistantWindowController(gitService: service) { [weak self] in
+                self?.refreshRepository(at: root)
+            }
+        }
         controller.present()
+        auxiliaryWindows.observeClose(for: root, kind: .cleanup)
     }
 
     @objc func showStackedBranches() { openStackedBranches(baseBranch: nil) }
@@ -208,14 +205,14 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = "\(root.standardizedFileURL.path)#\(baseBranch ?? "")"
-        let controller =
-            stackWindows[key]
-            ?? BranchStackWindowController(gitService: service, baseBranch: baseBranch) { [weak self] in
-                self?.model.refresh()
+        let kind = AuxiliaryWindowRegistry.Kind.stackedBranches(baseBranch ?? "")
+        let controller = auxiliaryWindows.controller(for: root, kind: kind, service: service) {
+            BranchStackWindowController(gitService: service, baseBranch: baseBranch) { [weak self] in
+                self?.refreshRepository(at: root)
             }
-        stackWindows[key] = controller
+        }
         controller.present()
+        auxiliaryWindows.observeClose(for: root, kind: kind)
     }
 
     @objc func showReflogBrowser() {
@@ -224,21 +221,20 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = root.standardizedFileURL.path
-        let controller: ReflogWindowController
-        if let existing = reflogWindows[key] {
-            controller = existing
-        } else {
-            controller = ReflogWindowController(
+        let controller: ReflogWindowController = auxiliaryWindows.controller(for: root, kind: .reflog, service: service)
+        {
+            let window = ReflogWindowController(
                 service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
-            controller.onJumpToCommit = { [weak self] sha in
-                self?.showWindow()
-                self?.repositoryController?.showCommit(id: sha)
+            window.onJumpToCommit = { [weak self] sha in
+                self?.jumpToCommit(sha, in: root)
             }
-            controller.onRepositoryMutated = { [weak self] in self?.model.refresh() }
-            reflogWindows[key] = controller
+            window.onRepositoryMutated = { [weak self] in
+                self?.refreshRepository(at: root)
+            }
+            return window
         }
         controller.show(ref: "HEAD")
+        auxiliaryWindows.observeClose(for: root, kind: .reflog)
     }
 
     @objc func showCodeSearch() {
@@ -247,20 +243,18 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = root.standardizedFileURL.path
-        let controller: CodeSearchWindowController
-        if let existing = codeSearchWindows[key] {
-            controller = existing
-        } else {
-            controller = CodeSearchWindowController(
+        let controller: CodeSearchWindowController = auxiliaryWindows.controller(
+            for: root, kind: .codeSearch, service: service
+        ) {
+            let window = CodeSearchWindowController(
                 service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
-            controller.onJumpToCommit = { [weak self] sha in
-                self?.showWindow()
-                self?.repositoryController?.showCommit(id: sha)
+            window.onJumpToCommit = { [weak self] sha in
+                self?.jumpToCommit(sha, in: root)
             }
-            codeSearchWindows[key] = controller
+            return window
         }
         controller.show()
+        auxiliaryWindows.observeClose(for: root, kind: .codeSearch)
     }
 
     @objc func startBisect() {
@@ -278,19 +272,47 @@ extension AppDelegate {
             return
         }
         statusItem?.closePanel()
-        let key = "\(root.standardizedFileURL.path)#\(range.path)#\(range.startLine)-\(range.endLine)"
-        let controller: LineHistoryWindowController
-        if let existing = lineHistoryWindows[key] {
-            controller = existing
-        } else {
-            controller = LineHistoryWindowController(service: service, range: range, repositoryRoot: root)
-            controller.onJumpToCommit = { [weak self] sha in
-                self?.showWindow()
-                self?.repositoryController?.showCommit(id: sha)
+        let controller: LineHistoryWindowController = auxiliaryWindows.controller(
+            for: root, kind: .lineHistory, service: service
+        ) {
+            let window = LineHistoryWindowController(service: service, range: range, repositoryRoot: root)
+            window.onJumpToCommit = { [weak self] sha in
+                self?.jumpToCommit(sha, in: root)
             }
-            lineHistoryWindows[key] = controller
+            return window
         }
         controller.show(range: range)
+        auxiliaryWindows.observeClose(for: root, kind: .lineHistory)
+    }
+
+    /// Finds an open tab matching `root` across all workspace windows.
+    func openTabController(for root: URL) -> RepositoryViewController? {
+        for candidate in [place] + places.filter({ $0 !== place }) {
+            guard let tabs = candidate.tabs else { continue }
+            if let tab = tabs.tabs.first(where: { tab in
+                (tab.model.snapshot?.root ?? tab.root).map { AttentionRequest.sameLocation($0, root) } == true
+            }) {
+                return tab.controller
+            }
+        }
+        return nil
+    }
+
+    private func refreshRepository(at root: URL) {
+        if let controller = openTabController(for: root) {
+            controller.model.refresh()
+        } else if let currentRoot = model.snapshot?.root, AttentionRequest.sameLocation(currentRoot, root) {
+            model.refresh()
+        }
+    }
+
+    private func jumpToCommit(_ sha: String, in root: URL) {
+        guard showRepositoryTab(root) else { return }
+        if let controller = openTabController(for: root) {
+            controller.showCommit(id: sha)
+        } else {
+            repositoryController?.showCommit(id: sha)
+        }
     }
 
     /// View › a page (⌥⌘1…); Worktrees & Agents opens or closes the right-hand pane.
@@ -393,7 +415,9 @@ extension AppDelegate {
             DispatchQueue.main.async { terminate() }
             return
         }
-        switch TerminationPolicy(hasReviewSheet: reviewingController != nil, isMutating: isAnyMutating) {
+        switch TerminationPolicy(
+            hasReviewSheet: reviewingController != nil, isMutating: isAnyMutating || hasActiveAgentArenaRace)
+        {
         case .refuseWhileMutating: environment.system.beep()
         case .now: terminate()
         case .askReviewSheet:

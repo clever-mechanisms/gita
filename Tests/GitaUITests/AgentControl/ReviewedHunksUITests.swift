@@ -87,10 +87,17 @@ struct AgentControlReviewedHunksUITests {
         #expect(radar.view.accessibilityIdentifier() == "agentControl.radar.root")
         #expect(flight.view.accessibilityIdentifier() == "agentControl.flight.root")
         let event = AgentHookEvent.claude(event: "Stop", input: Data(#"{"session_id":"test-session"}"#.utf8), pids: [])
-        facade.setFlightRecorderEnabled(true, for: repo.url)
+        await service.setEnabled(true, for: repo.url)
         facade.handleHookEvent(event, repositoryRoot: repo.url)
-        #expect(await facade.isFlightRecorderEnabled(for: repo.url))
-        #expect(try await service.listSnapshots(in: repo.url, key: "test-session").count == 1)
+        #expect(await service.isEnabled(for: repo.url))
+        let deadline = ContinuousClock.now + .seconds(20)
+        var capturedCount = 0
+        while ContinuousClock.now < deadline {
+            capturedCount = (try? await service.listSnapshots(in: repo.url, key: "test-session").count) ?? 0
+            if capturedCount == 1 { break }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        #expect(capturedCount == 1)
         flight.presenter.load()
         try #require(await SharedFixtures.waitUntil(seconds: 20) { flight.presenter.diff != nil })
         #expect(flight.presenter.selectedTurn?.trigger == .agentStop)

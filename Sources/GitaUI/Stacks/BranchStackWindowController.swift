@@ -36,7 +36,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         AuxiliaryWindowActivation.show(content.window)
         refresh()
     }
-    func windowShouldClose(_: NSWindow) -> Bool { !presenter.isRestacking }
+    func windowShouldClose(_: NSWindow) -> Bool { !presenter.isRestacking && mutationTask == nil }
     func windowWillClose(_: Notification) {
         readTask?.cancel()
         if !presenter.isRestacking { presenter.cancelPreview() }
@@ -137,8 +137,15 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     private func confirm(_ preview: BranchStackRestackPreview) {
-        let alert = NSAlert()
         let blocked = !preview.blockedByWorktreePaths.isEmpty
+        let alert = makeConfirmAlert(for: preview, blocked: blocked)
+        alert.beginSheetModal(for: content.window) { [weak self] response in
+            self?.finishConfirm(preview, blocked: blocked, response: response)
+        }
+    }
+
+    private func makeConfirmAlert(for preview: BranchStackRestackPreview, blocked: Bool) -> NSAlert {
+        let alert = NSAlert()
         alert.messageText =
             blocked
             ? String(localized: "Another worktree is using this stack.")
@@ -150,14 +157,17 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
             button.keyEquivalent = ""
         }
         alert.addButton(withTitle: blocked ? String(localized: "Close") : String(localized: "Cancel"))
-        alert.beginSheetModal(for: content.window) { [weak self] response in
-            guard let self else { return }
-            if !blocked, response == .alertFirstButtonReturn {
-                restack(preview)
-            } else {
-                presenter.cancelPreview()
-                render()
-            }
+        return alert
+    }
+
+    private func finishConfirm(
+        _ preview: BranchStackRestackPreview, blocked: Bool, response: NSApplication.ModalResponse
+    ) {
+        if !blocked, response == .alertFirstButtonReturn {
+            restack(preview)
+        } else {
+            presenter.cancelPreview()
+            render()
         }
     }
 

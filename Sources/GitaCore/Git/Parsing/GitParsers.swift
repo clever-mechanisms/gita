@@ -89,11 +89,17 @@ enum GitParsers {
         }
     }
 
-    /// `git stash list --format=%gd%x00%s -z`.
+    /// `git stash list --format=%gd%x00%H%x00%s -z`.
     static func stashes(_ data: Data) -> [GitStash] {
         let fields = GitOutput.nulFields(data)
-        return stride(from: 0, to: max(0, fields.count - 1), by: 2).map {
-            GitStash(ref: fields[$0].trimmingCharacters(in: .newlines), subject: fields[$0 + 1])
+        return stride(from: 0, to: max(0, fields.count - 2), by: 3).map {
+            let ref = fields[$0].trimmingCharacters(in: .newlines)
+            let commitID = fields[$0 + 1].trimmingCharacters(in: .newlines)
+            return GitStash(
+                ref: ref,
+                subject: fields[$0 + 2],
+                commitID: Self.isObjectID(commitID) ? commitID : nil
+            )
         }
     }
 

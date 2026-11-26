@@ -4,13 +4,30 @@ import UniformTypeIdentifiers
 
 /// Custom Actions (#9), Patch Export/Apply & Permalinks (#10), and External Diff/Merge Tools (#12).
 extension RepositoryViewController {
+    private nonisolated static let maxWorkingTreeDiffBytes = 32 * 1_024 * 1_024
+
+    func detachActionsTools() {
+        for controller in activeCustomActionControllers.values {
+            controller.onComplete = nil
+            controller.close()
+        }
+        activeCustomActionControllers.removeAll()
+        if let sheet = activePatchApplySheet {
+            if let sheetWindow = sheet.window, let parent = sheetWindow.sheetParent {
+                parent.endSheet(sheetWindow)
+            }
+            sheet.close()
+            activePatchApplySheet = nil
+        }
+    }
+
     // MARK: Custom Actions
 
     func customActionSubmenu(
         scope: CustomActionScope, commitSHA: String? = nil, branch: String? = nil, filePath: String? = nil,
         worktreePath: URL? = nil
     ) -> NSMenuItem? {
-        let actions = (try? CustomActionStore().actions(for: scope)) ?? []
+        let actions = CustomActionLibrary.shared.actions(for: scope)
         guard !actions.isEmpty else { return nil }
         let submenu = NSMenu()
         for action in actions {
@@ -40,7 +57,11 @@ extension RepositoryViewController {
             remoteURL: snapshot.remoteURL
         )
         let controller = CustomActionOutputWindowController(action: action)
-        activeCustomActionController = controller
+        let id = ObjectIdentifier(controller)
+        activeCustomActionControllers[id] = controller
+        controller.onComplete = { [weak self] in
+            self?.activeCustomActionControllers.removeValue(forKey: id)
+        }
         controller.present(context: context, on: window)
     }
 
@@ -62,16 +83,19 @@ extension RepositoryViewController {
         guard let service = model.service else { return }
         Task { [weak self] in
             let outcome = await PatchExportHelper().export(source, service: service)
-            guard let self else { return }
-            switch outcome {
-            case .saved(_, let message):
-                self.model.showBanner(.info(message))
-            case .cancelled:
-                break
-            case .failed(let message):
-                self.model.showBanner(
-                    .failure(title: String(localized: "Export patch failed"), message: message, retry: nil))
-            }
+            self?.presentPatchExportOutcome(outcome)
+        }
+    }
+
+    private func presentPatchExportOutcome(_ outcome: PatchExportHelper.Outcome) {
+        switch outcome {
+        case .saved(_, let message):
+            model.showBanner(.info(message))
+        case .cancelled:
+            break
+        case .failed(let message):
+            model.showBanner(
+                .failure(title: String(localized: "Export patch failed"), message: message, retry: nil))
         }
     }
 
@@ -105,6 +129,27 @@ extension RepositoryViewController {
 
     // MARK: Permalinks
 
+    var canCopyDiffPermalink: Bool {
+        guard model.snapshot?.remoteURL != nil else { return false }
+        if model.section == .changes { return canCopyLocalChangePermalink }
+        return model.selectedCommit != nil || model.snapshot?.head != nil
+    }
+
+    private var canCopyLocalChangePermalink: Bool {
+        guard model.snapshot?.head != nil else { return false }
+        guard let file = model.selectedFile else { return true }
+        return file.worktreeCode != .untracked && file.indexCode != .added
+    }
+
+    var canCopySelectedPermalink: Bool {
+        guard model.snapshot?.remoteURL != nil else { return false }
+        if model.section == .changes {
+            guard let file = model.selectedFile, model.snapshot?.head != nil else { return false }
+            return file.worktreeCode != .untracked && file.indexCode != .added
+        }
+        return model.selectedCommit != nil || model.selectedTreePath != nil || model.selectedFile != nil
+    }
+
     func copySelectedPermalink() {
         if let path = model.selectedTreePath ?? model.selectedFile?.path ?? codePane.diffView.shownPath {
             copyFilePermalink(path: path, revision: nil, lines: nil)
@@ -125,7 +170,7 @@ extension RepositoryViewController {
 
     func copyFilePermalink(path: String, revision: String?, lines: ClosedRange<Int>?) {
         guard let snapshot = model.snapshot, let remote = snapshot.remoteURL,
-            let ref = revision ?? model.selectedCommit?.id ?? snapshot.head
+            let ref = resolvedPermalinkRef(explicit: revision, snapshot: snapshot)
         else {
             showPermalinkResult(.unavailable(message: String(localized: "No remote permalink is available.")))
             return
@@ -133,11 +178,14 @@ extension RepositoryViewController {
         showPermalinkResult(PermalinkHelper().copyFile(remote: remote, ref: ref, path: path, lines: lines))
     }
 
+    private func resolvedPermalinkRef(explicit revision: String?, snapshot: RepositorySnapshot) -> String? {
+        if let revision { return revision }
+        return model.section == .changes ? snapshot.head : (model.selectedCommit?.id ?? snapshot.head)
+    }
+
     private func showPermalinkResult(_ result: PermalinkCopyResult) {
         switch result {
-        case .copied(_, let message):
-            model.showBanner(.info(message))
-        case .unavailable(let message):
+        case .copied(_, let message), .unavailable(let message):
             model.showBanner(.info(message))
         }
     }
@@ -153,20 +201,17 @@ extension RepositoryViewController {
         model.service != nil && model.selectedFile?.isConflict == true
     }
 
-    func openInExternalDiffTool(path explicitPath: String? = nil, staged explicitStaged: Bool? = nil) {
+    func openInExternalDiffTool(path explicitPath: String? = nil, target explicitTarget: ExternalDiffTarget? = nil) {
         guard let service = model.service, let snapshot = model.snapshot,
             let path = explicitPath ?? model.selectedFile?.path ?? model.selectedTreePath ?? codePane.diffView.shownPath
         else { return }
         let config = ExternalToolConfig.load(from: model.defaults)
-        let isChanges = model.section == .changes || explicitStaged != nil
-        let isStaged = explicitStaged ?? model.staged
-        let selectedCommit = model.selectedCommit
+        let target = explicitTarget ?? defaultExternalDiffTarget()
         let root = snapshot.root
         Task { [weak self] in
             do {
                 let request = try await Self.buildExternalDiffRequest(
-                    service: service, root: root, path: path, isChanges: isChanges, isStaged: isStaged,
-                    commit: selectedCommit)
+                    service: service, root: root, path: path, target: target)
                 try await ExternalToolLauncher().launchDiff(request, selection: config.diffTool)
             } catch {
                 self?.model.showBanner(
@@ -177,56 +222,71 @@ extension RepositoryViewController {
         }
     }
 
-    private static func buildExternalDiffRequest(
-        service: GitService, root: URL, path: String, isChanges: Bool, isStaged: Bool, commit: GitCommit?
+    private func defaultExternalDiffTarget() -> ExternalDiffTarget {
+        if model.section == .changes { return model.staged ? .staged : .unstaged }
+        let reference = CommitFileReference(
+            commit: model.selectedCommit, stash: model.selectedStash, comparisonBase: model.comparisonBase)
+        return reference.map(Self.externalDiffTarget(for:)) ?? .unstaged
+    }
+
+    private static func externalDiffTarget(for reference: CommitFileReference) -> ExternalDiffTarget {
+        reference.isCommit
+            ? .commit(id: reference.id, parent: reference.before)
+            : .stash(ref: reference.id, parent: reference.before)
+    }
+
+    nonisolated static func buildExternalDiffRequest(
+        service: GitService, root: URL, path: String, target: ExternalDiffTarget
     ) async throws -> ExternalToolDiffRequest {
         let name = URL(fileURLWithPath: path).lastPathComponent
-        if !isChanges, let commit {
-            let parent = commit.parents.first
+        switch target {
+        case .commit(let id, let parent):
             let left: Data =
                 if let parent { (try? await service.fileData(commit: parent, path: path)) ?? Data() } else { Data() }
-            let right = (try? await service.fileData(commit: commit.id, path: path)) ?? Data()
+            let right = (try? await service.fileData(commit: id, path: path)) ?? Data()
             return ExternalToolDiffRequest(
                 fileName: name, leftContent: left, rightContent: right,
-                leftLabel: parent.map { String($0.prefix(7)) } ?? "empty", rightLabel: String(commit.id.prefix(7)))
-        }
-        if isStaged {
+                leftLabel: parent.map { String($0.prefix(7)) } ?? "empty", rightLabel: String(id.prefix(7)))
+        case .stash(let ref, let parent):
+            let base = parent ?? (ref + "^")
+            let left = (try? await service.fileData(commit: base, path: path)) ?? Data()
+            let right = (try? await service.fileData(commit: ref, path: path)) ?? Data()
+            return ExternalToolDiffRequest(
+                fileName: name, leftContent: left, rightContent: right, leftLabel: base, rightLabel: ref)
+        case .staged:
             let left = (try? await service.fileData(commit: "HEAD", path: path)) ?? Data()
-            let right = (try? await service.fileData(commit: "", path: path)) ?? Data()
+            let right = (try? await service.indexFileData(path: path)) ?? Data()
             return ExternalToolDiffRequest(
                 fileName: name, leftContent: left, rightContent: right, leftLabel: "HEAD", rightLabel: "staged")
+        case .unstaged:
+            let indexData = try? await service.indexFileData(path: path)
+            let left =
+                if let indexData { indexData } else {
+                    (try? await service.fileData(commit: "HEAD", path: path)) ?? Data()
+                }
+            let leftLabel = indexData != nil ? "index" : "HEAD"
+            let right = readWorkingTreeFile(at: root.appendingPathComponent(path), limit: maxWorkingTreeDiffBytes)
+            return ExternalToolDiffRequest(
+                fileName: name, leftContent: left, rightContent: right, leftLabel: leftLabel, rightLabel: "working")
         }
-        let left = (try? await service.fileData(commit: "HEAD", path: path)) ?? Data()
-        let fileURL = root.appendingPathComponent(path)
-        let right = (try? Data(contentsOf: fileURL)) ?? Data()
-        return ExternalToolDiffRequest(
-            fileName: name, leftContent: left, rightContent: right, leftLabel: "HEAD", rightLabel: "working")
+    }
+
+    private nonisolated static func readWorkingTreeFile(at url: URL, limit: Int) -> Data {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return Data() }
+        defer { try? handle.close() }
+        return (try? handle.read(upToCount: limit)) ?? Data()
     }
 
     func openInExternalMergeTool(path explicitPath: String? = nil) {
         guard let service = model.service, let root = model.snapshot?.root,
-            let path = explicitPath ?? (model.selectedFile?.isConflict == true ? model.selectedFile?.path : nil)
+            let path = resolvedMergeToolPath(explicitPath)
         else { return }
-        let config = ExternalToolConfig.load(from: model.defaults)
+        let selection = ExternalToolConfig.load(from: model.defaults).mergeTool
         Task { [weak self] in
             do {
-                let conflict = try await service.conflict(path: path)
-                let base =
-                    if let version = conflict.base { try await service.conflictVersionData(version) } else { Data() }
-                let left =
-                    if let version = conflict.ours { try await service.conflictVersionData(version) } else { Data() }
-                let right =
-                    if let version = conflict.theirs { try await service.conflictVersionData(version) } else { Data() }
-                let request = ExternalToolMergeRequest(
-                    fileName: URL(fileURLWithPath: path).lastPathComponent,
-                    baseContent: base, leftContent: left, rightContent: right,
-                    mergedOutputURL: root.appendingPathComponent(path), worktreeRoot: root)
-                let outcome = try await ExternalToolLauncher().launchMerge(request, selection: config.mergeTool)
-                guard let self else { return }
-                if outcome == .resolved {
-                    self.model.refresh()
-                    self.model.showBanner(.info(String(localized: "External merge saved to \(path).")))
-                }
+                let request = try await Self.buildExternalMergeRequest(service: service, root: root, path: path)
+                let outcome = try await ExternalToolLauncher().launchMerge(request, selection: selection)
+                self?.finishExternalMerge(outcome: outcome, path: path)
             } catch {
                 self?.model.showBanner(
                     .failure(
@@ -236,37 +296,55 @@ extension RepositoryViewController {
         }
     }
 
+    private func resolvedMergeToolPath(_ explicitPath: String?) -> String? {
+        explicitPath ?? (model.selectedFile?.isConflict == true ? model.selectedFile?.path : nil)
+    }
+
+    private func finishExternalMerge(outcome: ExternalMergeOutcome, path: String) {
+        guard outcome == .resolved else { return }
+        model.refresh()
+        model.showBanner(.info(String(localized: "External merge saved to \(path).")))
+    }
+
+    private nonisolated static func buildExternalMergeRequest(
+        service: GitService, root: URL, path: String
+    ) async throws -> ExternalToolMergeRequest {
+        let conflict = try await service.conflict(path: path)
+        let base = try await conflictData(conflict.base, service: service)
+        let left = try await conflictData(conflict.ours, service: service)
+        let right = try await conflictData(conflict.theirs, service: service)
+        return ExternalToolMergeRequest(
+            fileName: URL(fileURLWithPath: path).lastPathComponent,
+            baseContent: base, leftContent: left, rightContent: right,
+            mergedOutputURL: root.appendingPathComponent(path), worktreeRoot: root)
+    }
+
+    private nonisolated static func conflictData(_ version: ConflictVersion?, service: GitService) async throws -> Data
+    {
+        guard let version else { return Data() }
+        return try await service.conflictVersionData(version)
+    }
+
     // MARK: Palette Actions
 
     func actionsToolsPaletteActions() -> [(item: NSMenuItem, keywords: [String])] {
-        let hasRepo = model.snapshot != nil && model.service != nil
-        var items: [(NSMenuItem, [String])] = []
-        let working = MenuAction(String(localized: "Export Patch (Working Changes)"), symbol: "square.and.arrow.up") {
-            [weak self] in self?.exportPatch(.workingTree)
-        }
-        working.isEnabled = hasRepo
-        let staged = MenuAction(String(localized: "Export Patch (Staged)"), symbol: "square.and.arrow.up") {
-            [weak self] in self?.exportPatch(.staged)
-        }
-        staged.isEnabled = hasRepo && model.hasStagedChanges
-        let commitItem = MenuAction(String(localized: "Export Patch (Commit)"), symbol: "square.and.arrow.up") {
-            [weak self] in
-            if let sha = self?.model.selectedCommit?.id { self?.exportPatch(.commit(sha: sha)) }
-        }
-        commitItem.isEnabled = hasRepo && model.selectedCommit != nil
-        items += [
-            (working, ["patch", "diff", "export", "working"]),
-            (staged, ["patch", "diff", "export", "staged"]),
-            (commitItem, ["patch", "format-patch", "export", "commit"]),
-        ]
-        if hasRepo, let actions = try? CustomActionStore().load() {
-            for action in actions {
+        guard let snapshot = model.snapshot, model.service != nil else { return [] }
+        let allowedScopes = activeCustomActionScopes(snapshot: snapshot)
+        return CustomActionLibrary.shared.actions()
+            .filter { allowedScopes.contains($0.scope) }
+            .map { action in
                 let menuItem = MenuAction(action.name, symbol: "bolt.horizontal") { [weak self] in
                     self?.runCustomAction(action)
                 }
-                items.append((menuItem, ["custom action", "run", action.scope.rawValue]))
+                return (menuItem, ["custom action", "run", action.scope.rawValue])
             }
-        }
-        return items
+    }
+
+    private func activeCustomActionScopes(snapshot: RepositorySnapshot) -> Set<CustomActionScope> {
+        var scopes: Set<CustomActionScope> = [.repository, .worktree]
+        if model.selectedCommit != nil || snapshot.head != nil { scopes.insert(.commit) }
+        if snapshot.branch != nil { scopes.insert(.branch) }
+        if model.selectedTreePath != nil || model.selectedFile != nil { scopes.insert(.file) }
+        return scopes
     }
 }

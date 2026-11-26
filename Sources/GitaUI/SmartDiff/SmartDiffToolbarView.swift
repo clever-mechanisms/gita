@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class SmartDiffToolbarView: NSView {
+final class SmartDiffToolbarView: NSView {
     private let presenter: SmartDiffPresenter
     private lazy var noise = SmartDiffControls.button(
         String(localized: "Noise filter"), id: "toolbar.noise",
@@ -36,7 +36,7 @@ public final class SmartDiffToolbarView: NSView {
         pill.heightAnchor.constraint(equalToConstant: 24).isActive = true
         return pill
     }()
-    public init(presenter: SmartDiffPresenter) {
+    init(presenter: SmartDiffPresenter) {
         self.presenter = presenter
         super.init(frame: .zero)
         let row = Deck.hstack([noise, moves, structured, Deck.spacer()], spacing: 4)
@@ -88,7 +88,7 @@ public final class SmartDiffToolbarView: NSView {
         button.parts.append(.badge(count.formatted(), fill: fill, color: Theme.text))
     }
 
-    public override func viewDidChangeEffectiveAppearance() {
+    override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         render(presenter.state)
     }
@@ -121,5 +121,5 @@ public final class SmartDiffToolbarView: NSView {
         expand.isHidden = true
     }
 
-    public override func draw(_: NSRect) { SmartDiffControls.bar(self, color: Theme.toolbar) }
+    override func draw(_: NSRect) { SmartDiffControls.bar(self, color: Theme.toolbar) }
 }

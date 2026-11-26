@@ -22,10 +22,10 @@ public enum ReviewedHunkHasher {
     }
 }
 
-public struct ReviewedHunkRecord: Codable, Sendable, Hashable {
-    public let hash: ReviewedHunkHash
-    public let filePath: String
-    public let reviewedAt: Date
+struct ReviewedHunkRecord: Codable, Sendable, Hashable {
+    let hash: ReviewedHunkHash
+    let filePath: String
+    let reviewedAt: Date
 }
 
 public enum ReviewedHunkFilterMode: String, Sendable, CaseIterable, Hashable {

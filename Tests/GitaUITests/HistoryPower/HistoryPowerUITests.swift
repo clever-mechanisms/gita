@@ -52,18 +52,33 @@ struct HistoryPowerUITests {
             createBranch: { _, _ in }
         )
         presenter.reload()
-        try await Self.waitUntil { !presenter.loadState.isLoading && !presenter.diffState.isLoading }
+        try await Self.waitUntil {
+            guard !presenter.loadState.isLoading else { return false }
+            if case .loading = presenter.diffState { return false }
+            return true
+        }
 
         #expect(presenter.visibleEntries.count == 2)
         #expect(presenter.orphanedCount == 1)
         // First-file diff failure must preserve the file list so the user can pick another file.
         #expect(presenter.diffState.files == ["huge.bin", "b.swift"])
-        #expect(presenter.diffState.errorMessage == "Diff exceeded 8 MB")
+        if case .failed(_, _, _, let error) = presenter.diffState {
+            #expect(error == "Diff exceeded 8 MB")
+        } else {
+            Issue.record("Expected failed diff state")
+        }
         #expect(presenter.suggestedRecoveryBranchName(for: entries[1]) == "recover-2222222")
 
         presenter.selectFile("b.swift")
-        try await Self.waitUntil { presenter.diffState.selectedPath == "b.swift" && !presenter.diffState.isLoading }
-        #expect(presenter.diffState.diffText.contains("b.swift"))
+        try await Self.waitUntil {
+            if case .loaded(_, _, let path, _) = presenter.diffState, path == "b.swift" { return true }
+            return false
+        }
+        if case .loaded(_, _, _, let text) = presenter.diffState {
+            #expect(text.contains("b.swift"))
+        } else {
+            Issue.record("Expected loaded diff state")
+        }
 
         presenter.setFilter(.orphaned)
         #expect(presenter.visibleEntries.map(\.commitID) == [Self.sampleSHA2])
@@ -122,15 +137,24 @@ struct HistoryPowerUITests {
         searchPresenter.setIgnoreCase(true)
         #expect(searchPresenter.canSearch)
         searchPresenter.search()
-        try await Self.waitUntil { !searchPresenter.state.isSearching && !searchPresenter.diffState.isLoading }
+        try await Self.waitUntil {
+            guard !searchPresenter.state.isSearching else { return false }
+            if case .loading = searchPresenter.diffState { return false }
+            return true
+        }
         #expect(searchPresenter.matches.count == 1)
         #expect(searchPresenter.diffState.selectedPath == "Sources/Parser.swift")
 
         searchPresenter.selectFile("Sources/Other.swift")
         try await Self.waitUntil {
-            searchPresenter.diffState.selectedPath == "Sources/Other.swift" && !searchPresenter.diffState.isLoading
+            if case .loaded(_, let path, _) = searchPresenter.diffState, path == "Sources/Other.swift" { return true }
+            return false
         }
-        #expect(searchPresenter.diffState.diffText.contains("Sources/Other.swift"))
+        if case .loaded(_, _, let text) = searchPresenter.diffState {
+            #expect(text.contains("Sources/Other.swift"))
+        } else {
+            Issue.record("Expected loaded code search diff")
+        }
 
         let searchWindow = CodeSearchWindowController(presenter: searchPresenter, repositoryName: "TestRepo")
         let searchWin = searchWindow.prepareWindow()

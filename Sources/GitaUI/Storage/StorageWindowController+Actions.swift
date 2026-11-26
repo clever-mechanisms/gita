@@ -3,74 +3,99 @@ import GitaCore
 
 extension StorageWindowController {
     func perform(_ action: StorageHealthAction, root: URL) {
-        let execute: (StorageHealthAction) -> Void = { [weak self] resolved in
-            Task { @MainActor in
-                guard let self else { return }
-                await self.store.perform(resolved, in: root)
-                self.reloadIfVisible()
-            }
-        }
         guard let window else {
-            execute(action)
+            executeHealthAction(action, root: root)
             return
         }
+        presentOrExecuteHealthAction(action, root: root, on: window)
+    }
+
+    private func presentOrExecuteHealthAction(_ action: StorageHealthAction, root: URL, on window: NSWindow) {
         switch action {
         case .garbageCollection:
-            let snapshot: RepositoryHealthSnapshot?
-            if case .loaded(let loaded) = store.healthState(for: root) {
-                snapshot = loaded
-            } else {
-                snapshot = nil
+            confirmGarbageCollection(root: root, on: window) { [weak self] resolved in
+                self?.executeHealthAction(resolved, root: root)
             }
-            let active = StoragePresenter().hasActiveAgent(
-                in: root, snapshot: snapshot, report: store.state(for: root).report,
-                activeAgentPaths: context.activeAgentPaths)
-            let resolved = StorageHealthAction.garbageCollection(pruneNow: !active)
-            let detail =
-                active
-                ? String(
-                    localized:
-                        "An agent is active here. Git will run safe GC using its default prune grace period."
-                )
-                : String(localized: "Git will immediately prune unreachable objects in this repository.")
-            DestructiveConfirmation(
-                message: String(localized: "Run garbage collection?"), detail: detail, action: resolved.title
-            ).present(on: window) { execute(resolved) }
         case .replaceCustomFSMonitor(let hook):
-            DestructiveConfirmation(
-                message: String(localized: "Replace custom filesystem monitor?"),
-                detail: String(
-                    localized:
-                        "This will overwrite core.fsmonitor (\(hook)) with Git’s built-in filesystem monitor in local config."
-                ),
-                action: String(localized: "Replace")
-            ).present(on: window) { execute(action) }
+            confirmReplaceFSMonitor(hook: hook, on: window) { [weak self] in
+                self?.executeHealthAction(action, root: root)
+            }
         default:
-            execute(action)
+            executeHealthAction(action, root: root)
         }
     }
 
-    func confirmRemoval(_ tree: CheckoutStorageReport, report: RepositoryStorageReport) {
-        guard let window, !tree.isMainWorktree && !tree.isBare && !tree.isLocked else { return }
-        if let remove = context.onRemoveWorktree {
-            remove(report.mainRoot, tree.worktree)
-            store.invalidate(repositoryRoot: report.mainRoot)
-            return
+    private func executeHealthAction(_ action: StorageHealthAction, root: URL) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.store.perform(action, in: root)
+            self.reloadIfVisible()
         }
-        let warning = StoragePresenter().outlineNodes(
-            for: report, activeAgentPaths: context.activeAgentPaths,
-            now: Date()
-        ).first { $0.checkout?.id == tree.id }?.warning
-        let detail = [tree.path.path, warning].compactMap { $0 }.joined(separator: "\n")
+    }
+
+    private func confirmGarbageCollection(
+        root: URL, on window: NSWindow, execute: @escaping (StorageHealthAction) -> Void
+    ) {
+        let active = hasActiveAgentForHealth(root: root)
+        let resolved = StorageHealthAction.garbageCollection(pruneNow: !active)
+        let detail =
+            active
+            ? String(
+                localized: "An agent is active here. Git will run safe GC using its default prune grace period.")
+            : String(localized: "Git will immediately prune unreachable objects in this repository.")
+        DestructiveConfirmation(
+            message: String(localized: "Run garbage collection?"), detail: detail, action: resolved.title
+        ).present(on: window) { execute(resolved) }
+    }
+
+    private func hasActiveAgentForHealth(root: URL) -> Bool {
+        let snapshot: RepositoryHealthSnapshot? =
+            if case .loaded(let loaded) = store.healthState(for: root) { loaded } else { nil }
+        return StoragePresenter().hasActiveAgent(
+            in: root, snapshot: snapshot, report: store.state(for: root).report,
+            activeAgentPaths: context.activeAgentPaths)
+    }
+
+    private func confirmReplaceFSMonitor(
+        hook: String, on window: NSWindow, confirmed: @escaping @MainActor () -> Void
+    ) {
+        DestructiveConfirmation(
+            message: String(localized: "Replace custom filesystem monitor?"),
+            detail: String(
+                localized:
+                    "This will overwrite core.fsmonitor (\(hook)) with Git’s built-in filesystem monitor in local config."
+            ),
+            action: String(localized: "Replace")
+        ).present(on: window, confirmed: confirmed)
+    }
+
+    func confirmRemoval(_ tree: CheckoutStorageReport, report: RepositoryStorageReport) {
+        guard let window, isRemovableWorktree(tree) else { return }
+        let detail = removalDetail(for: tree, report: report)
         DestructiveConfirmation(
             message: String(localized: "Remove \(tree.displayName)?"), detail: detail,
             action: String(localized: "Remove Worktree")
         ).present(on: window) { [weak self] in
-            guard let self else { return }
-            Task {
-                await store.removeWorktree(tree.worktree, in: report.mainRoot)
-                self.reloadIfVisible()
-            }
+            self?.executeWorktreeRemoval(tree, report: report)
+        }
+    }
+
+    private func isRemovableWorktree(_ tree: CheckoutStorageReport) -> Bool {
+        !tree.isMainWorktree && !tree.isBare && !tree.isLocked
+    }
+
+    private func removalDetail(for tree: CheckoutStorageReport, report: RepositoryStorageReport) -> String {
+        let warning = StoragePresenter().outlineNodes(
+            for: report, activeAgentPaths: context.activeAgentPaths, now: Date()
+        ).first { $0.checkout?.id == tree.id }?.warning
+        return [tree.path.path, warning].compactMap { $0 }.joined(separator: "\n")
+    }
+
+    private func executeWorktreeRemoval(_ tree: CheckoutStorageReport, report: RepositoryStorageReport) {
+        if context.onRemoveWorktree?(report.mainRoot, tree.worktree) == true { return }
+        Task {
+            await store.removeWorktree(tree.worktree, in: report.mainRoot)
+            reloadIfVisible()
         }
     }
 
@@ -78,37 +103,49 @@ extension StorageWindowController {
         guard let window, !store.actionState(for: report.mainRoot).isRunning else { return }
         let plan = StoragePresenter().trashPlan(
             report: report, entry: entry, checked: checked, activeAgentPaths: context.activeAgentPaths)
-        let paths = plan.paths
-        guard !paths.isEmpty else {
-            if plan.skippedActiveCount > 0 {
-                let alert = NSAlert()
-                alert.messageText = String(localized: "Active checkouts skipped")
-                alert.informativeText = String(
-                    localized:
-                        "Active-agent checkouts are skipped by bulk cleanup. Select folders explicitly to Trash them."
-                )
-                alert.beginSheetModal(for: window)
-            }
+        presentTrashPlan(plan, repository: report.mainRoot, on: window)
+    }
+
+    private func presentTrashPlan(_ plan: StorageTrashPlan, repository: URL, on window: NSWindow) {
+        guard !plan.paths.isEmpty else {
+            if plan.skippedActiveCount > 0 { showSkippedActiveAlert(on: window) }
             return
         }
-        let message =
-            paths.count == 1
-            ? String(localized: "Move 1 folder to Trash?")
-            : String(localized: "Move \(paths.count) folders to Trash?")
-        let agentNote = DestructiveConfirmation.workingAgentsNote(plan.activeAgentNames)
-        let skippedNote =
-            plan.skippedActiveCount > 0
-            ? String(localized: "Skipped checkouts with active agents.") : nil
-        let detail = [DestructiveConfirmation.pathList(paths), agentNote, skippedNote]
-            .compactMap { $0 }.joined(separator: "\n\n")
+        let message = trashConfirmationTitle(count: plan.paths.count)
+        let detail = trashConfirmationDetail(for: plan)
         let groups = plan.groups.map { ($0.checkout, $0.entries) }
         DestructiveConfirmation(message: message, detail: detail, action: String(localized: "Move to Trash"))
             .present(on: window) { [weak self] in
-                guard let self else { return }
-                Task {
-                    await store.moveToTrash(groups, repository: report.mainRoot)
-                    self.reloadIfVisible()
-                }
+                self?.executeTrash(groups, repository: repository)
             }
+    }
+
+    private func executeTrash(_ groups: [(URL, [HeavyFolderEntry])], repository: URL) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.store.moveToTrash(groups, repository: repository)
+            self.reloadIfVisible()
+        }
+    }
+
+    private func showSkippedActiveAlert(on window: NSWindow) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Active checkouts skipped")
+        alert.informativeText = String(
+            localized:
+                "Active-agent checkouts are skipped by bulk cleanup. Select folders explicitly to Trash them.")
+        alert.beginSheetModal(for: window)
+    }
+
+    private func trashConfirmationTitle(count: Int) -> String {
+        count == 1 ? String(localized: "Move 1 folder to Trash?") : String(localized: "Move \(count) folders to Trash?")
+    }
+
+    private func trashConfirmationDetail(for plan: StorageTrashPlan) -> String {
+        let agentNote = DestructiveConfirmation.workingAgentsNote(plan.activeAgentNames)
+        let skippedNote =
+            plan.skippedActiveCount > 0 ? String(localized: "Skipped checkouts with active agents.") : nil
+        return [DestructiveConfirmation.pathList(plan.paths), agentNote, skippedNote]
+            .compactMap { $0 }.joined(separator: "\n\n")
     }
 }

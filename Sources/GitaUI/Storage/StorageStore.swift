@@ -181,15 +181,6 @@ final class StorageStore {
         notify()
     }
 
-    func invalidateAll() {
-        cancelActiveScans()
-        states.removeAll()
-        aliases.removeAll()
-        healthStates.removeAll()
-        resetWorkspace()
-        notify()
-    }
-
     func cancelActiveScans() {
         for (key, task) in scans {
             task.cancel()

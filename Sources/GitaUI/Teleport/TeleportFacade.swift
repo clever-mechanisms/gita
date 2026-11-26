@@ -2,37 +2,37 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class TeleportFacade {
-    public let teleportPresenter: TeleportPresenter
-    public let triageService: MenuBarTriageService
-    public let quickLookController: GitaQuickLookPanelController
+final class TeleportFacade {
+    let teleportPresenter: TeleportPresenter
+    let triageService: MenuBarTriageService
+    let quickLookController: GitaQuickLookPanelController
 
     private var triagePresenters: [TriageItem.ID: MenuBarTriagePresenter] = [:]
 
-    public init(runner: any CommandRunning = CommandRunner(), configDirectories: GitHubConfigDirectories = .none) {
+    init(runner: any CommandRunning = CommandRunner(), configDirectories: GitHubConfigDirectories = .none) {
         teleportPresenter = TeleportPresenter(resolver: .init(runner: runner))
         triageService = MenuBarTriageService(runner: runner, configDirectories: configDirectories)
         quickLookController = GitaQuickLookPanelController(presenter: .init(loader: .init(runner: runner)))
     }
 
-    public func makeTeleportBannerView() -> TeleportBannerView { .init(presenter: teleportPresenter) }
+    func makeTeleportBannerView() -> TeleportBannerView { .init(presenter: teleportPresenter) }
 
-    public func inspectPaletteInput(_ text: String, repositories: [TeleportRepositoryEntry]) {
+    func inspectPaletteInput(_ text: String, repositories: [TeleportRepositoryEntry]) {
         teleportPresenter.inspect(text, repositories: repositories)
     }
 
-    public func handleDeepLink(_ url: URL, repositories: [TeleportRepositoryEntry]) -> Bool {
+    func handleDeepLink(_ url: URL, repositories: [TeleportRepositoryEntry]) -> Bool {
         guard url.scheme?.lowercased() == "gita", let parsed = TeleportParser.parse(url: url) else { return false }
         teleportPresenter.inspect(parsed, repositories: repositories)
         return true
     }
 
-    public var onTeleport: ((TeleportDestination) -> Void)? {
+    var onTeleport: ((TeleportDestination) -> Void)? {
         get { teleportPresenter.onTeleport }
         set { teleportPresenter.onTeleport = newValue }
     }
 
-    public func makeTriageRowView(
+    func makeTriageRowView(
         for item: TriageItem, onJumpToTerminal: ((AgentTerminalJumpTarget) -> Void)? = nil
     )
         -> (view: MenuBarTriageRowView, presenter: MenuBarTriagePresenter)
@@ -48,25 +48,28 @@ public final class TeleportFacade {
         return (MenuBarTriageRowView(presenter: presenter), presenter)
     }
 
-    public func retainTriageItems(_ ids: Set<TriageItem.ID>) {
+    func retainTriageItems(_ ids: Set<TriageItem.ID>) {
+        for (id, presenter) in triagePresenters where !ids.contains(id) && presenter.state != .running {
+            presenter.reset()
+        }
         triagePresenters = triagePresenters.filter { ids.contains($0.key) || $0.value.state == .running }
     }
 
-    public var isQuickLookVisible: Bool { quickLookController.isVisible }
+    var isQuickLookVisible: Bool { quickLookController.isVisible }
 
-    public func toggleQuickLook(for target: QuickLookTarget, relativeTo window: NSWindow? = nil) {
+    func toggleQuickLook(for target: QuickLookTarget, relativeTo window: NSWindow? = nil) {
         quickLookController.toggle(for: target, relativeTo: window)
     }
 
-    public func updateQuickLookSelection(_ target: QuickLookTarget) { quickLookController.updateSelection(target) }
-    public func closeQuickLook() { quickLookController.close() }
+    func updateQuickLookSelection(_ target: QuickLookTarget) { quickLookController.updateSelection(target) }
+    func closeQuickLook() { quickLookController.close() }
 
-    public var onQuickLookNavigate: ((QuickLookNavigationDirection) -> Void)? {
+    var onQuickLookNavigate: ((QuickLookNavigationDirection) -> Void)? {
         get { quickLookController.onNavigate }
         set { quickLookController.onNavigate = newValue }
     }
 
-    public var onQuickLookOpenFull: ((QuickLookTarget) -> Void)? {
+    var onQuickLookOpenFull: ((QuickLookTarget) -> Void)? {
         get { quickLookController.onOpenFullInMainWindow }
         set { quickLookController.onOpenFullInMainWindow = newValue }
     }

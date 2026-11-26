@@ -64,24 +64,32 @@ extension AppDelegate {
             self?.navigate(to: destination)
         }
         guard teleport.handleDeepLink(url, repositories: teleportRepositories()) else { return false }
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            for _ in 0..<60 {
-                switch self.teleport.teleportPresenter.state {
-                case .resolving:
-                    try? await Task.sleep(for: .milliseconds(50))
-                case .resolved:
-                    self.teleport.teleportPresenter.confirmTeleport()
-                    return
-                case .ambiguous, .notFound, .failed:
-                    self.showCommandPalette()
-                    return
-                case .idle:
-                    return
-                }
-            }
-        }
+        Task { @MainActor [weak self] in await self?.awaitTeleportDeepLinkResolution() }
         return true
+    }
+
+    private func awaitTeleportDeepLinkResolution() async {
+        for _ in 0..<60 {
+            if !stepTeleportResolution() { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    private func stepTeleportResolution() -> Bool {
+        if case .resolving = teleport.teleportPresenter.state { return true }
+        finishTeleportResolution()
+        return false
+    }
+
+    private func finishTeleportResolution() {
+        switch teleport.teleportPresenter.state {
+        case .resolved:
+            teleport.teleportPresenter.confirmTeleport()
+        case .ambiguous, .notFound, .failed:
+            showCommandPalette()
+        case .idle, .resolving:
+            break
+        }
     }
 
     func navigate(to destination: TeleportDestination) {
@@ -90,43 +98,64 @@ extension AppDelegate {
         }
         openRepositoryTab(destination.repoPath)
         showWindow()
-        switch destination.target {
+        navigateTarget(destination.target)
+    }
+
+    private func navigateTarget(_ target: TeleportTarget) {
+        switch target {
         case .commit(let sha, _):
             model.section = .history
             repositoryController?.showCommit(id: sha)
-        case .pullRequest(let number, _, _, let url):
-            model.section = .pullRequests
-            if let match = model.allSignals.first(where: { $0.pullRequest?.number == number }) {
-                repositoryController?.openProviderContext(match)
-            } else if let url = Deck.safeWebURL(url) {
-                Deck.open(url)
-            }
-        case .workflowRun(let runID, _, _, _, let url):
-            model.section = .workflows
-            if let match = model.allSignals.first(where: {
-                if case .workflowRun(_, let id, _) = $0.target { return id == runID }
-                return false
-            }) {
-                repositoryController?.openProviderContext(match)
-            } else if let url = Deck.safeWebURL(url) {
-                Deck.open(url)
-            }
-        case .deployment(let reference, _, let url):
-            model.section = .deployments
-            if let match = model.allSignals.first(where: {
-                $0.id == reference || $0.url?.absoluteString == reference
-            }) {
-                repositoryController?.openProviderContext(match)
-            } else if let url = Deck.safeWebURL(url) {
-                Deck.open(url)
-            }
         case .branch(let name):
-            model.section = .history
-            if let ref = model.snapshot?.references.first(where: {
-                $0.name == name || $0.fullName == name || $0.fullName == "refs/heads/\(name)"
-            }) {
-                model.focusHistory(on: ref)
-            }
+            focusBranch(named: name)
+        case .pullRequest, .workflowRun, .deployment:
+            navigateProviderTarget(target)
         }
+    }
+
+    private func navigateProviderTarget(_ target: TeleportTarget) {
+        if case .pullRequest(let number, _, _, let url) = target {
+            openProviderSection(.pullRequests, fallbackURL: url) { $0.pullRequest?.number == number }
+            return
+        }
+        navigateRunOrDeploymentTarget(target)
+    }
+
+    private func navigateRunOrDeploymentTarget(_ target: TeleportTarget) {
+        if case .workflowRun(let runID, _, _, _, let url) = target {
+            openProviderSection(.workflows, fallbackURL: url) { $0.matchesWorkflowRun(runID) }
+        } else if case .deployment(let reference, _, let url) = target {
+            openProviderSection(.deployments, fallbackURL: url) { $0.matchesDeployment(reference) }
+        }
+    }
+
+    private func openProviderSection(
+        _ section: Section, fallbackURL: URL?, matching predicate: (ProviderItem) -> Bool
+    ) {
+        model.section = section
+        if let match = model.allSignals.first(where: predicate) {
+            repositoryController?.openProviderContext(match)
+        } else if let url = Deck.safeWebURL(fallbackURL) {
+            Deck.open(url)
+        }
+    }
+
+    private func focusBranch(named name: String) {
+        model.section = .history
+        let ref = model.snapshot?.references.first {
+            $0.name == name || $0.fullName == name || $0.fullName == "refs/heads/\(name)"
+        }
+        if let ref { model.focusHistory(on: ref) }
+    }
+}
+
+extension ProviderItem {
+    fileprivate func matchesWorkflowRun(_ runID: Int64) -> Bool {
+        if case .workflowRun(_, let id, _) = target { return id == runID }
+        return false
+    }
+
+    fileprivate func matchesDeployment(_ reference: String) -> Bool {
+        id == reference || url?.absoluteString == reference
     }
 }

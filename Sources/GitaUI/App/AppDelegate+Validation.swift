@@ -66,50 +66,54 @@ extension AppDelegate {
             command, tag: menuItem.tag, reference: menuItem.representedObject as? GitReference)
     }
 
+    private static let repositoryRequiredSelectors: Set<Selector> = [
+        #selector(showSubmodulesAndLFS),
+        #selector(showCleanupAssistant),
+        #selector(showStackedBranches),
+        #selector(showReflogBrowser),
+        #selector(showCodeSearch),
+        #selector(showFlightCheck),
+        #selector(showCommitBuckets),
+        #selector(exportPatch),
+    ]
+
+    private static let idleRepositorySelectors: Set<Selector> = [
+        #selector(startBisect),
+        #selector(applyPatch),
+    ]
+
     private func validateUnlistedMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard !isLanguageRestarting, setupGuide == nil else { return false }
-        if menuItem.action == #selector(blameSelectedFile) {
+        guard let action = menuItem.action else { return true }
+        if Self.repositoryRequiredSelectors.contains(action) {
+            return model.snapshot != nil && model.service != nil
+        }
+        if Self.idleRepositorySelectors.contains(action) {
+            return model.snapshot != nil && model.service != nil && !model.isMutating
+        }
+        return validateSpecialMenuItem(menuItem, action: action)
+    }
+
+    private func validateSpecialMenuItem(_ menuItem: NSMenuItem, action: Selector) -> Bool {
+        switch action {
+        case #selector(blameSelectedFile):
             return repositoryController?.canBlameSelectedFile == true
-        }
-        if menuItem.action == #selector(showSubmodulesAndLFS)
-            || menuItem.action == #selector(showCleanupAssistant)
-            || menuItem.action == #selector(showStackedBranches)
-            || menuItem.action == #selector(showReflogBrowser)
-            || menuItem.action == #selector(showCodeSearch)
-            || menuItem.action == #selector(showFlightCheck)
-            || menuItem.action == #selector(showCommitBuckets)
-        {
-            return model.snapshot != nil && model.service != nil
-        }
-        if menuItem.action == #selector(startBisect) {
-            return model.snapshot != nil && model.service != nil && !model.isMutating
-        }
-        if menuItem.action == #selector(showRepositoryHealth) {
+        case #selector(showRepositoryHealth):
             return (tabsController?.selectedRepository ?? model.snapshot?.root) != nil
-        }
-        if menuItem.action == #selector(exportPatch) {
-            return model.snapshot != nil && model.service != nil
-        }
-        if menuItem.action == #selector(applyPatch) {
-            return model.snapshot != nil && model.service != nil && !model.isMutating
-        }
-        if menuItem.action == #selector(copyPermalink) {
-            return model.snapshot?.remoteURL != nil
-                && (model.selectedCommit != nil || model.selectedFile != nil || model.selectedTreePath != nil)
-        }
-        if menuItem.action == #selector(openInExternalDiffTool) {
+        case #selector(copyPermalink):
+            return repositoryController?.canCopySelectedPermalink == true
+        case #selector(openInExternalDiffTool):
             return repositoryController?.canOpenInExternalDiffTool == true
-        }
-        if menuItem.action == #selector(openInExternalMergeTool) {
+        case #selector(openInExternalMergeTool):
             return repositoryController?.canOpenInExternalMergeTool == true
-        }
-        if menuItem.action == #selector(checkForUpdates) {
+        case #selector(checkForUpdates):
             menuItem.title =
                 updater.pendingVersion.map { String(localized: "Install Update \($0)…") }
                 ?? String(localized: "Check for Updates…")
             return updater.canRunUpdateAction
+        default:
+            return true
         }
-        return true
     }
 
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool {

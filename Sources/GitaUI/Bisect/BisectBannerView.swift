@@ -3,14 +3,14 @@ import GitaCore
 
 /// Sleek 36pt operation banner shown above repository content during an active or finished `git bisect` session.
 @MainActor
-public final class BisectBannerView: NSView {
-    public static let height: CGFloat = 36
+final class BisectBannerView: NSView {
+    static let height: CGFloat = 36
 
-    public var onGood: (() -> Void)?
-    public var onBad: (() -> Void)?
-    public var onSkip: (() -> Void)?
-    public var onReset: (() -> Void)?
-    public var onOpenCommit: ((String) -> Void)?
+    var onGood: (() -> Void)?
+    var onBad: (() -> Void)?
+    var onSkip: (() -> Void)?
+    var onReset: (() -> Void)?
+    var onOpenCommit: ((String) -> Void)?
 
     private let icon = NSImageView()
     private let titleLabel = Deck.label("", font: Theme.captionEmphasis, color: Theme.text)
@@ -24,9 +24,9 @@ public final class BisectBannerView: NSView {
     private let openCommitButton: PartsButton
     private let resetButton: PartsButton
     private let border = Deck.separator()
-    public private(set) var model = BisectBannerModel(state: .inactive, action: .idle)
+    private(set) var model = BisectBannerModel(state: .inactive, action: .idle)
 
-    public override init(frame frameRect: NSRect) {
+    override init(frame frameRect: NSRect) {
         self.goodButton = PartsButton(
             [
                 .symbol("checkmark.circle.fill", color: Theme.success, size: 11),
@@ -64,7 +64,7 @@ public final class BisectBannerView: NSView {
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     /// Binds this banner directly to a `BisectPresenter`.
-    public func bind(to presenter: BisectPresenter) {
+    func bind(to presenter: BisectPresenter) {
         onGood = { [weak presenter] in presenter?.markGood() }
         onBad = { [weak presenter] in presenter?.markBad() }
         onSkip = { [weak presenter] in presenter?.skip() }
@@ -74,7 +74,7 @@ public final class BisectBannerView: NSView {
         apply(presenter.bannerModel)
     }
 
-    public func apply(_ next: BisectBannerModel) {
+    func apply(_ next: BisectBannerModel) {
         model = next
         isHidden = next.isHidden
         guard !next.isHidden else {
@@ -190,9 +190,9 @@ public final class BisectBannerView: NSView {
         setAccessibilityRole(.group)
     }
 
-    public override var wantsUpdateLayer: Bool { true }
+    override var wantsUpdateLayer: Bool { true }
 
-    public override func updateLayer() {
+    override func updateLayer() {
         guard !model.isHidden else {
             layer?.backgroundColor = NSColor.clear.cgColor
             return
@@ -208,7 +208,7 @@ public final class BisectBannerView: NSView {
         layer?.backgroundColor = tint.withAlphaComponent(0.11).cgColor
     }
 
-    public override func viewDidChangeEffectiveAppearance() {
+    override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
     }

@@ -39,7 +39,7 @@ public struct FastDiskWalker: Sendable {
                     HeavyFolderEntry(
                         relativePath: key, url: url, category: category ?? .otherLarge,
                         status: category == nil ? .otherLarge : .trackedOrUnignored,
-                        allocatedBytes: bucket.usage.allocatedBytes, logicalBytes: bucket.usage.logicalBytes,
+                        allocatedBytes: bucket.usage.allocatedBytes,
                         fileCount: bucket.usage.fileCount, containsProtectedContent: protected))
             } else {
                 let parent = key.lastIndex(of: "/").map { String(key[..<$0]) } ?? ""

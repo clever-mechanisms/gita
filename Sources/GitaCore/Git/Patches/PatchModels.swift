@@ -66,10 +66,10 @@ public enum PatchApplyState: Equatable, Sendable {
     }
 }
 
-public enum PatchError: Error, LocalizedError, Equatable, Sendable {
+enum PatchError: Error, LocalizedError, Equatable, Sendable {
     case emptyPatch, invalidFile, fileTooLarge, invalidStats, changedSincePreview
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .changedSincePreview: String(localized: "The patch changed. Check it again before applying.")
         case .emptyPatch: String(localized: "There are no changes to export.")

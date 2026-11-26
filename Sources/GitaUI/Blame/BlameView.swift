@@ -18,6 +18,7 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMen
     var onBlamePrior: ((String, String) -> Void)?
     var onShowLineHistory: ((LineRangeSpec) -> Void)?
     var onCopyPermalink: ((String, String?, ClosedRange<Int>?) -> Void)?
+    var canCopyPermalink: (() -> Bool)?
     var onClose: (() -> Void)?
     var currentModifiers: () -> NSEvent.ModifierFlags = { NSApp.currentEvent?.modifierFlags ?? [] }
 
@@ -270,19 +271,25 @@ final class BlameView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMen
         let row = table.clickedRow >= 0 ? table.clickedRow : (selectedLineIndex ?? -1)
         guard let document, document.annotations.indices.contains(row) else { return }
         let lineNumber = row + 1
-        if let onShowLineHistory {
-            let spec = LineRangeSpec(
-                path: document.path, startLine: lineNumber, endLine: lineNumber, revision: document.revision)
-            menu.addItem(
-                MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
-                    onShowLineHistory(spec)
-                })
-        }
-        if let onCopyPermalink {
-            menu.addItem(
-                MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
-                    onCopyPermalink(document.path, document.revision, lineNumber...lineNumber)
-                })
-        }
+        addLineHistoryItem(to: menu, document: document, lineNumber: lineNumber)
+        addPermalinkItem(to: menu, document: document, lineNumber: lineNumber)
+    }
+
+    private func addLineHistoryItem(to menu: NSMenu, document: BlameDocument, lineNumber: Int) {
+        guard let onShowLineHistory else { return }
+        let spec = LineRangeSpec(
+            path: document.path, startLine: lineNumber, endLine: lineNumber, revision: document.revision)
+        menu.addItem(
+            MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
+                onShowLineHistory(spec)
+            })
+    }
+
+    private func addPermalinkItem(to menu: NSMenu, document: BlameDocument, lineNumber: Int) {
+        guard let onCopyPermalink, canCopyPermalink?() ?? true else { return }
+        menu.addItem(
+            MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
+                onCopyPermalink(document.path, document.revision, lineNumber...lineNumber)
+            })
     }
 }

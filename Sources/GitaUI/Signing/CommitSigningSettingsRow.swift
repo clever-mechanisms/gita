@@ -17,11 +17,6 @@ enum CommitSigningConfigState: Equatable {
         }
     }
 
-    var isLoading: Bool {
-        if case .loading = self { return true }
-        return false
-    }
-
     var isMutating: Bool {
         if case .mutating = self { return true }
         return false
@@ -88,6 +83,12 @@ struct CommitSigningRowState: Equatable {
         guard let template else { return nil }
         return template.displayName
     }
+
+    var shouldShow: Bool {
+        if template != nil { return true }
+        guard let config else { return false }
+        return config.isConfigured || config.isEnabled || config.isRepoLocalOverride || config.format != .openpgp
+    }
 }
 
 /// Compact per-repository signing toggle + commit template preview strip for the commit composer.
@@ -121,6 +122,7 @@ final class CommitSigningSettingsRow: NSView {
 
     func apply(_ next: CommitSigningRowState) {
         state = next
+        isHidden = !next.shouldShow
         updateSigningControl()
         updateTemplateControl()
     }

@@ -25,12 +25,12 @@ public enum StashPopOutcome: Sendable, Equatable {
     case indexConflictRetryWithoutIndex(String)
 }
 
-public enum StashManagementError: Error, LocalizedError, Sendable {
+enum StashManagementError: Error, LocalizedError, Sendable {
     case emptySelectedPaths
     case keepIndexUnsupportedForStagedOnly
     case noChangesToStash
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .emptySelectedPaths: String(localized: "Select at least one file to stash.")
         case .keepIndexUnsupportedForStagedOnly: String(localized: "Turn off Keep Index to stash staged changes.")

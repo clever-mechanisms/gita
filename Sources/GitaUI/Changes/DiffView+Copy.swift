@@ -29,74 +29,85 @@ extension DiffView {
         guard !rows.isEmpty else { return nil }
         let docRows = documentRows(forTableRows: rows, stageableOnly: false)
         let menu = NSMenu()
-        let copyLinesItem = MenuAction(String(localized: "Copy Lines")) { [weak self] in self?.copyLines(rows: rows) }
-        copyLinesItem.isEnabled = !DiffDocumentBuilder.cleanCodeText(
-            lines: currentLines, rows: docRows, isBlob: isBlob
-        ).isEmpty
+        addCopyItems(to: menu, tableRows: rows, docRows: docRows)
+        addStageItems(to: menu, tableRows: rows)
+        addNavigationItems(to: menu, docRows: docRows)
+        return menu
+    }
+
+    private func addCopyItems(to menu: NSMenu, tableRows: IndexSet, docRows: IndexSet) {
+        let copyLinesItem = MenuAction(String(localized: "Copy Lines")) { [weak self] in
+            self?.copyLines(rows: tableRows)
+        }
+        copyLinesItem.isEnabled =
+            !DiffDocumentBuilder.cleanCodeText(lines: currentLines, rows: docRows, isBlob: isBlob).isEmpty
         menu.addItem(copyLinesItem)
 
         let copyPatchItem = MenuAction(String(localized: "Copy as Patch")) { [weak self] in
-            self?.copyAsPatch(rows: rows)
+            self?.copyAsPatch(rows: tableRows)
         }
         let patch = DiffDocumentBuilder.patchText(document: document, lines: currentLines, rows: docRows)
         copyPatchItem.isEnabled = !isBlob && !patch.isEmpty
         menu.addItem(copyPatchItem)
+    }
 
-        let stageable = documentRows(forTableRows: rows, stageableOnly: true)
-        if hunkActionState.showsActions, hunkActionState.isEnabled, document?.canApplyHunks == true, !stageable.isEmpty
-        {
-            menu.addItem(.separator())
-            let count = stageable.count
-            let stageTitle =
-                hunkActionState.isStaged
-                ? (count == 1 ? String(localized: "Unstage 1 line") : String(localized: "Unstage \(count) lines"))
-                : (count == 1 ? String(localized: "Stage 1 line") : String(localized: "Stage \(count) lines"))
-            menu.addItem(MenuAction(stageTitle) { [weak self] in self?.onStageLines?(stageable) })
-            if !hunkActionState.isStaged {
-                let discardTitle =
-                    count == 1 ? String(localized: "Discard 1 line…") : String(localized: "Discard \(count) lines…")
-                menu.addItem(MenuAction(discardTitle) { [weak self] in self?.onDiscardLines?(stageable) })
-            }
-        }
-
+    private func addStageItems(to menu: NSMenu, tableRows: IndexSet) {
+        let stageable = documentRows(forTableRows: tableRows, stageableOnly: true)
+        guard hunkActionState.showsActions, hunkActionState.isEnabled, document?.canApplyHunks == true,
+            !stageable.isEmpty
+        else { return }
         menu.addItem(.separator())
-        let firstLine = docRows.first.flatMap {
-            currentLines.indices.contains($0) ? DiffDocumentBuilder.sourceLineNumber(for: currentLines[$0]) : nil
+        let count = stageable.count
+        let stageTitle = Self.lineStageTitle(count: count, isStaged: hunkActionState.isStaged)
+        menu.addItem(MenuAction(stageTitle) { [weak self] in self?.onStageLines?(stageable) })
+        if !hunkActionState.isStaged {
+            let discardTitle =
+                count == 1 ? String(localized: "Discard 1 line…") : String(localized: "Discard \(count) lines…")
+            menu.addItem(MenuAction(discardTitle) { [weak self] in self?.onDiscardLines?(stageable) })
         }
+    }
+
+    private static func lineStageTitle(count: Int, isStaged: Bool) -> String {
+        if isStaged {
+            return count == 1 ? String(localized: "Unstage 1 line") : String(localized: "Unstage \(count) lines")
+        }
+        return count == 1 ? String(localized: "Stage 1 line") : String(localized: "Stage \(count) lines")
+    }
+
+    private func addNavigationItems(to menu: NSMenu, docRows: IndexSet) {
+        menu.addItem(.separator())
+        let lineNumbers = docRows.compactMap { row -> Int? in
+            guard currentLines.indices.contains(row) else { return nil }
+            return DiffDocumentBuilder.sourceLineNumber(for: currentLines[row])
+        }
+        let firstLine = lineNumbers.first
         let openItem = MenuAction(String(localized: "Open in Editor at Line")) { [weak self] in
             self?.onOpenInEditor?(firstLine)
         }
         openItem.isEnabled = shownPath != nil
         menu.addItem(openItem)
 
-        if let path = shownPath {
-            let lineNumbers = docRows.compactMap { row -> Int? in
-                guard currentLines.indices.contains(row) else { return nil }
-                return DiffDocumentBuilder.sourceLineNumber(for: currentLines[row])
-            }
-            let lineRange: ClosedRange<Int>? =
-                if let start = lineNumbers.min(), let end = lineNumbers.max() { start...end } else { nil }
-            if let onShowLineHistory, let lineRange {
-                let spec = LineRangeSpec(path: path, startLine: lineRange.lowerBound, endLine: lineRange.upperBound)
-                menu.addItem(
-                    MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
-                        onShowLineHistory(spec)
-                    })
-            }
-            if let onCopyPermalink {
-                menu.addItem(
-                    MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
-                        onCopyPermalink(path, lineRange)
-                    })
-            }
-            if let onOpenInExternalDiff, !isBlob {
-                menu.addItem(
-                    MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square")
-                    {
-                        onOpenInExternalDiff()
-                    })
-            }
+        guard let path = shownPath else { return }
+        let lineRange: ClosedRange<Int>? =
+            if let start = lineNumbers.min(), let end = lineNumbers.max() { start...end } else { nil }
+        if let onShowLineHistory, let lineRange {
+            let spec = LineRangeSpec(path: path, startLine: lineRange.lowerBound, endLine: lineRange.upperBound)
+            menu.addItem(
+                MenuAction(String(localized: "Line History…"), symbol: "doc.text.magnifyingglass") {
+                    onShowLineHistory(spec)
+                })
         }
-        return menu
+        if let onCopyPermalink, canCopyPermalink?() ?? true {
+            menu.addItem(
+                MenuAction(String(localized: "Copy Permalink"), symbol: "link") {
+                    onCopyPermalink(path, lineRange)
+                })
+        }
+        if let onOpenInExternalDiff, !isBlob {
+            menu.addItem(
+                MenuAction(String(localized: "Open in External Diff Tool"), symbol: "arrow.left.arrow.right.square") {
+                    onOpenInExternalDiff()
+                })
+        }
     }
 }

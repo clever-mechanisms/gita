@@ -6,11 +6,17 @@ extension GitService {
     private static let bisectOnlySkippedExit: Int32 = 2
 
     /// Reads the current bisect state (`.inactive`, `.active`, or `.finished`).
-    /// Checks `BISECT_START` before spawning extra Git reads so inactive repos pay zero extra subprocess cost.
-    public func bisectState() async throws -> BisectState {
+    /// Pass `gitDirectory` when already known (e.g. via `GitDirectoryLocator`) so inactive repos pay zero spawns.
+    public func bisectState(gitDirectory knownDirectory: URL? = nil) async throws -> BisectState {
         try Task.checkCancellation()
-        let dirResult = try await execute(["rev-parse", "--absolute-git-dir"], timeout: 10, outputLimit: 64 * 1_024)
-        let gitDirectory = URL(fileURLWithPath: GitOutput.withoutTerminalLF(dirResult.text), isDirectory: true)
+        let gitDirectory: URL
+        if let knownDirectory {
+            gitDirectory = knownDirectory
+        } else {
+            let dirResult = try await execute(
+                ["rev-parse", "--absolute-git-dir"], timeout: 10, outputLimit: 64 * 1_024)
+            gitDirectory = URL(fileURLWithPath: GitOutput.withoutTerminalLF(dirResult.text), isDirectory: true)
+        }
         guard FileManager.default.fileExists(atPath: gitDirectory.appendingPathComponent("BISECT_START").path) else {
             return .inactive
         }

@@ -14,7 +14,7 @@ public struct RepositoryHealthService: Sendable {
             (try? FastDiskWalker.physicalPath($0.path)) ?? URL(fileURLWithPath: $0.path).standardizedFileURL.path
         }
         return try await RepositoryHealthSnapshot(
-            repositoryRoot: root, worktreePaths: paths, fsMonitor: Self.monitor(monitor), untrackedCache: cache,
+            worktreePaths: paths, fsMonitor: Self.monitor(monitor), untrackedCache: cache,
             commitGraph: graph(in: common), maintenance: maintenance)
     }
 
@@ -47,11 +47,10 @@ public struct RepositoryHealthService: Sendable {
     }
 
     private func action(_ arguments: [String], in root: URL, message: String) async throws -> HealthActionResult {
-        let start = ProcessInfo.processInfo.systemUptime
         var request = CommandRequest.git(arguments, directory: root, timeout: 3_600)
         request.upkeep = true
         _ = try StorageGit.checked(await git.runner.run(request))
-        return HealthActionResult(message: message, duration: ProcessInfo.processInfo.systemUptime - start)
+        return HealthActionResult(message: message)
     }
 
     private func setting(_ name: String, at root: URL, local: Bool = true) async throws -> GitConfigSwitch {

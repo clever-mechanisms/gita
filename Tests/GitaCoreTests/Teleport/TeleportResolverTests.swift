@@ -3,6 +3,15 @@ import Testing
 
 @testable import GitaCore
 
+extension TeleportResolver {
+    fileprivate func resolve(
+        _ raw: String, in repositories: [TeleportRepositoryEntry]
+    ) async throws -> TeleportResolution? {
+        guard let parsed = TeleportParser.parse(raw) else { return nil }
+        return try await resolve(parsed, in: repositories)
+    }
+}
+
 struct TeleportResolverTests: ProviderDetailFixtures {
     private let sha = String(repeating: "a", count: 40)
     private func entry(_ workspace: String, remote: String) -> TeleportRepositoryEntry {

@@ -1,6 +1,36 @@
 import AppKit
 import GitaCore
 
+/// Single-enum lifecycle for an in-flight commit signature lookup.
+enum CommitSignatureFetch {
+    case idle
+    case loading(commitID: String, task: Task<Void, Never>)
+
+    mutating func cancel() {
+        if case .loading(_, let task) = self { task.cancel() }
+        self = .idle
+    }
+}
+
+/// Single-enum lifecycle for loading repository commit signing config and template.
+enum CommitSigningLoad {
+    case idle
+    case loading(repoPath: String, task: Task<Void, Never>)
+    case loaded(repoPath: String)
+
+    mutating func cancel() {
+        if case .loading(_, let task) = self { task.cancel() }
+        self = .idle
+    }
+
+    func matches(_ repoPath: String) -> Bool {
+        switch self {
+        case .idle: false
+        case .loading(let current, _), .loaded(let current): current == repoPath
+        }
+    }
+}
+
 /// Commit signing badges, per-repository signing toggle & template loader, and CLI AI commit message generation.
 extension RepositoryViewController {
     func wireCommitEcosystem() {
@@ -27,23 +57,19 @@ extension RepositoryViewController {
     }
 
     func detachCommitEcosystem() {
-        commitSignatureTask?.cancel()
-        commitSignatureTask = nil
-        commitSigningTask?.cancel()
-        commitSigningTask = nil
+        commitSignatureFetch.cancel()
+        commitSigningLoad.cancel()
         commitFooter.assistController.cancel()
     }
 
     func commitEcosystemRepositoryChanged() {
         let currentRoot = model.snapshot?.root.standardizedFileURL.path
-        if loadedSigningRepoPath != currentRoot {
+        if commitEcosystemRootPath != currentRoot {
+            commitEcosystemRootPath = currentRoot
             commitSignatureCache.removeAll()
-            commitSignatureTask?.cancel()
-            commitSignatureTask = nil
-            commitSigningTask?.cancel()
-            commitSigningTask = nil
+            commitSignatureFetch.cancel()
+            commitSigningLoad.cancel()
             commitFooter.assistController.reset()
-            loadedSigningRepoPath = nil
             commitSigningRowState = CommitSigningRowState(signing: .loading, template: nil)
             commitFooter.signingRow.apply(commitSigningRowState)
         }
@@ -53,35 +79,52 @@ extension RepositoryViewController {
     }
 
     func loadCommitSignatureIfNeeded(for commit: GitCommit?) {
-        commitSignatureTask?.cancel()
-        commitSignatureTask = nil
-        guard let commit, commitSignatureCache[commit.id] == nil, let service = model.service else { return }
-        let commitID = commit.id
-        commitSignatureTask = Task { [weak self] in
-            let info = try? await service.commitSignature(for: commitID)
-            guard let self, !Task.isCancelled, self.model.service === service,
-                self.model.selectedCommit?.id == commitID
-            else { return }
-            let resolved = info ?? CommitSignatureInfo(status: .none, signer: nil, keyID: nil, fingerprint: nil)
-            if self.commitSignatureCache.count >= 256 { self.commitSignatureCache.removeAll() }
-            self.commitSignatureCache[commitID] = resolved
-            self.rebuildCommitDetail()
+        guard let commit, let service = model.service else {
+            commitSignatureFetch.cancel()
+            return
         }
+        if commitSignatureCache[commit.id] != nil {
+            commitSignatureFetch.cancel()
+            return
+        }
+        if case .loading(let activeID, _) = commitSignatureFetch, activeID == commit.id {
+            return
+        }
+        commitSignatureFetch.cancel()
+        let commitID = commit.id
+        let task = Task { [weak self] in
+            do {
+                let info = try await service.commitSignature(for: commitID)
+                guard let self, !Task.isCancelled, self.model.service === service else { return }
+                if case .loading(let currentID, _) = self.commitSignatureFetch, currentID == commitID {
+                    self.commitSignatureFetch = .idle
+                }
+                if self.commitSignatureCache.count >= 256 { self.commitSignatureCache.removeAll() }
+                self.commitSignatureCache[commitID] = info
+                if self.model.selectedCommit?.id == commitID { self.rebuildCommitDetail() }
+            } catch {
+                guard let self else { return }
+                if case .loading(let currentID, _) = self.commitSignatureFetch, currentID == commitID {
+                    self.commitSignatureFetch = .idle
+                }
+            }
+        }
+        commitSignatureFetch = .loading(commitID: commitID, task: task)
     }
 
     func refreshCommitSigningAndTemplateIfNeeded(force: Bool = false) {
         guard let service = model.service, let root = model.snapshot?.root else { return }
         let key = root.standardizedFileURL.path
-        guard force || loadedSigningRepoPath != key else { return }
-        loadedSigningRepoPath = key
-        commitSigningTask?.cancel()
-        commitSigningTask = Task { [weak self] in
+        guard force || !commitSigningLoad.matches(key) else { return }
+        commitSigningLoad.cancel()
+        let task = Task { [weak self] in
             async let signingResult: Result<CommitSigningConfig, Error> = {
                 do { return .success(try await service.signingConfig()) } catch { return .failure(error) }
             }()
             async let templateResult = CommitTemplateLoader.load(service: service)
             let (signing, template) = await (signingResult, templateResult)
             guard let self, !Task.isCancelled, self.model.service === service else { return }
+            self.commitSigningLoad = .loaded(repoPath: key)
             let configState: CommitSigningConfigState =
                 switch signing {
                 case .success(let config): .loaded(config)
@@ -91,6 +134,7 @@ extension RepositoryViewController {
             self.commitFooter.signingRow.apply(self.commitSigningRowState)
             self.preloadCommitTemplateIfNeeded(template, repoPath: key)
         }
+        commitSigningLoad = .loading(repoPath: key, task: task)
     }
 
     func updateCommitMessageAssistAvailability() {
@@ -144,5 +188,6 @@ extension RepositoryViewController {
         commitFooter.show(message: text)
         noteCommitField(text)
         updateCommitActions()
+        model.log(String(localized: "Generate commit message"), generated.agent.displayName)
     }
 }

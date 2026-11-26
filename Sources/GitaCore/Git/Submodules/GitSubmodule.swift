@@ -93,41 +93,40 @@ public enum SubmoduleLoadState: Sendable, Equatable {
     case failed(String)
 
     public var isLoading: Bool {
-        if case .loading = self { return true }
-        return false
+        switch self {
+        case .loading: true
+        default: false
+        }
     }
 
     public var isMutating: Bool {
-        if case .mutating = self { return true }
-        return false
+        switch self {
+        case .mutating: true
+        default: false
+        }
     }
 
     public var isBusy: Bool { isLoading || isMutating }
 
     public var submodules: [GitSubmodule] {
         switch self {
-        case .loaded(let items, _):
-            return items
-        case .mutating(_, let items):
-            return items
-        case .idle, .loading, .failed:
-            return []
+        case .loaded(let items, _), .mutating(_, let items): items
+        case .idle, .loading, .failed: []
         }
     }
 
     public var activeAction: String? {
-        if case .mutating(let action, _) = self { return action }
-        return nil
+        switch self {
+        case .mutating(let action, _): action
+        default: nil
+        }
     }
 
     public var errorMessage: String? {
         switch self {
-        case .failed(let message):
-            return message
-        case .loaded(_, let error):
-            return error
-        case .idle, .loading, .mutating:
-            return nil
+        case .failed(let message): message
+        case .loaded(_, let error): error
+        default: nil
         }
     }
 }

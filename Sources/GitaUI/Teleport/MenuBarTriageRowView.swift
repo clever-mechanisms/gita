@@ -2,14 +2,14 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class MenuBarTriageRowView: NSView {
+final class MenuBarTriageRowView: NSView {
     private let presenter: MenuBarTriagePresenter
     private let stack = Deck.hstack([])
     private let surface = TeleportControls.surface(Theme.toolbar, radius: PanelCard.corner)
     private weak var confirmButton: PartsButton?
     private var delay: Task<Void, Never>?
 
-    public init(presenter: MenuBarTriagePresenter) {
+    init(presenter: MenuBarTriagePresenter) {
         self.presenter = presenter
         super.init(frame: .zero)
         setAccessibilityElement(true)
@@ -26,7 +26,7 @@ public final class MenuBarTriageRowView: NSView {
     @available(*, unavailable) required init?(coder _: NSCoder) { nil }
     deinit { delay?.cancel() }
 
-    public override func viewDidMoveToWindow() {
+    override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window != nil, presenter.state == .confirming, let confirmButton {
             window?.makeFirstResponder(confirmButton)
@@ -142,11 +142,11 @@ public final class MenuBarTriageRowView: NSView {
         setAccessibilityValue(message)
     }
 
-    public override func cancelOperation(_ sender: Any?) {
+    override func cancelOperation(_ sender: Any?) {
         if presenter.state == .confirming { presenter.cancelConfirmation() } else { super.cancelOperation(sender) }
     }
 
-    public override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if presenter.state == .confirming, KeyPress.isPlain(event),
             let focused = window?.firstResponder as? NSView, focused.isDescendant(of: self)
         {

@@ -43,11 +43,11 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     }
 
     static func present(
-        on parent: NSWindow, changes: [FileChange], selectedPaths: [String], execute: @escaping Execute,
-        completion: @escaping @MainActor (Bool) -> Void
+        on parent: NSWindow, alerts: AlertPresenter = .shared, changes: [FileChange], selectedPaths: [String],
+        execute: @escaping Execute, completion: @escaping @MainActor (Bool) -> Void
     ) {
         let sheet = Self(presenter: .init(changes: changes, selectedPaths: selectedPaths), execute: execute)
-        parent.beginSheet(sheet.chrome.window) { [sheet] response in
+        alerts.beginSheet(sheet.chrome.window, parent) { [sheet] response in
             sheet.chrome.window.orderOut(nil)
             completion(response == .OK)
         }

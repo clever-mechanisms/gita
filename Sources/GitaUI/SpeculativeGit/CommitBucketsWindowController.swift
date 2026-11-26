@@ -1,11 +1,11 @@
 import AppKit
 import GitaCore
 
-public final class CommitBucketsWindowController: NSWindowController, NSWindowDelegate {
-    public let presenter: CommitBucketsPresenter
+final class CommitBucketsWindowController: NSWindowController, NSWindowDelegate {
+    let presenter: CommitBucketsPresenter
     private let content: CommitBucketsContentController
 
-    public init(gitService: GitService, agent: AgentTool? = nil) {
+    init(gitService: GitService, agent: AgentTool? = nil) {
         presenter = CommitBucketsPresenter(gitService: gitService, agent: agent)
         content = CommitBucketsContentController(presenter: presenter)
         let window = CommitBucketsWindow(
@@ -25,11 +25,11 @@ public final class CommitBucketsWindowController: NSWindowController, NSWindowDe
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    public func windowShouldClose(_: NSWindow) -> Bool { !presenter.isCommitting }
-    public override func close() {
+    func windowShouldClose(_: NSWindow) -> Bool { !presenter.isCommitting }
+    override func close() {
         if !presenter.isCommitting { super.close() }
     }
-    public override func cancelOperation(_ sender: Any?) {
+    override func cancelOperation(_ sender: Any?) {
         if !presenter.isCommitting { window?.performClose(sender) }
     }
 }
@@ -174,7 +174,7 @@ private final class CommitBucketsContentController: NSViewController, NSSearchFi
     }
     override func viewWillDisappear() {
         super.viewWillDisappear()
-        presenter.cancelBackgroundWork()
+        presenter.cancel()
     }
     override func cancelOperation(_ sender: Any?) {
         if !presenter.isCommitting { view.window?.performClose(sender) }

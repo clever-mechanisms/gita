@@ -97,15 +97,23 @@ extension AppModel {
         onFailure: (@MainActor (String, Error) -> Void)? = nil,
         operation: @escaping @Sendable (GitService) async throws -> Void
     ) {
+        performWithResult(title, onSuccess: { _ in onSuccess?() }, onFailure: onFailure, operation: operation)
+    }
+
+    func performWithResult<Result: Sendable>(
+        _ title: String, onSuccess: (@MainActor (Result) -> Void)? = nil,
+        onFailure: (@MainActor (String, Error) -> Void)? = nil,
+        operation: @escaping @Sendable (GitService) async throws -> Result
+    ) {
         guard let service, !isMutating else { return }
         let current = beginMutation(String(localized: "\(title)…"))
         Task {
             var outcome = MutationResult.Outcome.failed
             do {
-                try await operation(service)
+                let value = try await operation(service)
                 log(title, String(localized: "Completed"))
                 outcome = .completed
-                if current == generation { onSuccess?() }
+                if current == generation { onSuccess?(value) }
             } catch {
                 log(title, error.localizedDescription, failed: true)
                 if let onFailure {

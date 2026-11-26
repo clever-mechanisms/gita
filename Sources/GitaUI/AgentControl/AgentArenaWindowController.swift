@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class AgentArenaWindowController: NSWindowController {
+final class AgentArenaWindowController: NSWindowController {
     let arena: AgentArenaViewController
 
     init(presenter: AgentArenaPresenter) {
@@ -16,7 +16,7 @@ public final class AgentArenaWindowController: NSWindowController {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Programmatic controller") }
 
-    override public func showWindow(_: Any?) {
+    override func showWindow(_: Any?) {
         (window as? AgentControlWindow)?.present()
     }
 }

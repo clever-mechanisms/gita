@@ -1,37 +1,37 @@
 import Foundation
 import GitaCore
 
-public struct SmartDiffOptions: Sendable, Equatable {
-    public var hideNoise: Bool
-    public var detectMoves: Bool
-    public var preferStructured: Bool
+struct SmartDiffOptions: Sendable, Equatable {
+    var hideNoise: Bool
+    var detectMoves: Bool
+    var preferStructured: Bool
 
-    public init(hideNoise: Bool = true, detectMoves: Bool = true, preferStructured: Bool = true) {
+    init(hideNoise: Bool = true, detectMoves: Bool = true, preferStructured: Bool = true) {
         self.hideNoise = hideNoise
         self.detectMoves = detectMoves
         self.preferStructured = preferStructured
     }
 }
 
-public enum SmartDiffRow: Sendable, Equatable {
+enum SmartDiffRow: Sendable, Equatable {
     case diffLine(DiffLine, moveRole: DiffMoveRole?)
     case collapsedNoisePill(CollapsedNoiseRun)
     case structuredEntry(StructuredDiffEntry)
 }
 
-public struct SmartDiffSnapshot: Sendable, Equatable {
-    public let document: DiffDocument
-    public let filtered: FilteredDiffResult
-    public let moves: DiffMoveAnalysis
-    public let structured: StructuredDiffResult
-    public let filePath: String
-    public let options: SmartDiffOptions
-    public let expandedNoiseHunks: Set<Int>
-    public let displayRows: [SmartDiffRow]
+struct SmartDiffSnapshot: Sendable, Equatable {
+    let document: DiffDocument
+    let filtered: FilteredDiffResult
+    let moves: DiffMoveAnalysis
+    let structured: StructuredDiffResult
+    let filePath: String
+    let options: SmartDiffOptions
+    let expandedNoiseHunks: Set<Int>
+    let displayRows: [SmartDiffRow]
     /// Raw display rows only. Line indices are offsets in UnifiedDiff.parse(...).lines.
     let documentIndices: [Int: Int]
 
-    public static func == (lhs: Self, rhs: Self) -> Bool {
+    static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.filePath == rhs.filePath && lhs.options == rhs.options && lhs.expandedNoiseHunks == rhs.expandedNoiseHunks
             && lhs.document.lines == rhs.document.lines && lhs.document.canApplyHunks == rhs.document.canApplyHunks
             && lhs.document.hunks.elementsEqual(rhs.document.hunks) { ($0.index, $0.patch) == ($1.index, $1.patch) }
@@ -40,7 +40,7 @@ public struct SmartDiffSnapshot: Sendable, Equatable {
     }
 }
 
-public enum SmartDiffState: Sendable, Equatable {
+enum SmartDiffState: Sendable, Equatable {
     case idle, loading, empty
     case loaded(SmartDiffSnapshot)
     case failed(String)
@@ -58,15 +58,22 @@ struct SmartDiffSource: Sendable {
         self.document = document
         self.structured = structured
         classifications = DiffNoiseFilter.analyze(document)
-        var documents = related
-        documents[filePath] = document
-        moves = DiffMoveDetector.detect(in: documents)
+        if related.isEmpty {
+            moves = DiffMoveDetector.detect(in: document, filePath: filePath)
+        } else {
+            var documents = related
+            documents[filePath] = document
+            moves = DiffMoveDetector.detect(in: documents)
+        }
     }
 
     func snapshot(options: SmartDiffOptions, expanded: Set<Int>) -> SmartDiffSnapshot {
-        let filtered = DiffNoiseFilter.filter(
-            document, classifications: classifications, hideNoise: options.hideNoise,
-            expandedHunks: expanded)
+        let filtered =
+            classifications.isEmpty
+            ? DiffNoiseFilter.filter(document, hideNoise: options.hideNoise, expandedHunks: expanded)
+            : DiffNoiseFilter.filter(
+                document, classifications: classifications, hideNoise: options.hideNoise,
+                expandedHunks: expanded)
         let moves = options.detectMoves ? self.moves : .empty
         var indices: [Int: Int] = [:]
         var rows: [SmartDiffRow] = []

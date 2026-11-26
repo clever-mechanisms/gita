@@ -137,19 +137,31 @@ extension RepositoryViewController {
             message: String(localized: "Remove worktree?"),
             detail: tree.path + (activity.map { "\n\n" + $0 } ?? ""), action: String(localized: "Remove"))
         confirmation.present(on: window) { [weak self] in
-            guard let self, self.model.service === service else { return }
-            self.model.perform(
-                String(localized: "Remove worktree"),
-                onSuccess: { [weak self] in
-                    self?.commands?.invalidateStorage(repositoryRoot: snapshot.root)
-                },
-                operation: { current in
-                    let latest = try await current.snapshot(limit: 1)
-                    guard latest.worktrees.contains(tree), latest.root.path != tree.path else {
-                        throw StaleStateError.worktreeChanged
-                    }
-                    try await current.removeWorktree(path: URL(fileURLWithPath: tree.path))
-                })
+            _ = self?.performConfirmedWorktreeRemoval(tree, expectedService: service, repositoryRoot: snapshot.root)
         }
+    }
+
+    /// Runs a worktree removal that the user already confirmed (from either the main window or Storage window).
+    func performConfirmedWorktreeRemoval(
+        _ tree: GitWorktree, expectedService: GitService? = nil, repositoryRoot: URL
+    ) -> Bool {
+        guard let snapshot = model.snapshot, let service = model.service, !model.isMutating,
+            expectedService == nil || service === expectedService,
+            snapshot.worktrees.contains(tree), tree.path != snapshot.root.path, !tree.isLocked, !tree.isBare,
+            !tree.isPrunable
+        else { return false }
+        model.perform(
+            String(localized: "Remove worktree"),
+            onSuccess: { [weak self] in
+                self?.commands?.invalidateStorage(repositoryRoot: repositoryRoot)
+            },
+            operation: { current in
+                let latest = try await current.snapshot(limit: 1)
+                guard latest.worktrees.contains(tree), latest.root.path != tree.path else {
+                    throw StaleStateError.worktreeChanged
+                }
+                try await current.removeWorktree(path: URL(fileURLWithPath: tree.path))
+            })
+        return true
     }
 }

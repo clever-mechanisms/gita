@@ -31,23 +31,28 @@ extension AppDelegate {
         let known =
             openRepositoryRoots
             + Preference.recentRepositories.strings(defaults).map { URL(fileURLWithPath: $0, isDirectory: true) }
-        var activeAgents = Set(
-            WindowAgents.shared.sessions
-                .filter { $0.state == .working }
-                .compactMap { ($0.checkoutRoot ?? $0.workingDirectory).path })
-        for signal in model.allSignals where signal.kind == .agent && signal.state == .running {
-            if let path = signal.worktreePath { activeAgents.insert(path) }
-        }
         return StorageWindowContext(
             repositoryRoot: resolvedRoot,
             knownRepositories: known,
-            activeAgentPaths: activeAgents,
-            onRemoveWorktree: { [weak self] _, tree in
-                self?.repositoryController?.removeWorktree(tree)
+            activeAgentPaths: activeAgentWorktreePaths(),
+            onRemoveWorktree: { [weak self] mainRoot, tree in
+                guard let self, let controller = self.openTabController(for: mainRoot) else { return false }
+                return controller.performConfirmedWorktreeRemoval(tree, repositoryRoot: mainRoot)
             },
             onOpenRepository: { [weak self] url in
                 self?.openRepositoryTab(url)
             }
         )
+    }
+
+    private func activeAgentWorktreePaths() -> Set<String> {
+        var paths = Set(
+            WindowAgents.shared.sessions
+                .filter { $0.state == .working }
+                .map { ($0.checkoutRoot ?? $0.workingDirectory).path })
+        for signal in model.allSignals where signal.kind == .agent && signal.state == .running {
+            if let path = signal.worktreePath { paths.insert(path) }
+        }
+        return paths
     }
 }

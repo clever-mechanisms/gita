@@ -16,6 +16,19 @@ public struct WorkspaceTimelineEvent: Equatable, Sendable, Identifiable {
     public let branch: String?
     public let commitSHA: String?
     public let url: URL?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+            && lhs.repository == rhs.repository
+            && lhs.timestamp == rhs.timestamp
+            && lhs.title == rhs.title
+            && lhs.subtitle == rhs.subtitle
+            && lhs.kind == rhs.kind
+            && lhs.state == rhs.state
+            && lhs.branch == rhs.branch
+            && lhs.commitSHA == rhs.commitSHA
+            && lhs.url == rhs.url
+    }
 }
 
 public struct WorkspaceTimelineSource: Sendable {
@@ -99,19 +112,6 @@ public struct WorkspaceTimelineBuilder: Sendable {
                 guard !reports.isEmpty else { throw error }
                 return WorkspaceTimelineSource(repository: repo, commits: [], reports: reports)
             }
-        }
-    }
-
-    public func collect(
-        _ repositories: [WorkspaceRepository], provider: ProviderService = ProviderService()
-    ) async throws -> [WorkspaceTimelineEvent] {
-        try await collect(repositories) { repo in
-            let snapshot = try await GitService(root: repo.root).snapshot(limit: 300)
-            async let github = provider.github(
-                root: repo.root, remoteURL: snapshot.remoteURL, remote: snapshot.github, choice: nil)
-            async let vercel = provider.vercel(root: repo.root, previous: nil, forceContext: false)
-            return await WorkspaceTimelineSource(
-                repository: repo, commits: snapshot.commits, reports: [github.report, vercel])
         }
     }
 

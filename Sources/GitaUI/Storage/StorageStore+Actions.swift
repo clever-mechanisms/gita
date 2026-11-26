@@ -70,7 +70,7 @@ extension StorageStore {
             for (checkout, entries) in groups {
                 let result = try await StorageCleaner().clean(entries, in: checkout)
                 moved += result.cleanedPaths.count
-                failures += result.failures.map { $0.error.localizedDescription }
+                failures += result.failures.map { "\($0.path.lastPathComponent): \($0.error.localizedDescription)" }
             }
             let summary =
                 moved == 1

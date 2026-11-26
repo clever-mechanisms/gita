@@ -23,7 +23,6 @@ public actor StorageScanner {
     ) async throws
         -> RepositoryStorageReport
     {
-        let start = ProcessInfo.processInfo.systemUptime
         async let commonRead = git.commonDirectory(at: root)
         let trees = try await git.worktrees(at: root)
         guard let first = trees.first else { throw GitError.notRepository }
@@ -36,7 +35,7 @@ public actor StorageScanner {
         let paths = Set(trees.map { Self.url($0).path })
         let walk = walker.forRepositoryScan()
         let store = try await walk.gitStore(at: common, excluding: paths.filter { $0.hasPrefix(common.path + "/") })
-        var report = RepositoryStorageReport(mainRoot: main, gitStore: store, scannedAt: Date())
+        var report = RepositoryStorageReport(mainRoot: main, gitStore: store)
         update.bytesCounted = store.totalAllocatedBytes
         update.filesVisited = store.fileCount
         progress?(update, report)
@@ -50,8 +49,6 @@ public actor StorageScanner {
             update.currentLabel = checkout.displayName
             update.bytesCounted += checkout.totalAllocatedBytes
             update.filesVisited += checkout.fileCount
-            report.scannedAt = Date()
-            report.duration = ProcessInfo.processInfo.systemUptime - start
             report.isPartial = update.scannedCheckouts < trees.count
             progress?(update, report)
         }

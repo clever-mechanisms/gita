@@ -28,7 +28,7 @@ import Testing
         #expect(notifications >= 6)
         store.removeObserver(observer)
         let before = notifications
-        store.invalidateAll()
+        store.invalidate(repositoryRoot: root)
         #expect(before == notifications)
     }
 

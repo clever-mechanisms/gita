@@ -36,16 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var commandResponders: [ObjectIdentifier: RepositoryCommandResponder] = [:]
     /// The open command palette, if any; see `AppDelegate+Palette`.
     var palette: PaletteController?
-    /// Open Submodules & Git LFS utility windows keyed by standardized repository root path.
-    var submodulesLFSWindows: [String: SubmodulesLFSWindowController] = [:]
-    /// Open Branch & Worktree Cleanup windows keyed by standardized repository root path.
-    var cleanupWindows: [String: CleanupAssistantWindowController] = [:]
-    /// Open Stacked Branches windows keyed by repository root path and base branch.
-    var stackWindows: [String: BranchStackWindowController] = [:]
-    /// Open Reflog, Code Search, and Line History windows keyed by repository scope.
-    var reflogWindows: [String: ReflogWindowController] = [:]
-    var codeSearchWindows: [String: CodeSearchWindowController] = [:]
-    var lineHistoryWindows: [String: LineHistoryWindowController] = [:]
+    /// Open per-repository utility windows (Submodules/LFS, Cleanup, Stacks, Reflog, Code Search, Line History).
+    let auxiliaryWindows = AuxiliaryWindowRegistry()
     /// Open Commit Buckets windows keyed by standardized repository root path.
     var commitBucketsWindows: [String: CommitBucketsWindowController] = [:]
     /// On-demand Storage Inspector & Repository Health utility window.
@@ -150,7 +142,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if let session = setupGuide { finishSetupGuide(session.id, choices: nil, resumeNavigation: false) }
-        switch TerminationPolicy(hasReviewSheet: reviewingController != nil, isMutating: isAnyMutating) {
+        switch TerminationPolicy(
+            hasReviewSheet: reviewingController != nil, isMutating: isAnyMutating || hasActiveAgentArenaRace)
+        {
         case .refuseWhileMutating:
             environment.system.beep()
             return refuseTermination()

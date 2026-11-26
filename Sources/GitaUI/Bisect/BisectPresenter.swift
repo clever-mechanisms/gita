@@ -2,48 +2,46 @@ import Foundation
 import GitaCore
 
 /// Lifecycle state for an in-flight bisect command (start, good, bad, skip, reset).
-public enum BisectActionState: Sendable, Equatable {
+enum BisectActionState: Sendable, Equatable {
     case idle
     case running(String)
     case failed(String)
 
-    public var isBusy: Bool {
+    var isBusy: Bool {
         if case .running = self { return true }
         return false
     }
 
-    public var runningTitle: String? {
+    var runningTitle: String? {
         if case .running(let title) = self { return title }
         return nil
     }
 
-    public var errorMessage: String? {
+    var errorMessage: String? {
         if case .failed(let message) = self { return message }
         return nil
     }
 }
 
 /// Pure presentation value driving `BisectBannerView`, testable without AppKit views.
-public struct BisectBannerModel: Equatable, Sendable {
-    public let isHidden: Bool
-    public let isFinished: Bool
-    public let isBusy: Bool
-    public let title: String
-    public let shortSHA: String
-    public let commitSubject: String
-    public let commitTooltip: String?
-    public let stepsBadgeText: String?
-    public let statusDetail: String?
-    public let errorMessage: String?
-    public let goodButtonTitle: String
-    public let badButtonTitle: String
-    public let showsStepActions: Bool
-    public let showsOpenCommit: Bool
-    public let culpritCommitID: String?
-    public let canAct: Bool
+struct BisectBannerModel: Equatable, Sendable {
+    let isHidden: Bool
+    let isFinished: Bool
+    let title: String
+    let shortSHA: String
+    let commitSubject: String
+    let commitTooltip: String?
+    let stepsBadgeText: String?
+    let statusDetail: String?
+    let errorMessage: String?
+    let goodButtonTitle: String
+    let badButtonTitle: String
+    let showsStepActions: Bool
+    let showsOpenCommit: Bool
+    let culpritCommitID: String?
+    let canAct: Bool
 
-    public init(state: BisectState, action: BisectActionState) {
-        self.isBusy = action.isBusy
+    init(state: BisectState, action: BisectActionState) {
         self.errorMessage = action.errorMessage
         self.canAct = !action.isBusy
 
@@ -86,7 +84,9 @@ public struct BisectBannerModel: Equatable, Sendable {
             self.title = action.runningTitle ?? String(localized: "Culprit Found")
             self.shortSHA = culprit.shortID
             self.commitSubject = culprit.subject
-            self.commitTooltip = "\(culprit.commitID)\n\(culprit.subject) (\(culprit.author))"
+            let branchSuffix =
+                culprit.startBranch.isEmpty ? "" : "\n" + String(localized: "Started on \(culprit.startBranch)")
+            self.commitTooltip = "\(culprit.commitID)\n\(culprit.subject) (\(culprit.author))\(branchSuffix)"
             self.stepsBadgeText = String(localized: "First bad commit")
             self.statusDetail = culprit.author.isEmpty ? nil : String(localized: "by \(culprit.author)")
             self.goodButtonTitle = String(localized: "Good")
@@ -119,16 +119,16 @@ public struct BisectBannerModel: Equatable, Sendable {
 
 /// Coordinates visual `git bisect` state transitions and actions on the main actor.
 @MainActor
-public final class BisectPresenter {
-    public struct Operations: Sendable {
-        public var readState: @Sendable () async throws -> BisectState
-        public var start: @Sendable (String, String) async throws -> BisectState
-        public var markGood: @Sendable () async throws -> BisectState
-        public var markBad: @Sendable () async throws -> BisectState
-        public var skip: @Sendable () async throws -> BisectState
-        public var reset: @Sendable () async throws -> BisectState
+final class BisectPresenter {
+    struct Operations: Sendable {
+        var readState: @Sendable () async throws -> BisectState
+        var start: @Sendable (String, String) async throws -> BisectState
+        var markGood: @Sendable () async throws -> BisectState
+        var markBad: @Sendable () async throws -> BisectState
+        var skip: @Sendable () async throws -> BisectState
+        var reset: @Sendable () async throws -> BisectState
 
-        public init(
+        init(
             readState: @escaping @Sendable () async throws -> BisectState,
             start: @escaping @Sendable (String, String) async throws -> BisectState,
             markGood: @escaping @Sendable () async throws -> BisectState,
@@ -144,9 +144,9 @@ public final class BisectPresenter {
             self.reset = reset
         }
 
-        public static func live(_ service: GitService) -> Self {
+        static func live(_ service: GitService, gitDirectory: URL? = nil) -> Self {
             Self(
-                readState: { try await service.bisectState() },
+                readState: { try await service.bisectState(gitDirectory: gitDirectory) },
                 start: { bad, good in try await service.bisectStart(bad: bad, good: good) },
                 markGood: { try await service.bisectGood() },
                 markBad: { try await service.bisectBad() },
@@ -156,30 +156,30 @@ public final class BisectPresenter {
         }
     }
 
-    public private(set) var state: BisectState = .inactive
-    public private(set) var action: BisectActionState = .idle
-    public var onChange: ((BisectBannerModel) -> Void)?
-    public var onRepositoryMutated: (() -> Void)?
-    public var onOpenCommit: ((String) -> Void)?
+    private(set) var state: BisectState = .inactive
+    private(set) var action: BisectActionState = .idle
+    var onChange: ((BisectBannerModel) -> Void)?
+    var onRepositoryMutated: (() -> Void)?
+    var onOpenCommit: ((String) -> Void)?
 
     private let operations: Operations
     private let refreshTask = LatestTask()
     private var pendingRefresh = false
 
-    public init(service: GitService) {
-        self.operations = .live(service)
+    convenience init(service: GitService, gitDirectory: URL? = nil) {
+        self.init(operations: .live(service, gitDirectory: gitDirectory))
     }
 
-    public init(operations: Operations) {
+    init(operations: Operations) {
         self.operations = operations
     }
 
-    public var bannerModel: BisectBannerModel {
+    var bannerModel: BisectBannerModel {
         BisectBannerModel(state: state, action: action)
     }
 
     /// Reads current bisect state. If a mutation is in flight, coalesces the refresh to run once the step finishes.
-    public func refresh() {
+    func refresh() {
         guard !action.isBusy else {
             pendingRefresh = true
             return
@@ -187,42 +187,42 @@ public final class BisectPresenter {
         startRefresh(preservingFailure: false)
     }
 
-    public func start(bad: String, good: String) async throws {
+    func start(bad: String, good: String) async throws {
         try await performMutation(title: String(localized: "Starting bisect…")) { [operations] in
             try await operations.start(bad, good)
         }
     }
 
-    public func markGood() {
+    func markGood() {
         runInteractiveStep(title: String(localized: "Marking good…")) { [operations] in
             try await operations.markGood()
         }
     }
 
-    public func markBad() {
+    func markBad() {
         runInteractiveStep(title: String(localized: "Marking bad…")) { [operations] in
             try await operations.markBad()
         }
     }
 
-    public func skip() {
+    func skip() {
         runInteractiveStep(title: String(localized: "Skipping commit…")) { [operations] in
             try await operations.skip()
         }
     }
 
-    public func reset() {
+    func reset() {
         runInteractiveStep(title: String(localized: "Resetting bisect…")) { [operations] in
             try await operations.reset()
         }
     }
 
-    public func openCulpritCommit() {
+    func openCulpritCommit() {
         guard let commitID = state.culprit?.commitID else { return }
         onOpenCommit?(commitID)
     }
 
-    public func cancelReads() {
+    func cancelReads() {
         refreshTask.cancel()
         pendingRefresh = false
     }

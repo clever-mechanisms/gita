@@ -5,10 +5,28 @@ public actor SpeculativeGitService {
     private struct RebaseCacheKey: Hashable {
         let baseTreeID: String
         let planHash: String
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.baseTreeID == rhs.baseTreeID && lhs.planHash == rhs.planHash
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(baseTreeID)
+            hasher.combine(planHash)
+        }
     }
     private struct MergeKey: Hashable {
         let ours: String
         let theirs: String
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.ours == rhs.ours && lhs.theirs == rhs.theirs
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(ours)
+            hasher.combine(theirs)
+        }
     }
     private var rebases: SpeculativeLRUCache<RebaseCacheKey, RebaseSimulationResult>
     private var merges: SpeculativeLRUCache<MergeKey, PairwiseMergeOutcome>
@@ -17,11 +35,6 @@ public actor SpeculativeGitService {
         self.gitService = gitService
         rebases = .init(capacity: cacheCapacity)
         merges = .init(capacity: cacheCapacity)
-    }
-
-    public func clearCache() {
-        rebases.removeAll()
-        merges.removeAll()
     }
 
     public func simulateRebase(onto: String, steps: [GitRebaseStep]) async throws -> RebaseSimulationResult {

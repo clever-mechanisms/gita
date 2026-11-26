@@ -14,6 +14,15 @@ public struct StructuredDiffEntry: Identifiable, Sendable, Equatable {
     public let oldValue: String?
     public let newValue: String?
     public let section: String?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+            && lhs.keyPath == rhs.keyPath
+            && lhs.kind == rhs.kind
+            && lhs.oldValue == rhs.oldValue
+            && lhs.newValue == rhs.newValue
+            && lhs.section == rhs.section
+    }
 }
 
 public enum StructuredDiffResult: Sendable, Equatable {

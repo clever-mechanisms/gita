@@ -20,7 +20,7 @@ enum StoragePresentationFixture {
             mainRoot: root, gitStore: git,
             checkouts: [
                 tree(root, bytes: 10, entries: []), tree(linked, bytes: 50, entries: entries),
-            ], scannedAt: now, isPartial: false)
+            ], isPartial: false)
     }
 
     private static func tree(_ root: URL, bytes: UInt64, entries: [HeavyFolderEntry]) -> CheckoutStorageReport {
@@ -35,6 +35,6 @@ enum StoragePresentationFixture {
         HeavyFolderEntry(
             relativePath: name, url: root.appendingPathComponent(name),
             category: HeavyFolderCatalog.category(forFolderName: name) ?? .otherLarge, status: status,
-            allocatedBytes: 8, logicalBytes: 6, fileCount: 1)
+            allocatedBytes: 8, fileCount: 1)
     }
 }

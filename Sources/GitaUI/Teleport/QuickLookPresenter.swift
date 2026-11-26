@@ -2,8 +2,8 @@ import Foundation
 import GitaCore
 
 @MainActor
-public final class QuickLookPresenter {
-    public private(set) var state: QuickLookLoadState = .idle {
+final class QuickLookPresenter {
+    private(set) var state: QuickLookLoadState = .idle {
         didSet {
             if case .loading(let target, true) = state, oldValue == .loading(target, showsSpinner: false) {
                 view?.revealSpinner()
@@ -13,7 +13,7 @@ public final class QuickLookPresenter {
         }
     }
 
-    public var currentTarget: QuickLookTarget? { pendingTarget ?? state.target }
+    var currentTarget: QuickLookTarget? { pendingTarget ?? state.target }
 
     private weak var view: QuickLookPreviewView?
     private var pendingTarget: QuickLookTarget?
@@ -21,7 +21,7 @@ public final class QuickLookPresenter {
     private var loadTask: Task<Void, Never>?
     private var delay: Task<Void, Never>?
 
-    public init(loader: QuickLookPreviewLoader = .init()) { self.loader = loader }
+    init(loader: QuickLookPreviewLoader = .init()) { self.loader = loader }
 
     deinit {
         delay?.cancel()
@@ -33,7 +33,7 @@ public final class QuickLookPresenter {
         view.display(state)
     }
 
-    public func select(_ target: QuickLookTarget) {
+    func select(_ target: QuickLookTarget) {
         cancel()
         switch state {
         case .loaded, .empty, .failed: pendingTarget = target
@@ -58,12 +58,12 @@ public final class QuickLookPresenter {
         }
     }
 
-    public func clear() {
+    func clear() {
         cancel()
         state = .idle
     }
 
-    public func retry() { if pendingTarget == nil, case .failed(let target, _) = state { select(target) } }
+    func retry() { if pendingTarget == nil, case .failed(let target, _) = state { select(target) } }
 
     private func cancel() {
         loadTask?.cancel()

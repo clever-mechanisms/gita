@@ -196,6 +196,13 @@ final class CodePaneView: NSView {
 
     private func reloadSmartDiffIfNeeded() {
         guard isSmartDiffEnabled, let controller = smartDiffController else { return }
+        if BinaryDiffSummary.isBinaryDiff(lastSmartDiffText) {
+            controller.presenter.fail(String(localized: "Binary files are not supported in Smart Diff.")) {
+                [weak self] in
+                self?.reloadSmartDiffIfNeeded()
+            }
+            return
+        }
         controller.presenter.load(diffText: lastSmartDiffText, filePath: lastSmartDiffPath)
     }
 

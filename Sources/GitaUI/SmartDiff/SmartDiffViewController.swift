@@ -10,10 +10,10 @@ private final class SmartDiffTable: NSTableView {
 }
 
 @MainActor
-public final class SmartDiffViewController: NSViewController, NSTableViewDelegate, NSTableViewDataSource {
-    public let presenter: SmartDiffPresenter
-    public var onJumpToFileLine: ((String, Int) -> Void)?
-    public private(set) lazy var toolbar = SmartDiffToolbarView(presenter: presenter)
+final class SmartDiffViewController: NSViewController, NSTableViewDelegate, NSTableViewDataSource {
+    let presenter: SmartDiffPresenter
+    var onJumpToFileLine: ((String, Int) -> Void)?
+    private(set) lazy var toolbar = SmartDiffToolbarView(presenter: presenter)
     private let table = SmartDiffTable()
     private let container = ThemedBackgroundView()
     private lazy var scroll = Style.scroll(table)
@@ -21,7 +21,7 @@ public final class SmartDiffViewController: NSViewController, NSTableViewDelegat
     private var delay: Task<Void, Never>?
     private var rows: [SmartDiffRow] = []
 
-    public init(presenter: SmartDiffPresenter = SmartDiffPresenter()) {
+    init(presenter: SmartDiffPresenter = SmartDiffPresenter()) {
         self.presenter = presenter
         super.init(nibName: nil, bundle: nil)
     }
@@ -29,7 +29,7 @@ public final class SmartDiffViewController: NSViewController, NSTableViewDelegat
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Use init(presenter:)") }
 
-    public override func loadView() {
+    override func loadView() {
         view = ThemedBackgroundView()
         view.smartDiffAccessibility(String(localized: "Smart diff"), "diff.view")
         let stack = Deck.vstack([toolbar, container], spacing: 0)
@@ -109,17 +109,17 @@ public final class SmartDiffViewController: NSViewController, NSTableViewDelegat
         ])
     }
 
-    public func numberOfRows(in _: NSTableView) -> Int { rows.count }
-    public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+    func numberOfRows(in _: NSTableView) -> Int { rows.count }
+    func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
         DeckTableRowView.reused(in: tableView, id: .init("smartdiff.diff.row"))
     }
 
-    public func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
+    func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
         guard rows.indices.contains(row), case .diffLine = rows[row] else { return 24 }
         return 21
     }
 
-    public func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
+    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
         guard rows.indices.contains(row) else { return nil }
         let activate: () -> Void = { [weak self] in self?.activate(row) }
         switch rows[row] {
@@ -196,7 +196,7 @@ public final class SmartDiffViewController: NSViewController, NSTableViewDelegat
         }
     }
 
-    public override func cancelOperation(_ sender: Any?) {
+    override func cancelOperation(_ sender: Any?) {
         guard case .loaded(let snapshot) = presenter.state, !snapshot.expandedNoiseHunks.isEmpty else {
             nextResponder?.tryToPerform(#selector(NSResponder.cancelOperation(_:)), with: sender)
             return

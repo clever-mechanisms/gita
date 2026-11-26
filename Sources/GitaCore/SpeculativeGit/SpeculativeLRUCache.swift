@@ -1,35 +1,30 @@
 import CryptoKit
 import Foundation
 
-public struct SpeculativeLRUCache<Key: Hashable & Sendable, Value: Sendable>: Sendable {
-    public let capacity: Int
+struct SpeculativeLRUCache<Key: Hashable & Sendable, Value: Sendable>: Sendable {
+    let capacity: Int
     private var values: [Key: Value] = [:]
     private var recency: [Key] = []
-    public var count: Int { values.count }
+    var count: Int { values.count }
 
-    public init(capacity: Int = 64) { self.capacity = max(0, capacity) }
+    init(capacity: Int = 64) { self.capacity = max(0, capacity) }
 
-    public mutating func value(for key: Key) -> Value? {
+    mutating func value(for key: Key) -> Value? {
         guard let value = values[key] else { return nil }
         touch(key)
         return value
     }
 
-    public mutating func insert(_ value: Value, for key: Key) {
+    mutating func insert(_ value: Value, for key: Key) {
         guard capacity > 0 else { return }
         values[key] = value
         touch(key)
-        if recency.count > capacity { values.removeValue(forKey: recency.removeFirst()) }
+        if count > capacity { values.removeValue(forKey: recency.removeFirst()) }
     }
 
     private mutating func touch(_ key: Key) {
         recency.removeAll { $0 == key }
         recency.append(key)
-    }
-
-    public mutating func removeAll() {
-        values.removeAll()
-        recency.removeAll()
     }
 }
 

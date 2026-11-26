@@ -2,76 +2,63 @@ import Foundation
 import GitaCore
 
 /// Lifecycle state for on-demand per-file diff loading in Code Search.
-public enum CodeSearchDiffState: Sendable, Equatable {
+enum CodeSearchDiffState: Sendable, Equatable {
     case idle
     case loading(commitID: String, path: String?)
     case loaded(commitID: String, path: String?, diff: String)
     case failed(commitID: String, path: String?, message: String)
 
-    public var isLoading: Bool {
-        if case .loading = self { return true }
-        return false
-    }
-
-    public var selectedPath: String? {
+    var selectedPath: String? {
         switch self {
         case .idle: nil
         case .loading(_, let path), .loaded(_, let path, _), .failed(_, let path, _): path
         }
     }
-
-    public var diffText: String {
-        if case .loaded(_, _, let diff) = self { return diff }
-        return ""
-    }
-
-    public var errorMessage: String? {
-        if case .failed(_, _, let message) = self { return message }
-        return nil
-    }
 }
 
 /// Coordinates Git Pickaxe (`-S` literal / `-G` regex) code search and on-demand per-file diff loading.
 @MainActor
-public final class CodeSearchPresenter {
-    public typealias Searcher = @Sendable (PickaxeQuery) async throws -> [PickaxeMatch]
-    public typealias FileDiffLoader = @Sendable (String, String?) async throws -> String
+final class CodeSearchPresenter {
+    typealias Searcher = @Sendable (PickaxeQuery) async throws -> [PickaxeMatch]
+    typealias FileDiffLoader = @Sendable (String, String?) async throws -> String
 
-    public private(set) var state: CodeSearchState = .idle
-    public private(set) var diffState: CodeSearchDiffState = .idle
-    public private(set) var pattern = ""
-    public private(set) var mode: PickaxeMode = .literal
-    public private(set) var pathFilter = ""
-    public private(set) var ignoreCase = false
-    public private(set) var selectedCommitID: String?
-    public var onChange: (() -> Void)?
+    private(set) var state: CodeSearchState = .idle
+    private(set) var diffState: CodeSearchDiffState = .idle
+    private(set) var pattern = ""
+    private(set) var mode: PickaxeMode = .literal
+    private(set) var pathFilter = ""
+    private(set) var ignoreCase = false
+    private(set) var selectedCommitID: String?
+    var onChange: (() -> Void)?
 
     private let searcher: Searcher
     private let loadFileDiff: FileDiffLoader
     private let searchTask = LatestTask()
     private let diffTask = LatestTask()
 
-    public init(service: GitService) {
-        self.searcher = { query in try await service.searchCode(query) }
-        self.loadFileDiff = { commitID, path in try await service.pickaxeFileDiff(commitID: commitID, path: path) }
+    convenience init(service: GitService) {
+        self.init(
+            searcher: { query in try await service.searchCode(query) },
+            loadFileDiff: { commitID, path in try await service.pickaxeFileDiff(commitID: commitID, path: path) }
+        )
     }
 
-    public init(searcher: @escaping Searcher, loadFileDiff: @escaping FileDiffLoader = { _, _ in "" }) {
+    init(searcher: @escaping Searcher, loadFileDiff: @escaping FileDiffLoader = { _, _ in "" }) {
         self.searcher = searcher
         self.loadFileDiff = loadFileDiff
     }
 
-    public var matches: [PickaxeMatch] { state.matches }
+    var matches: [PickaxeMatch] { state.matches }
 
-    public var selectedMatch: PickaxeMatch? {
+    var selectedMatch: PickaxeMatch? {
         guard let selectedCommitID else { return nil }
         return matches.first { $0.commit.id == selectedCommitID }
     }
 
     /// Spaces are significant in `-S` / `-G`, so any non-empty pattern is searchable.
-    public var canSearch: Bool { !pattern.isEmpty }
+    var canSearch: Bool { !pattern.isEmpty }
 
-    public var statusSummary: String {
+    var statusSummary: String {
         switch state {
         case .idle:
             return String(localized: "Search commits that added, removed, or changed code matching a pattern.")
@@ -92,31 +79,31 @@ public final class CodeSearchPresenter {
         }
     }
 
-    public func setPattern(_ next: String) {
+    func setPattern(_ next: String) {
         guard pattern != next else { return }
         pattern = next
         onChange?()
     }
 
-    public func setMode(_ next: PickaxeMode) {
+    func setMode(_ next: PickaxeMode) {
         guard mode != next else { return }
         mode = next
         onChange?()
     }
 
-    public func setPathFilter(_ next: String) {
+    func setPathFilter(_ next: String) {
         guard pathFilter != next else { return }
         pathFilter = next
         onChange?()
     }
 
-    public func setIgnoreCase(_ next: Bool) {
+    func setIgnoreCase(_ next: Bool) {
         guard ignoreCase != next else { return }
         ignoreCase = next
         onChange?()
     }
 
-    public func search(limit: Int = 100) {
+    func search(limit: Int = 100) {
         guard !pattern.isEmpty else {
             cancel()
             state = .idle
@@ -155,14 +142,14 @@ public final class CodeSearchPresenter {
         )
     }
 
-    public func select(commitID: String?) {
+    func select(commitID: String?) {
         guard selectedCommitID != commitID else { return }
         selectedCommitID = commitID
         loadSelectedDiff(path: selectedMatch?.matchedFiles.first)
         onChange?()
     }
 
-    public func selectFile(_ path: String) {
+    func selectFile(_ path: String) {
         guard let match = selectedMatch, match.matchedFiles.contains(path), diffState.selectedPath != path else {
             return
         }
@@ -170,9 +157,13 @@ public final class CodeSearchPresenter {
         onChange?()
     }
 
-    public func cancel() {
+    func cancel() {
         searchTask.cancel()
         diffTask.cancel()
+        if case .searching = state {
+            state = .idle
+            onChange?()
+        }
     }
 
     private func loadSelectedDiff(path: String?) {

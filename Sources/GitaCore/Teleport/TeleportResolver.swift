@@ -5,11 +5,6 @@ public struct TeleportResolver: Sendable {
 
     public init(runner: any CommandRunning = CommandRunner()) { self.runner = runner }
 
-    public func resolve(_ raw: String, in repositories: [TeleportRepositoryEntry]) async throws -> TeleportResolution? {
-        guard let parsed = TeleportParser.parse(raw) else { return nil }
-        return try await resolve(parsed, in: repositories)
-    }
-
     public func resolve(
         _ parsed: ParsedTeleportInput, in repositories: [TeleportRepositoryEntry]
     ) async throws -> TeleportResolution {
@@ -52,41 +47,42 @@ public struct TeleportResolver: Sendable {
         {
             return nil
         }
-        let target: TeleportTarget
-        let reason: TeleportDestination.MatchReason
+        guard let matched = try await matchTarget(parsed, hosted: hosted, entry: entry) else { return nil }
+        return .init(
+            workspaceID: entry.workspaceID, workspaceTitle: entry.workspaceTitle, repoPath: entry.repoPath,
+            repoDisplayName: entry.displayName, target: matched.target, matchReason: matched.reason)
+    }
+
+    private func matchTarget(
+        _ parsed: ParsedTeleportInput, hosted: (String, TeleportTarget)?, entry: TeleportRepositoryEntry
+    ) async throws -> (target: TeleportTarget, reason: TeleportDestination.MatchReason)? {
         switch parsed.query {
         case .deepLink(let hint):
             guard let repository = await inferredRepository(entry) else { return nil }
-            target = Self.target(hint, repository)
-            reason = parsed.workspaceHint == nil && parsed.repoHint == nil ? .githubRemote : .workspaceHint
+            let reason: TeleportDestination.MatchReason =
+                parsed.workspaceHint == nil && parsed.repoHint == nil ? .githubRemote : .workspaceHint
+            return (Self.target(hint, repository), reason)
         case .deployment(let team, let project, let ref, let url):
             guard
                 await matchesDeployment(
                     team, project: project, ref: ref, hint: parsed.repoHint ?? parsed.workspaceHint, entry: entry)
-            else {
-                return nil
-            }
-            target = .deployment(reference: ref, projectName: project ?? entry.vercelProjectName, url: url)
-            reason = project == nil ? .workspaceHint : .vercelProject
+            else { return nil }
+            return (
+                .deployment(reference: ref, projectName: project ?? entry.vercelProjectName, url: url),
+                project == nil ? .workspaceHint : .vercelProject
+            )
         case .commit(nil, nil, let sha, let url):
             guard let sha = TeleportParser.sha(sha), let full = try await verify(sha + "^{commit}", entry) else {
                 return nil
             }
-            target = .commit(sha: full, url: url)
-            reason = .localObject
+            return (.commit(sha: full, url: url), .localObject)
         case .branch(nil, nil, let ref):
             guard let name = TeleportParser.branch(ref), try await hasBranch(name, entry) else { return nil }
-            target = .branch(name: name)
-            reason = .localBranch
+            return (.branch(name: name), .localBranch)
         default:
-            guard let (slug, hosted) = hosted else { return nil }
-            guard await matchesGitHub(slug, entry) else { return nil }
-            target = hosted
-            reason = .githubRemote
+            guard let (slug, target) = hosted, await matchesGitHub(slug, entry) else { return nil }
+            return (target, .githubRemote)
         }
-        return .init(
-            workspaceID: entry.workspaceID, workspaceTitle: entry.workspaceTitle, repoPath: entry.repoPath,
-            repoDisplayName: entry.displayName, target: target, matchReason: reason)
     }
 
     private static func target(_ hint: TeleportTargetHint, _ repo: GitHubRepository) -> TeleportTarget {

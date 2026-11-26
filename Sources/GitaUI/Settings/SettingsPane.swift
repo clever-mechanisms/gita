@@ -7,8 +7,8 @@ enum SettingsAnchor: Hashable {
 
 /// Settings ▸ sidebar panes. Raw values are stored in `Preference.settingsPane`.
 enum SettingsPane: String, CaseIterable {
-    case general, appearance, history, git, customActions, externalTools, integrations, agents, shortcuts, notifications,
-        menuBar, about
+    case general, appearance, history, git, customActions, externalTools, integrations, agents, shortcuts,
+        notifications, menuBar, about
 
     var title: String {
         switch self {

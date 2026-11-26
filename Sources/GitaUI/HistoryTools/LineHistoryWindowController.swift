@@ -3,12 +3,12 @@ import GitaCore
 
 /// Native macOS window displaying commit-by-commit evolution of a selected line range (`git log -L`).
 @MainActor
-public final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
+final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("lineHistory.row")
     private static let cellID = NSUserInterfaceItemIdentifier("lineHistory.cell")
 
-    public let presenter: LineHistoryPresenter
-    public var onJumpToCommit: ((String) -> Void)?
+    let presenter: LineHistoryPresenter
+    var onJumpToCommit: ((String) -> Void)?
 
     private let repositoryRoot: URL?
     private let pathLabel = Deck.label("", font: Theme.bodyEmphasis, color: Theme.text)
@@ -23,11 +23,11 @@ public final class LineHistoryWindowController: NSWindowController, NSWindowDele
     private var listPane: HistoryToolTablePane?
     private var detailPane: HistoryToolDetailPane?
 
-    public convenience init(service: GitService, range: LineRangeSpec, repositoryRoot: URL? = nil) {
+    convenience init(service: GitService, range: LineRangeSpec, repositoryRoot: URL? = nil) {
         self.init(presenter: LineHistoryPresenter(service: service, range: range), repositoryRoot: repositoryRoot)
     }
 
-    public init(presenter: LineHistoryPresenter, repositoryRoot: URL? = nil) {
+    init(presenter: LineHistoryPresenter, repositoryRoot: URL? = nil) {
         self.repositoryRoot = repositoryRoot
         self.presenter = presenter
         self.refreshButton = PartsButton.quiet(String(localized: "Refresh"), symbol: "arrow.clockwise") {}
@@ -42,14 +42,14 @@ public final class LineHistoryWindowController: NSWindowController, NSWindowDele
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     /// Shows the window and loads the line history timeline on demand.
-    public func show(range: LineRangeSpec? = nil) {
+    func show(range: LineRangeSpec? = nil) {
         let win = prepareWindow()
-        win.makeKeyAndOrderFront(nil)
+        AuxiliaryWindowActivation.show(win)
         presenter.reload(range: range)
     }
 
     @discardableResult
-    public func prepareWindow() -> NSWindow {
+    func prepareWindow() -> NSWindow {
         if let window { return window }
         let win = makeWindow()
         self.window = win
@@ -57,8 +57,9 @@ public final class LineHistoryWindowController: NSWindowController, NSWindowDele
         return win
     }
 
-    public func windowWillClose(_: Notification) {
+    func windowWillClose(_: Notification) {
         presenter.cancel()
+        AuxiliaryWindowActivation.closing(window)
     }
 
     private func configureTimelineActions() {

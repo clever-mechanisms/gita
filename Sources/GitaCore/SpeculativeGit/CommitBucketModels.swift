@@ -16,6 +16,34 @@ public struct BucketHunkItem: Identifiable, Sendable, Hashable {
     public let oldLineStart: Int?
     public let oldLineEnd: Int?
     public let kind: BucketItemKind
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+            && lhs.path == rhs.path
+            && lhs.hunkIndex == rhs.hunkIndex
+            && lhs.header == rhs.header
+            && lhs.summary == rhs.summary
+            && lhs.patch == rhs.patch
+            && lhs.addedLines == rhs.addedLines
+            && lhs.removedLines == rhs.removedLines
+            && lhs.oldLineStart == rhs.oldLineStart
+            && lhs.oldLineEnd == rhs.oldLineEnd
+            && lhs.kind == rhs.kind
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(path)
+        hasher.combine(hunkIndex)
+        hasher.combine(header)
+        hasher.combine(summary)
+        hasher.combine(patch)
+        hasher.combine(addedLines)
+        hasher.combine(removedLines)
+        hasher.combine(oldLineStart)
+        hasher.combine(oldLineEnd)
+        hasher.combine(kind)
+    }
 }
 
 public struct CommitBucket: Identifiable, Sendable, Equatable {
@@ -69,6 +97,10 @@ public struct CreatedBucketCommit: Sendable, Equatable {
     public let bucketID: UUID
     public let commitID: String
     public let title: String
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.bucketID == rhs.bucketID && lhs.commitID == rhs.commitID && lhs.title == rhs.title
+    }
 }
 
 public struct CommitBucketExecutionResult: Sendable, Equatable {
@@ -76,6 +108,13 @@ public struct CommitBucketExecutionResult: Sendable, Equatable {
     public let previousHeadID: String?
     public let newHeadID: String
     public let branchRef: String?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.createdCommits == rhs.createdCommits
+            && lhs.previousHeadID == rhs.previousHeadID
+            && lhs.newHeadID == rhs.newHeadID
+            && lhs.branchRef == rhs.branchRef
+    }
 }
 
 public enum CommitBucketState: Sendable, Equatable {

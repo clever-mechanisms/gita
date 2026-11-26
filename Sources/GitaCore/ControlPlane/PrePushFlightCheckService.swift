@@ -10,6 +10,15 @@ public actor PrePushFlightCheckService {
     private struct Key: Hashable {
         let root: String
         let sha: String
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.root == rhs.root && lhs.sha == rhs.sha
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(root)
+            hasher.combine(sha)
+        }
     }
     private struct Run {
         let id: UUID
@@ -28,8 +37,6 @@ public actor PrePushFlightCheckService {
         runs[root.standardizedFileURL.resolvingSymlinksInPath().path]?.task.cancel()
     }
 
-    public func cancel() { for run in runs.values { run.task.cancel() } }
-
     @discardableResult
     public func run(
         gitService git: GitService, command: FlightCheckCommand, force: Bool = false,
@@ -37,7 +44,7 @@ public actor PrePushFlightCheckService {
     ) async -> Completion {
         let root = git.root.standardizedFileURL.resolvingSymlinksInPath().path
         let previous = runs[root]
-        previous?.task.cancel()
+        cancel(for: git.root)
         let id = UUID()
         let task = Task {
             _ = await previous?.task.value
@@ -65,7 +72,7 @@ public actor PrePushFlightCheckService {
             let sha = GitOutput.withoutTerminalLF(try await git.execute(["rev-parse", "--verify", "HEAD"]).text)
             guard GitParsers.isObjectID(sha) else { throw GitError.invalidReference }
             let key = Key(root: root, sha: sha)
-            if !force, let hit = cache[key], hit.command == command {
+            if !force, let hit = cachedResult(for: git.root, commitSHA: sha), hit.command == command {
                 touch(key)
                 return Completion(state: hit.succeeded ? .passed(hit) : .failed(hit), cached: true)
             }

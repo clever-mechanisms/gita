@@ -20,7 +20,7 @@ import Testing
         let entries = pairs.map { path, url in
             HeavyFolderEntry(
                 relativePath: path, url: url, category: .javascript, status: .reclaimable,
-                allocatedBytes: 1, logicalBytes: 1, fileCount: 1)
+                allocatedBytes: 1, fileCount: 1)
         }
         let result = try await StorageCleaner().clean(entries, in: root, mode: .permanentDelete)
         #expect(result.failures.map(\.error) == [.protectedPath, .protectedPath, .outsideCheckout, .symlinkNotAllowed])

@@ -34,8 +34,18 @@ extension GitService {
         try await mutate(["stash", "push", "--include-untracked", "-m", message.isEmpty ? "Gita" : message])
     }
 
-    public func applyStash(ref: String) async throws {
+    public func applyStash(ref: String, expectedCommitID: String? = nil) async throws {
         guard GitInput.isStashReference(ref) else { throw GitError.invalidReference }
-        try await mutate(["stash", "apply", "--index", ref])
+        try await mutate { service in
+            if let expectedCommitID {
+                guard GitParsers.isObjectID(expectedCommitID) else { throw GitError.invalidReference }
+                let resolved = try await service.execute(
+                    ["rev-parse", "--verify", "--quiet", "--end-of-options", ref + "^{commit}"], allowFailure: true)
+                guard resolved.exitCode == 0, GitOutput.withoutTerminalLF(resolved.text) == expectedCommitID else {
+                    throw GitError.staleReference
+                }
+            }
+            _ = try await service.execute(["stash", "apply", "--index", ref], mutation: true)
+        }
     }
 }

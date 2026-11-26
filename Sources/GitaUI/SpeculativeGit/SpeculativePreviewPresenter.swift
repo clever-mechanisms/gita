@@ -1,7 +1,7 @@
 import Foundation
 import GitaCore
 
-public enum SpeculativePreviewContent: Sendable, Equatable {
+enum SpeculativePreviewContent: Sendable, Equatable {
     case rebase(RebaseSimulationResult)
     case pairwiseMerge(PairwiseMergePrediction)
     case preFlight(PreFlightPrediction)
@@ -74,14 +74,14 @@ extension RebaseStepOutcome {
     }
 }
 
-@MainActor public final class SpeculativePreviewPresenter {
-    public typealias Simulation = @Sendable () async throws -> SpeculativePreviewContent
-    public private(set) var state = SpeculationState<SpeculativePreviewContent>.idle
-    public private(set) var filePreview = SpeculationState<ConflictPreview>.idle
-    public private(set) var selectedStep: Int?
-    public private(set) var selectedFile: String?
-    public private(set) var showsLoadingIndicator = false
-    public var onChange: (() -> Void)?
+@MainActor final class SpeculativePreviewPresenter {
+    typealias Simulation = @Sendable () async throws -> SpeculativePreviewContent
+    private(set) var state = SpeculationState<SpeculativePreviewContent>.idle
+    private(set) var filePreview = SpeculationState<ConflictPreview>.idle
+    private(set) var selectedStep: Int?
+    private(set) var selectedFile: String?
+    private(set) var showsLoadingIndicator = false
+    var onChange: (() -> Void)?
     private let simulation = LatestTask()
     private let preview = LatestTask()
     private let indicator = LatestTask()
@@ -90,7 +90,7 @@ extension RebaseStepOutcome {
 
     private let waitForDebounce: @MainActor (Duration) async throws -> Void
 
-    public convenience init(service: SpeculativeGitService) {
+    convenience init(service: SpeculativeGitService) {
         self.init(service: service) { try await Task.sleep(for: $0) }
     }
 
@@ -99,12 +99,12 @@ extension RebaseStepOutcome {
         self.waitForDebounce = waitForDebounce
     }
 
-    public func simulate(_ request: @escaping Simulation, debounce: Duration = .zero) {
+    func simulate(_ request: @escaping Simulation, debounce: Duration = .zero) {
         self.request = request
         run(request, debounce: debounce)
     }
 
-    public func refresh() {
+    func refresh() {
         guard let request else { return }
         run(request, debounce: .zero)
     }
@@ -132,7 +132,7 @@ extension RebaseStepOutcome {
         }
     }
 
-    public func select(step index: Int, file path: String? = nil) {
+    func select(step index: Int, file path: String? = nil) {
         resetPreview()
         guard case .loaded(let content) = state, content.steps.indices.contains(index) else {
             onChange?()
@@ -187,7 +187,7 @@ extension RebaseStepOutcome {
         selectedFile = nil
     }
 
-    public func cancel() {
+    func cancel() {
         simulation.cancel()
         resetPreview()
         state = .idle

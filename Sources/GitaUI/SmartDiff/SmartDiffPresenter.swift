@@ -2,19 +2,19 @@ import Foundation
 import GitaCore
 
 @MainActor
-public final class SmartDiffPresenter {
-    public private(set) var state = SmartDiffState.idle { didSet { onChange?(state) } }
-    public private(set) var options: SmartDiffOptions
-    public var onChange: ((SmartDiffState) -> Void)?
+final class SmartDiffPresenter {
+    private(set) var state = SmartDiffState.idle { didSet { onChange?(state) } }
+    private(set) var options: SmartDiffOptions
+    var onChange: ((SmartDiffState) -> Void)?
     private var expanded: Set<Int> = []
     private var source: SmartDiffSource?
     private var task: Task<Void, Never>?
     private var retryAction: (() -> Void)?
 
-    public init(options: SmartDiffOptions = SmartDiffOptions()) { self.options = options }
+    init(options: SmartDiffOptions = SmartDiffOptions()) { self.options = options }
 
     @discardableResult
-    public func load(
+    func load(
         diffText: String, oldText: String? = nil, newText: String? = nil, filePath: String
     ) -> Task<Void, Never> {
         load(diffText: diffText, oldText: oldText, newText: newText, filePath: filePath, relatedDocuments: [:])
@@ -22,7 +22,7 @@ public final class SmartDiffPresenter {
 
     /// Supply the other files of the same change to enable cross-file move links.
     @discardableResult
-    public func load(
+    func load(
         diffText: String, oldText: String? = nil, newText: String? = nil, filePath: String,
         relatedDocuments: [String: DiffDocument]
     ) -> Task<Void, Never> {
@@ -61,28 +61,28 @@ public final class SmartDiffPresenter {
         return delivery
     }
 
-    public func fail(_ message: String, retry: @escaping () -> Void) {
+    func fail(_ message: String, retry: @escaping () -> Void) {
         task?.cancel()
         source = nil
         retryAction = retry
         state = .failed(message)
     }
 
-    public func retry() { retryAction?() }
-    public func toggleNoiseFilter() {
+    func retry() { retryAction?() }
+    func toggleNoiseFilter() {
         options.hideNoise.toggle()
         expanded.removeAll()
         rebuild()
     }
-    public func toggleMoveDetection() {
+    func toggleMoveDetection() {
         options.detectMoves.toggle()
         rebuild()
     }
-    public func toggleStructuredMode() {
+    func toggleStructuredMode() {
         options.preferStructured.toggle()
         rebuild()
     }
-    public func toggleNoiseRun(hunkIndices: [Int]) {
+    func toggleNoiseRun(hunkIndices: [Int]) {
         let indices = Set(hunkIndices)
         if indices.isSubset(of: expanded) { expanded.subtract(indices) } else { expanded.formUnion(indices) }
         rebuild()
@@ -98,7 +98,7 @@ public final class SmartDiffPresenter {
         rebuild()
     }
 
-    public func jumpTarget(forMoveID id: String, fromLineIndex index: Int) -> (filePath: String, lineIndex: Int)? {
+    func jumpTarget(forMoveID id: String, fromLineIndex index: Int) -> (filePath: String, lineIndex: Int)? {
         guard case .loaded(let snapshot) = state,
             let match = snapshot.moves.matches.first(where: { $0.id == id })
         else { return nil }

@@ -117,6 +117,8 @@ public struct ExternalToolLauncher: Sendable {
         let updated = try Data(contentsOf: URL(fileURLWithPath: stagedPath))
         guard updated != initial else { return .unchanged }
         try Self.validateMergeDestination(request.mergedOutputURL, worktreeRoot: request.worktreeRoot)
+        let current = try Data(contentsOf: request.mergedOutputURL)
+        guard current == initial else { throw ExternalToolError.invalidOutput }
         try updated.write(to: request.mergedOutputURL, options: .atomic)
         return .resolved
     }

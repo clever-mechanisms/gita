@@ -181,18 +181,9 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
         lockCol.width = 175
         lockCol.minWidth = 115
         for column in [pathCol, stateCol, lockCol] { table.addTableColumn(column) }
-        table.style = .fullWidth
-        table.rowHeight = 40
-        table.intercellSpacing = NSSize(width: 8, height: 2)
-        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        table.backgroundColor = Theme.window
-        table.dataSource = self
-        table.delegate = self
-        table.allowsEmptySelection = true
-        table.setAccessibilityLabel(String(localized: "Git LFS files"))
-        let menu = NSMenu()
-        menu.delegate = self
-        table.menu = menu
+        EcosystemTabChrome.configureTable(
+            table, dataSource: self, delegate: self, menuDelegate: self,
+            accessibilityLabel: String(localized: "Git LFS files"))
     }
 
     private func layoutContent() {
@@ -204,21 +195,9 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
             view.widthAnchor.constraint(equalTo: headerStack.widthAnchor, constant: -28).isActive = true
         }
         Deck.pin(patternsStack, in: patternsContainer, insets: NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8))
-        let divider = Deck.separator()
-        let scroll = Style.scroll(table)
-        let stack = Deck.vstack([headerStack, divider, statusBanner, scroll], spacing: 0)
-        Deck.pin(stack, in: self)
-        for view in [headerStack, divider, scroll] as [NSView] {
-            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        }
-        statusBanner.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -28).isActive = true
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(emptyLabel)
-        NSLayoutConstraint.activate([
-            emptyLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
-            emptyLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
-        ])
+        EcosystemTabChrome.layout(
+            in: self, header: headerStack, statusBanner: statusBanner, table: table, emptyLabel: emptyLabel,
+            emptyWidth: 440)
     }
 
     private func syncSelection() {
@@ -352,6 +331,7 @@ extension LFSTabView {
                 ? String(localized: "Locked · You")
                 : String(localized: "Locked · \(lock.owner)")
             pill.configure(title: title, tint: lock.isOwnedByCurrentUser ? Theme.working : Theme.needsInputText)
+            pill.toolTip = lock.lockedAt
             pill.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(pill)
             NSLayoutConstraint.activate([

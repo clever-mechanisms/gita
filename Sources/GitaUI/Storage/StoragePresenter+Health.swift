@@ -60,7 +60,10 @@ extension StoragePresenter {
     private func gcCard(_ stats: GitMaintenanceInfo, hasActiveAgent: Bool, enabled: Bool) -> StorageHealthCardModel {
         let loose = stats.looseObjects
         let packed = stats.packedObjects
-        var detail = String(localized: "\(loose) loose objects · \(packed) packed objects · \(stats.packs) packs")
+        let totalBytes = UInt64(max(0, stats.looseKiB + stats.packedKiB)) * 1_024
+        let size = formatBytes(totalBytes)
+        var detail = String(
+            localized: "\(loose) loose objects · \(packed) packed objects · \(stats.packs) packs (\(size))")
         if hasActiveAgent {
             detail += " " + String(localized: "Active agent detected; immediate pruning is deferred.")
         }

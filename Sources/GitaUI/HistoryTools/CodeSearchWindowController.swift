@@ -3,12 +3,12 @@ import GitaCore
 
 /// Native macOS utility window for Git Pickaxe code search (`git log -S` literal and `-G` regex).
 @MainActor
-public final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
+final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("codeSearch.row")
     private static let cellID = NSUserInterfaceItemIdentifier("codeSearch.cell")
 
-    public let presenter: CodeSearchPresenter
-    public var onJumpToCommit: ((String) -> Void)?
+    let presenter: CodeSearchPresenter
+    var onJumpToCommit: ((String) -> Void)?
 
     private let repositoryRoot: URL?
     private let repositoryName: String
@@ -28,13 +28,13 @@ public final class CodeSearchWindowController: NSWindowController, NSWindowDeleg
     private var listPane: HistoryToolTablePane?
     private var detailPane: HistoryToolDetailPane?
 
-    public convenience init(service: GitService, repositoryRoot: URL? = nil, repositoryName: String? = nil) {
+    convenience init(service: GitService, repositoryRoot: URL? = nil, repositoryName: String? = nil) {
         let name = repositoryName ?? repositoryRoot?.lastPathComponent ?? String(localized: "Repository")
         self.init(
             presenter: CodeSearchPresenter(service: service), repositoryName: name, repositoryRoot: repositoryRoot)
     }
 
-    public init(presenter: CodeSearchPresenter, repositoryName: String, repositoryRoot: URL? = nil) {
+    init(presenter: CodeSearchPresenter, repositoryName: String, repositoryRoot: URL? = nil) {
         self.repositoryRoot = repositoryRoot
         self.repositoryName = repositoryName
         self.presenter = presenter
@@ -57,9 +57,9 @@ public final class CodeSearchWindowController: NSWindowController, NSWindowDeleg
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     /// Shows the Code Search window, optionally prefilling an initial query or path filter.
-    public func show(initialPattern: String? = nil, pathFilter: String? = nil) {
+    func show(initialPattern: String? = nil, pathFilter: String? = nil) {
         let win = prepareWindow()
-        win.makeKeyAndOrderFront(nil)
+        AuxiliaryWindowActivation.show(win)
         if let initialPattern {
             queryField.stringValue = initialPattern
             presenter.setPattern(initialPattern)
@@ -75,7 +75,7 @@ public final class CodeSearchWindowController: NSWindowController, NSWindowDeleg
     }
 
     @discardableResult
-    public func prepareWindow() -> NSWindow {
+    func prepareWindow() -> NSWindow {
         if let window { return window }
         let win = makeWindow()
         self.window = win
@@ -83,8 +83,9 @@ public final class CodeSearchWindowController: NSWindowController, NSWindowDeleg
         return win
     }
 
-    public func windowWillClose(_: Notification) {
+    func windowWillClose(_: Notification) {
         presenter.cancel()
+        AuxiliaryWindowActivation.closing(window)
     }
 
     private func configureSearchActions() {
@@ -274,7 +275,7 @@ public final class CodeSearchWindowController: NSWindowController, NSWindowDeleg
         presenter.setIgnoreCase(ignoreCaseButton.state == .on)
     }
 
-    public func controlTextDidChange(_: Notification) {
+    func controlTextDidChange(_: Notification) {
         presenter.setPattern(queryField.stringValue)
         presenter.setPathFilter(pathField.stringValue)
     }

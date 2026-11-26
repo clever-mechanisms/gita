@@ -40,6 +40,14 @@ public struct BisectSession: Sendable, Equatable {
         self.estimatedSteps = estimatedSteps
         self.identity = identity
     }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.startBranch == rhs.startBranch && lhs.currentCommitID == rhs.currentCommitID
+            && lhs.currentSubject == rhs.currentSubject && lhs.badTerm == rhs.badTerm && lhs.goodTerm == rhs.goodTerm
+            && lhs.badCommitID == rhs.badCommitID && lhs.goodCommitIDs == rhs.goodCommitIDs
+            && lhs.skippedCommitIDs == rhs.skippedCommitIDs && lhs.remainingCommits == rhs.remainingCommits
+            && lhs.estimatedSteps == rhs.estimatedSteps && lhs.identity == rhs.identity
+    }
 }
 
 /// The culprit commit identified when `git bisect` narrows down to a single commit.
@@ -78,13 +86,13 @@ public enum BisectState: Sendable, Equatable {
 }
 
 /// Domain errors for visual `git bisect`.
-public enum BisectError: Error, LocalizedError, Sendable, Equatable {
+enum BisectError: Error, LocalizedError, Sendable, Equatable {
     case notActive
     case alreadyActive
     case sameCommit
     case onlySkippedRemaining(String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .notActive:
             String(localized: "No bisect session is currently running.")

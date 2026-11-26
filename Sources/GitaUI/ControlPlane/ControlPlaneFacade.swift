@@ -2,39 +2,19 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class ControlPlaneFacade {
-    public static let shared = ControlPlaneFacade()
+final class ControlPlaneFacade {
+    static let shared = ControlPlaneFacade()
     private let service = PrePushFlightCheckService()
     private let settings: FlightCheckSettingsStore
     private let presenters = NSHashTable<FlightCheckPresenter>.weakObjects()
     private var sheets: [ObjectIdentifier: ControlPlaneSheet] = [:]
     private var commandCenter: WorkspaceCommandCenterWindowController?
 
-    public init(defaults: UserDefaults = .standard) { settings = FlightCheckSettingsStore(defaults: defaults) }
-
-    func makeCIFixSheet(
-        target: CIFixTarget, gitService: GitService, accountStore: GitHubAccountStore,
-        parentWindow: NSWindow?
-    ) -> CIFixSheetController {
-        var resolved = target
-        if target.account == .active {
-            resolved.account = accountStore.use(for: "github:" + target.repositoryNameWithOwner.lowercased())
-        }
-        let sheet = CIFixSheetController(presenter: CIFixPresenter(target: resolved, git: gitService))
-        if let parentWindow { present(sheet, on: parentWindow) }
-        return sheet
-    }
-
-    public func makeCIFixSheet(
-        target: CIFixTarget, gitService: GitService, parentWindow: NSWindow? = nil
-    ) -> NSWindowController {
-        makeCIFixSheet(
-            target: target, gitService: gitService, accountStore: GitHubAccountStore(), parentWindow: parentWindow)
-    }
+    init(defaults: UserDefaults = .standard) { settings = FlightCheckSettingsStore(defaults: defaults) }
 
     // Keep the run, job and step invocation available directly to the workflow details view.
     // swiftlint:disable:next function_parameter_count
-    @discardableResult public func presentCIFixSheet(
+    @discardableResult func presentCIFixSheet(
         from run: WorkflowRunDetail, job: WorkflowJob? = nil,
         step: WorkflowStep? = nil, root: URL, repository: String, account: GitHubAccountUse,
         on window: NSWindow?
@@ -49,7 +29,7 @@ public final class ControlPlaneFacade {
         return sheet
     }
 
-    public func makeFlightCheckPill(
+    func makeFlightCheckPill(
         for root: URL, gitService: GitService,
         onPresentSheet: (@MainActor () -> Void)? = nil
     ) -> FlightCheckPillView {
@@ -63,20 +43,13 @@ public final class ControlPlaneFacade {
         }
     }
 
-    @discardableResult public func presentFlightCheckSheet(
+    @discardableResult func presentFlightCheckSheet(
         for root: URL, gitService: GitService,
         on window: NSWindow?
     ) -> NSWindowController {
         let sheet = FlightCheckSheetController(presenter: flightPresenter(root, git: gitService))
         present(sheet, on: window)
         return sheet
-    }
-
-    public func cachedFlightCheckState(for root: URL, commitSHA: String) async -> FlightCheckState {
-        guard let command = settings.command(for: root) else { return .unconfigured }
-        guard let result = await service.cachedResult(for: root, commitSHA: commitSHA), result.command == command
-        else { return .idle(lastResult: nil) }
-        return result.succeeded ? .passed(result) : .failed(result)
     }
 
     private func flightPresenter(_ root: URL, git: GitService) -> FlightCheckPresenter {
@@ -94,7 +67,7 @@ public final class ControlPlaneFacade {
         sheet.present(on: parent)
     }
 
-    @discardableResult public func showWorkspaceCommandCenter(
+    @discardableResult func showWorkspaceCommandCenter(
         workspaceTitle: String, repositories: [WorkspaceRepository],
         providerReports: [URL: [ProviderReport]], onOpenRepository: @escaping @MainActor (URL) -> Void
     ) -> NSWindowController {

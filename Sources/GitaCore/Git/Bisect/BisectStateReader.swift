@@ -1,23 +1,23 @@
 import Foundation
 
 /// Reads `.git/BISECT_START`, `BISECT_LOG`, `BISECT_TERMS`, and `refs/bisect/*` metadata from a `.git` directory.
-public enum BisectStateReader {
+enum BisectStateReader {
     /// Raw bisect metadata read from `.git`.
-    public struct RawSnapshot: Sendable, Equatable {
-        public let startBranch: String
-        public let badTerm: String
-        public let goodTerm: String
-        public let badCommitID: String?
-        public let goodCommitIDs: Set<String>
-        public let skippedCommitIDs: Set<String>
-        public let culpritCommitID: String?
-        public let culpritSubject: String?
-        public let identity: String
+    struct RawSnapshot: Sendable, Equatable {
+        let startBranch: String
+        let badTerm: String
+        let goodTerm: String
+        let badCommitID: String?
+        let goodCommitIDs: Set<String>
+        let skippedCommitIDs: Set<String>
+        let culpritCommitID: String?
+        let culpritSubject: String?
+        let identity: String
     }
 
     /// Reads bisect metadata from `gitDirectory`. Optional `bisectRefs` (from `git for-each-ref refs/bisect/`)
     /// merges with loose files in `.git/refs/bisect/` so packed refs are also observed.
-    public static func read(
+    static func read(
         gitDirectory: URL,
         head: String?,
         bisectRefs: [String: String] = [:]
@@ -59,7 +59,7 @@ public enum BisectStateReader {
     }
 
     /// Parses `.git/BISECT_TERMS` (line 1 = bad/new term, line 2 = good/old term); defaults to `("bad", "good")`.
-    public static func parseTerms(from data: Data?) -> (bad: String, good: String) {
+    static func parseTerms(from data: Data?) -> (bad: String, good: String) {
         guard let data else { return ("bad", "good") }
         let lines = GitOutput.lines(String(decoding: data, as: UTF8.self))
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -69,13 +69,13 @@ public enum BisectStateReader {
     }
 
     /// Estimates the remaining bisect steps for `remainingCommits` untested commits (matching Git's log2 estimate).
-    public static func estimatedSteps(forRemaining remainingCommits: Int) -> Int {
+    static func estimatedSteps(forRemaining remainingCommits: Int) -> Int {
         guard remainingCommits > 1 else { return max(0, remainingCommits) }
         return Int(ceil(log2(Double(remainingCommits))))
     }
 
     /// Parses Git's `# first <badTerm> commit: [<sha>] <subject>` line from `BISECT_LOG`.
-    public static func parseCulprit(
+    static func parseCulprit(
         from logLines: [String], badTerm: String = "bad"
     ) -> (commitID: String, subject: String)? {
         let prefix = "# first \(badTerm) commit: ["
@@ -93,7 +93,7 @@ public enum BisectStateReader {
     }
 
     /// Parses a culprit SHA from `git bisect` stdout (`<sha> is the first <badTerm> commit`).
-    public static func parseCulpritFromOutput(_ text: String, badTerm: String = "bad") -> String? {
+    static func parseCulpritFromOutput(_ text: String, badTerm: String = "bad") -> String? {
         let suffix = " is the first \(badTerm) commit"
         for line in GitOutput.lines(text) {
             guard line.hasSuffix(suffix) else { continue }

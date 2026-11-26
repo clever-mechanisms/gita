@@ -4,15 +4,15 @@ import GitaCore
 /// Native macOS utility window for browsing Git reflog entries, inspecting orphaned commits,
 /// viewing per-file commit diffs, and safely recovering via Create Branch or Reviewed Reset.
 @MainActor
-public final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
+final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
     private static let refreshIdentifier = NSToolbarItem.Identifier("reflog.refresh")
     private static let filterIdentifier = NSToolbarItem.Identifier("reflog.filter")
     private static let searchIdentifier = NSToolbarItem.Identifier("reflog.search")
     private static let rowID = NSUserInterfaceItemIdentifier("reflog.table.row")
 
-    public let presenter: ReflogPresenter
-    public var onJumpToCommit: ((String) -> Void)?
-    public var onRepositoryMutated: (() -> Void)?
+    let presenter: ReflogPresenter
+    var onJumpToCommit: ((String) -> Void)?
+    var onRepositoryMutated: (() -> Void)?
 
     private let service: GitService
     private let repositoryRoot: URL?
@@ -31,7 +31,7 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
     private var detailPane: HistoryToolDetailPane?
     private var activeResetSheet: ResetReviewController?
 
-    public init(service: GitService, repositoryRoot: URL? = nil, repositoryName: String? = nil) {
+    init(service: GitService, repositoryRoot: URL? = nil, repositoryName: String? = nil) {
         self.service = service
         self.repositoryRoot = repositoryRoot
         self.repositoryName = repositoryName ?? repositoryRoot?.lastPathComponent ?? String(localized: "Repository")
@@ -55,15 +55,15 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     /// Shows the Reflog Browser window and loads fresh reflog entries on demand.
-    public func show(ref: String = "HEAD") {
+    func show(ref: String = "HEAD") {
         let win = prepareWindow()
-        win.makeKeyAndOrderFront(nil)
+        AuxiliaryWindowActivation.show(win)
         presenter.reload(ref: ref)
     }
 
     /// Builds the window hierarchy without ordering on screen (useful for tests).
     @discardableResult
-    public func prepareWindow() -> NSWindow {
+    func prepareWindow() -> NSWindow {
         if let window { return window }
         let win = makeWindow()
         self.window = win
@@ -71,8 +71,11 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
         return win
     }
 
-    public func windowWillClose(_: Notification) {
+    func windowWillClose(_: Notification) {
+        activeResetSheet?.close()
+        activeResetSheet = nil
         presenter.cancelAll()
+        AuxiliaryWindowActivation.closing(window)
     }
 
     private func bindActions() {
@@ -209,13 +212,7 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
     private func updateDetailPane() {
         guard let detailPane else { return }
         guard let entry = presenter.selectedEntry else {
-            detailTitle.stringValue = String(localized: "Select a reflog entry")
-            detailSubtitle.stringValue = String(localized: "Inspect any prior HEAD state or recover dropped commits.")
-            orphanBanner.isHidden = true
-            detailPane.fileBar.apply(paths: [], selected: nil)
-            for button in [createBranchButton, resetButton, jumpButton] { button.isEnabled = false }
-            detailPane.diffView.update(
-                "", loading: false, emptyMessage: String(localized: "Select an entry to preview its diff"))
+            renderEmptyDetail(in: detailPane)
             return
         }
         detailTitle.stringValue = entry.subject.isEmpty ? entry.actionSummary : entry.subject
@@ -226,22 +223,35 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
         resetButton.isEnabled = true
         jumpButton.isEnabled = onJumpToCommit != nil && !entry.isOrphaned
         detailPane.fileBar.apply(paths: presenter.diffState.files, selected: presenter.diffState.selectedPath)
+        renderDetailDiff(in: detailPane)
+    }
 
+    private func renderEmptyDetail(in detailPane: HistoryToolDetailPane) {
+        detailTitle.stringValue = String(localized: "Select a reflog entry")
+        detailSubtitle.stringValue = String(localized: "Inspect any prior HEAD state or recover dropped commits.")
+        orphanBanner.isHidden = true
+        detailPane.fileBar.apply(paths: [], selected: nil)
+        for button in [createBranchButton, resetButton, jumpButton] { button.isEnabled = false }
+        detailPane.diffView.update(
+            "", loading: false, emptyMessage: String(localized: "Select an entry to preview its diff"))
+    }
+
+    private func renderDetailDiff(in detailPane: HistoryToolDetailPane) {
         switch presenter.diffState {
-        case .idle:
-            detailPane.diffView.update("", loading: false, emptyMessage: String(localized: "No diff available"))
-        case .loading, .loadingFile:
-            detailPane.diffView.update("", loading: true, emptyMessage: String(localized: "Loading file diff…"))
         case .loaded(_, _, let path, let diff):
             detailPane.diffView.update(
-                diff,
-                loading: false,
-                emptyMessage: String(localized: "Commit has no textual diff"),
-                path: path
-            )
+                diff, loading: false, emptyMessage: String(localized: "Commit has no textual diff"), path: path)
         case .failed(_, _, _, let message):
             detailPane.diffView.update("", loading: false, emptyMessage: message)
+        case .idle, .loading, .loadingFile:
+            renderPendingDetailDiff(in: detailPane)
         }
+    }
+
+    private func renderPendingDetailDiff(in detailPane: HistoryToolDetailPane) {
+        let loading = presenter.diffState != .idle
+        let message = loading ? String(localized: "Loading file diff…") : String(localized: "No diff available")
+        detailPane.diffView.update("", loading: loading, emptyMessage: message)
     }
 
     @objc private func refreshTriggered() { presenter.reload() }
@@ -256,7 +266,7 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
         presenter.setSearchQuery(searchField.stringValue)
     }
 
-    public func controlTextDidChange(_: Notification) {
+    func controlTextDidChange(_: Notification) {
         presenter.setSearchQuery(searchField.stringValue)
     }
 
@@ -278,17 +288,24 @@ public final class ReflogWindowController: NSWindowController, NSWindowDelegate,
         alert.beginSheetModal(for: window) { [weak self] response in
             MainActor.assumeIsolated {
                 guard let self, response == .alertFirstButtonReturn else { return }
-                let branchName = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !branchName.isEmpty else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    do {
-                        try await self.presenter.createBranch(named: branchName, at: entry)
-                    } catch {
-                        if let win = self.window { _ = await NSAlert(error: error).beginSheetModal(for: win) }
-                    }
-                }
+                self.createRecoveryBranch(named: field.stringValue, at: entry)
             }
+        }
+    }
+
+    private func createRecoveryBranch(named rawName: String, at entry: ReflogEntry) {
+        let branchName = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !branchName.isEmpty else { return }
+        Task { @MainActor [weak self] in
+            await self?.runCreateRecoveryBranch(named: branchName, at: entry)
+        }
+    }
+
+    private func runCreateRecoveryBranch(named branchName: String, at entry: ReflogEntry) async {
+        do {
+            try await presenter.createBranch(named: branchName, at: entry)
+        } catch {
+            if let win = window { _ = await NSAlert(error: error).beginSheetModal(for: win) }
         }
     }
 

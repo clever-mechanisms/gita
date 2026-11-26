@@ -126,4 +126,11 @@ extension GitService {
         let limit = min(maxBytes ?? Self.fileDataLimit, Self.fileDataLimit)
         return try await execute(["cat-file", "blob", sha + ":" + path], outputLimit: limit).stdout
     }
+
+    /// The file's exact staged bytes from index stage 0 (`:0:<path>`).
+    public func indexFileData(path: String, maxBytes: Int? = nil) async throws -> Data {
+        try GitInput.validatePath(path)
+        let limit = min(maxBytes ?? Self.fileDataLimit, Self.fileDataLimit)
+        return try await execute(["cat-file", "blob", ":0:" + path], outputLimit: limit).stdout
+    }
 }

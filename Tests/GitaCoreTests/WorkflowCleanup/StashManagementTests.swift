@@ -106,6 +106,12 @@ import Testing
         let firstID = try await repo.oid("stash@{0}")
         try repo.write("file.txt", "second stash\n")
         try await repo.service.createStash(.init(message: "second"))
+        let snapshot = try await repo.service.snapshot()
+        #expect(snapshot.stashes.count == 2)
+        #expect(snapshot.stashes.last?.commitID == firstID)
+        await #expect(throws: GitError.self) {
+            try await repo.service.applyStash(ref: "stash@{0}", expectedCommitID: firstID)
+        }
         await #expect(throws: GitError.self) {
             _ = try await repo.service.popStash(ref: "stash@{0}", expectedCommitID: firstID)
         }

@@ -3,12 +3,12 @@ import Combine
 import GitaCore
 
 @MainActor
-public final class NarrativeOrderModeControl: NSView {
-    public var onChange: ((FileOrderMode) -> Void)?
+final class NarrativeOrderModeControl: NSView {
+    var onChange: ((FileOrderMode) -> Void)?
     private var buttons: [FileOrderMode: PartsButton] = [:]
-    public private(set) var mode: FileOrderMode = .narrative
+    private(set) var mode: FileOrderMode = .narrative
 
-    public override init(frame: NSRect) {
+    override init(frame: NSRect) {
         super.init(frame: frame)
         let stack = Deck.hstack([], spacing: 4)
         for option in FileOrderMode.allCases {
@@ -33,8 +33,9 @@ public final class NarrativeOrderModeControl: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Use init(frame:)") }
 
-    public func setMode(_ mode: FileOrderMode) {
+    func setMode(_ mode: FileOrderMode) {
         self.mode = mode
+        setAccessibilityValue(self.mode.rawValue)
         for (option, button) in buttons { SmartDiffControls.select(button, option == mode) }
     }
 
@@ -43,7 +44,7 @@ public final class NarrativeOrderModeControl: NSView {
         onChange?(option)
     }
 
-    public override func keyDown(with event: NSEvent) {
+    override func keyDown(with event: NSEvent) {
         guard
             let next = SmartDiffControls.nextSegment(
                 for: event, options: FileOrderMode.allCases,
@@ -58,17 +59,17 @@ public final class NarrativeOrderModeControl: NSView {
 }
 
 @MainActor
-public final class NarrativeOrderHeaderView: NSView {
-    public var onToggle: (() -> Void)?
+final class NarrativeOrderHeaderView: NSView {
+    var onToggle: (() -> Void)?
     private let group: NarrativeFileGroup
     private let presenter: NarrativeOrderPresenter
     private var observation: AnyCancellable?
     private let chevron = NSImageView()
     private let automatic = Deck.caption(String(localized: "Auto-collapsed"))
-    public override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 28) }
-    public override var acceptsFirstResponder: Bool { true }
+    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 28) }
+    override var acceptsFirstResponder: Bool { true }
 
-    public init(group: NarrativeFileGroup, presenter: NarrativeOrderPresenter, onToggle: (() -> Void)? = nil) {
+    init(group: NarrativeFileGroup, presenter: NarrativeOrderPresenter, onToggle: (() -> Void)? = nil) {
         self.group = group
         self.presenter = presenter
         self.onToggle = onToggle
@@ -123,12 +124,12 @@ public final class NarrativeOrderHeaderView: NSView {
         onToggle?()
     }
 
-    public override func draw(_: NSRect) { SmartDiffControls.bar(self, color: Deck.groupHeaderFill) }
-    public override func hitTest(_ point: NSPoint) -> NSView? { super.hitTest(point) == nil ? nil : self }
-    public override func mouseDown(with _: NSEvent) {
+    override func draw(_: NSRect) { SmartDiffControls.bar(self, color: Deck.groupHeaderFill) }
+    override func hitTest(_ point: NSPoint) -> NSView? { super.hitTest(point) == nil ? nil : self }
+    override func mouseDown(with _: NSEvent) {
         toggle()
     }
-    public override func keyDown(with event: NSEvent) {
+    override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case KeyPress.leftArrow:
             if !presenter.isCollapsed(group.layer) { toggle() }
@@ -138,10 +139,10 @@ public final class NarrativeOrderHeaderView: NSView {
             if KeyPress.isActivation(event) { toggle() } else { super.keyDown(with: event) }
         }
     }
-    public override func accessibilityPerformPress() -> Bool {
+    override func accessibilityPerformPress() -> Bool {
         toggle()
         return true
     }
-    public override func drawFocusRingMask() { bounds.fill() }
-    public override var focusRingMaskBounds: NSRect { bounds }
+    override func drawFocusRingMask() { bounds.fill() }
+    override var focusRingMaskBounds: NSRect { bounds }
 }

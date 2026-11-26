@@ -2,13 +2,13 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class TeleportBannerView: NSView {
+final class TeleportBannerView: NSView {
     private let presenter: TeleportPresenter
     private let surface = TeleportControls.surface(Theme.inset, radius: 8)
     private let stack = Deck.vstack([], spacing: 4)
     private var delay: Task<Void, Never>?
 
-    public init(presenter: TeleportPresenter) {
+    init(presenter: TeleportPresenter) {
         self.presenter = presenter
         super.init(frame: .zero)
         setAccessibilityElement(true)
@@ -109,7 +109,7 @@ public final class TeleportBannerView: NSView {
 
     @objc private func choose(_ sender: NSMenuItem) { presenter.selectAmbiguous(at: sender.tag) }
 
-    public override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard let focused = window?.firstResponder as? NSView, focused.isDescendant(of: superview ?? self) else {
             return super.performKeyEquivalent(with: event)
         }

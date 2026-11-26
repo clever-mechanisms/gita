@@ -44,20 +44,37 @@ public struct NarrativeFileEntry: Identifiable, Sendable, Equatable, Hashable {
     public let deletions: Int
     public let fileChange: FileChange?
 
-    public init(path: String, originalPath: String? = nil, additions: Int = 0, deletions: Int = 0) {
+    public init(
+        path: String, originalPath: String? = nil, additions: Int = 0, deletions: Int = 0,
+        fileChange: FileChange? = nil
+    ) {
         self.path = path
         self.originalPath = originalPath
         self.additions = max(0, additions)
         self.deletions = max(0, deletions)
-        fileChange = nil
+        self.fileChange = fileChange
     }
 
     public init(_ fileChange: FileChange, additions: Int = 0, deletions: Int = 0) {
-        self.fileChange = fileChange
-        path = fileChange.path
-        originalPath = fileChange.originalPath
-        self.additions = max(0, additions)
-        self.deletions = max(0, deletions)
+        self.init(
+            path: fileChange.path, originalPath: fileChange.originalPath,
+            additions: additions, deletions: deletions, fileChange: fileChange)
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.path == rhs.path
+            && lhs.originalPath == rhs.originalPath
+            && lhs.additions == rhs.additions
+            && lhs.deletions == rhs.deletions
+            && lhs.fileChange == rhs.fileChange
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(originalPath)
+        hasher.combine(additions)
+        hasher.combine(deletions)
+        hasher.combine(fileChange)
     }
 }
 

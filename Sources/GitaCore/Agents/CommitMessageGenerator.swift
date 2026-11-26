@@ -24,21 +24,6 @@ public enum CommitMessageDraftState: Sendable, Equatable {
     case ready(GeneratedCommitMessage)
     case failed(String)
 
-    public var isGenerating: Bool {
-        if case .generating = self { return true }
-        return false
-    }
-
-    public var activeAgent: ReviewAgent? {
-        if case .generating(let agent) = self { return agent }
-        return nil
-    }
-
-    public var generatedMessage: GeneratedCommitMessage? {
-        if case .ready(let message) = self { return message }
-        return nil
-    }
-
     public var errorMessage: String? {
         if case .failed(let message) = self { return message }
         return nil

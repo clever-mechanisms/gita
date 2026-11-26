@@ -2,11 +2,11 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class VisualPreviewDiffWindowController: NSWindowController, NSWindowDelegate {
-    public let comparison: VisualPreviewDiffView
-    public var onClose: (() -> Void)?
+final class VisualPreviewDiffWindowController: NSWindowController, NSWindowDelegate {
+    let comparison: VisualPreviewDiffView
+    var onClose: (() -> Void)?
 
-    public init(pair: VisualPreviewPair, initialRoute: String = "/") {
+    init(pair: VisualPreviewPair, initialRoute: String = "/") {
         let presenter = VisualPreviewDiffPresenter(
             productionURL: pair.productionURL, previewURL: pair.previewURL,
             initialRoute: initialRoute)
@@ -28,17 +28,17 @@ public final class VisualPreviewDiffWindowController: NSWindowController, NSWind
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Use init(pair:initialRoute:)") }
 
-    public override func showWindow(_: Any?) {
+    override func showWindow(_: Any?) {
         guard let window else { return }
         AuxiliaryWindowActivation.show(window)
         if comparison.presenter.state == .idle { comparison.reload() }
     }
 
-    public func windowWillClose(_: Notification) {
+    func windowWillClose(_: Notification) {
         comparison.tearDown()
         AuxiliaryWindowActivation.closing(window)
         onClose?()
     }
 
-    public override func cancelOperation(_: Any?) { close() }
+    override func cancelOperation(_: Any?) { close() }
 }

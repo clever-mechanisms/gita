@@ -89,6 +89,16 @@ public struct FlightCheckResult: Sendable, Equatable {
     public let duration: TimeInterval
     public let output: FlightCheckOutput
     public let finishedAt: Date
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.commitSHA == rhs.commitSHA
+            && lhs.command == rhs.command
+            && lhs.succeeded == rhs.succeeded
+            && lhs.exitCode == rhs.exitCode
+            && lhs.duration == rhs.duration
+            && lhs.output == rhs.output
+            && lhs.finishedAt == rhs.finishedAt
+    }
 }
 
 public enum FlightCheckState: Sendable, Equatable {

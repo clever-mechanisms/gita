@@ -65,7 +65,6 @@ final class SignatureBadgeView: NSView {
     }
 
     let button = PartsButton([], background: .tinted, accessibility: String(localized: "Commit signature"))
-    private(set) var signatureInfo: CommitSignatureInfo?
     private(set) var presentation = SignatureBadgePresentation(nil)
     private var popover: NSPopover?
     var copyToPasteboard: (String) -> Void = { Deck.copy($0) }
@@ -86,7 +85,6 @@ final class SignatureBadgeView: NSView {
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
     func update(_ info: CommitSignatureInfo?) {
-        signatureInfo = info
         presentation = SignatureBadgePresentation(info)
         closePopover()
         applyPresentation()

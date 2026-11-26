@@ -48,6 +48,13 @@ public struct ArenaBuildCheckResult: Sendable, Equatable {
     public let outputExcerpt: String
     public let durationSeconds: TimeInterval
     public var succeeded: Bool { exitCode == 0 }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.command == rhs.command
+            && lhs.exitCode == rhs.exitCode
+            && lhs.outputExcerpt == rhs.outputExcerpt
+            && lhs.durationSeconds == rhs.durationSeconds
+    }
 }
 
 public struct ArenaContestantOutcome: Sendable, Equatable {
@@ -61,6 +68,19 @@ public struct ArenaContestantOutcome: Sendable, Equatable {
     public let changedFiles: [String]
     public let durationSeconds: TimeInterval
     public let checkResult: ArenaBuildCheckResult?
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.contestant == rhs.contestant
+            && lhs.config == rhs.config
+            && lhs.worktreePath == rhs.worktreePath
+            && lhs.branchName == rhs.branchName
+            && lhs.agentExitCode == rhs.agentExitCode
+            && lhs.agentOutputExcerpt == rhs.agentOutputExcerpt
+            && lhs.diffFromBase == rhs.diffFromBase
+            && lhs.changedFiles == rhs.changedFiles
+            && lhs.durationSeconds == rhs.durationSeconds
+            && lhs.checkResult == rhs.checkResult
+    }
 }
 
 public enum ArenaContestantStatus: Sendable, Equatable {
@@ -75,6 +95,16 @@ public struct ArenaComparison: Sendable, Equatable {
     public let alpha, beta: ArenaContestantOutcome
     public let alphaVsBetaDiff: String
     public let isDiffTruncated: Bool
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.runID == rhs.runID
+            && lhs.prompt == rhs.prompt
+            && lhs.baseCommit == rhs.baseCommit
+            && lhs.alpha == rhs.alpha
+            && lhs.beta == rhs.beta
+            && lhs.alphaVsBetaDiff == rhs.alphaVsBetaDiff
+            && lhs.isDiffTruncated == rhs.isDiffTruncated
+    }
 }
 
 public enum AgentArenaState: Sendable, Equatable {

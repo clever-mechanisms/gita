@@ -147,6 +147,18 @@ struct MainMenu {
         let repo = menu(String(localized: "Repository"))
         item(.refresh, #selector(AppDelegate.refresh), in: repo, symbol: "arrow.clockwise")
         repo.addItem(.separator())
+        remoteItems(in: repo)
+        repo.addItem(.separator())
+        toolsItems(in: repo)
+        repo.addItem(.separator())
+        branchItems(in: repo)
+        repo.addItem(.separator())
+        operationItems(in: repo)
+        repo.addItem(.separator())
+        selectionItems(in: repo)
+    }
+
+    private func remoteItems(in repo: NSMenu) {
         item(.fetch, #selector(RepositoryCommandResponder.fetch), in: repo, symbol: "arrow.down.to.line")
         item(.pull, #selector(RepositoryCommandResponder.pull), in: repo, symbol: "arrow.down")
         item(.push, #selector(RepositoryCommandResponder.push), in: repo, symbol: "arrow.up")
@@ -157,30 +169,23 @@ struct MainMenu {
             String(localized: "Manage Remotes…"), #selector(RepositoryCommandResponder.manageRemotes), in: repo,
             symbol: "externaldrive.connected.to.line.below")
         item(
+            String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
+            in: repo, symbol: "globe")
+    }
+
+    private func toolsItems(in repo: NSMenu) {
+        item(
             String(localized: "Submodules & Git LFS…"), #selector(AppDelegate.showSubmodulesAndLFS), in: repo,
             symbol: "shippingbox")
-        item(
-            String(localized: "Branch & Worktree Cleanup…"), #selector(AppDelegate.showCleanupAssistant), in: repo,
-            symbol: "wand.and.stars")
         item(
             String(localized: "Stacked Branches…"), #selector(AppDelegate.showStackedBranches), in: repo,
             symbol: "square.stack.3d.up")
         item(
-            String(localized: "Reflog / Undo Browser…"), #selector(AppDelegate.showReflogBrowser), in: repo,
-            symbol: "clock.arrow.circlepath")
-        item(
-            String(localized: "Code Search (Pickaxe)…"), #selector(AppDelegate.showCodeSearch), key: "f", in: repo,
-            symbol: "doc.text.magnifyingglass"
-        ).keyEquivalentModifierMask = [.command, .option]
-        item(
-            String(localized: "Start Git Bisect…"), #selector(AppDelegate.startBisect), in: repo,
-            symbol: "scope")
+            String(localized: "Branch & Worktree Cleanup…"), #selector(AppDelegate.showCleanupAssistant), in: repo,
+            symbol: "wand.and.stars")
         item(
             String(localized: "Storage & Health…"), #selector(AppDelegate.showStorageInspector), in: repo,
             symbol: "internaldrive")
-        item(
-            String(localized: "Repository Health & Maintenance…"), #selector(AppDelegate.showRepositoryHealth),
-            in: repo, symbol: "wrench.and.screwdriver")
         item(
             String(localized: "Run Pre-Push Flight Check…"), #selector(AppDelegate.showFlightCheck),
             in: repo, symbol: "checkmark.shield")
@@ -189,30 +194,32 @@ struct MainMenu {
             in: repo, symbol: "square.stack.3d.forward.dottedline")
         repo.addItem(.separator())
         item(
+            String(localized: "Reflog…"), #selector(AppDelegate.showReflogBrowser), in: repo,
+            symbol: "clock.arrow.circlepath")
+        item(
+            String(localized: "Search Code History…"), #selector(AppDelegate.showCodeSearch), in: repo,
+            symbol: "doc.text.magnifyingglass")
+        item(
+            String(localized: "Start Git Bisect…"), #selector(AppDelegate.startBisect), in: repo,
+            symbol: "scope")
+        repo.addItem(.separator())
+        item(
             String(localized: "Export Patch…"), #selector(AppDelegate.exportPatch), in: repo,
             symbol: "square.and.arrow.up")
         item(
             String(localized: "Apply Patch…"), #selector(AppDelegate.applyPatch), in: repo,
             symbol: "doc.badge.plus")
-        item(
-            String(localized: "Copy Permalink"), #selector(AppDelegate.copyPermalink), in: repo,
-            symbol: "link")
+    }
+
+    private func selectionItems(in repo: NSMenu) {
+        item(String(localized: "Copy Selected Commit SHA"), #selector(RepositoryCommandResponder.copyCommit), in: repo)
+        item(String(localized: "Copy Permalink"), #selector(AppDelegate.copyPermalink), in: repo, symbol: "link")
         item(
             String(localized: "Open in External Diff Tool"), #selector(AppDelegate.openInExternalDiffTool), in: repo,
             symbol: "arrow.left.arrow.right.square")
         item(
             String(localized: "Open in External Merge Tool"), #selector(AppDelegate.openInExternalMergeTool), in: repo,
             symbol: "arrow.triangle.merge")
-        item(
-            String(localized: "Open Remote in Browser"), #selector(RepositoryCommandResponder.openRemote), key: "G",
-            in: repo,
-            symbol: "globe")
-        repo.addItem(.separator())
-        branchItems(in: repo)
-        repo.addItem(.separator())
-        operationItems(in: repo)
-        repo.addItem(.separator())
-        item(String(localized: "Copy Selected Commit SHA"), #selector(RepositoryCommandResponder.copyCommit), in: repo)
         item(
             String(localized: "Reveal in Finder"), #selector(RepositoryCommandResponder.reveal), in: repo,
             symbol: "folder")

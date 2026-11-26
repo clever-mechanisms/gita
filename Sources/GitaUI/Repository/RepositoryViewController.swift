@@ -105,14 +105,13 @@ final class RepositoryViewController: NSViewController {
     /// Commit ID navigated to from `BlameView.onSelectCommit` so `showDiff` keeps blame open across that selection.
     var blameNavigatedCommitID: String?
     var commitSignatureCache: [String: CommitSignatureInfo] = [:]
-    var commitSignatureTask: Task<Void, Never>?
-    var commitSigningTask: Task<Void, Never>?
+    var commitEcosystemRootPath: String?
+    var commitSignatureFetch = CommitSignatureFetch.idle
+    var commitSigningLoad = CommitSigningLoad.idle
     var commitSigningRowState = CommitSigningRowState()
-    var loadedSigningRepoPath: String?
     var appliedTemplateRepoPaths: Set<String> = []
-    var bisectPresenter: BisectPresenter?
-    var bisectServiceID: ObjectIdentifier?
-    var activeCustomActionController: CustomActionOutputWindowController?
+    var bisectAttachment: BisectAttachment?
+    var activeCustomActionControllers: [ObjectIdentifier: CustomActionOutputWindowController] = [:]
     var activePatchApplySheet: PatchApplySheetController?
     lazy var detailLoader: ProviderDetailLoader = { [weak self] item, force in
         guard let self, let target = item.target, let root = self.model.snapshot?.root, let service = self.model.service
@@ -199,6 +198,7 @@ final class RepositoryViewController: NSViewController {
         mediaLoadTask = nil
         detachCommitEcosystem()
         detachBisect()
+        detachActionsTools()
         for token in notificationObservations { NotificationCenter.default.removeObserver(token) }
         notificationObservations = []
         if let workspaceObservation { WorkspaceMonitor.shared.removeObserver(workspaceObservation) }

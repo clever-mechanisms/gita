@@ -90,14 +90,6 @@ public actor CollisionRadarService {
         return changes
     }
 
-    public func conflictPreview(
-        repositoryRoot: URL, sourceRef: String, targetRef: String, path: String
-    ) async throws -> String? {
-        try await conflictPreviewContent(
-            repositoryRoot: repositoryRoot, sourceRef: sourceRef,
-            targetRef: targetRef, path: path)?.text
-    }
-
     public func conflictPreviewContent(
         repositoryRoot: URL, sourceRef: String, targetRef: String, path: String
     ) async throws -> CollisionPreviewContent? {

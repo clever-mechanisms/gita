@@ -13,7 +13,6 @@ final class CommitMessageAssistController {
         let isGenerating: Bool
         let toolTip: String
         let accessibilityLabel: String
-        let errorMessage: String?
     }
 
     typealias GeneratorClosure =
@@ -186,6 +185,7 @@ final class CommitMessageAssistController {
             .symbol(model.symbolName, color: accentColor, size: 11),
             .text(model.title, font: Theme.captionEmphasis, color: textColor),
         ]
+        button.isHidden = activeAgent == nil && !model.isGenerating
         button.isEnabled = model.isEnabled
         button.background = model.isGenerating ? .tinted : .hover
         button.tintFill = Theme.control
@@ -207,8 +207,7 @@ final class CommitMessageAssistController {
                 isEnabled: true,
                 isGenerating: true,
                 toolTip: label,
-                accessibilityLabel: label,
-                errorMessage: nil
+                accessibilityLabel: label
             )
         }
         let errorMessage = state.errorMessage
@@ -220,8 +219,7 @@ final class CommitMessageAssistController {
                 isEnabled: false,
                 isGenerating: false,
                 toolTip: errorMessage ?? tip,
-                accessibilityLabel: String(localized: "Generate commit message"),
-                errorMessage: errorMessage
+                accessibilityLabel: String(localized: "Generate commit message")
             )
         }
         guard hasStagedChanges else {
@@ -232,8 +230,7 @@ final class CommitMessageAssistController {
                 isEnabled: false,
                 isGenerating: false,
                 toolTip: errorMessage ?? tip,
-                accessibilityLabel: String(localized: "Generate commit message"),
-                errorMessage: errorMessage
+                accessibilityLabel: String(localized: "Generate commit message")
             )
         }
         let tip =
@@ -244,8 +241,7 @@ final class CommitMessageAssistController {
             isEnabled: true,
             isGenerating: false,
             toolTip: tip,
-            accessibilityLabel: String(localized: "Generate commit message with \(agent.displayName)"),
-            errorMessage: errorMessage
+            accessibilityLabel: String(localized: "Generate commit message with \(agent.displayName)")
         )
     }
 }

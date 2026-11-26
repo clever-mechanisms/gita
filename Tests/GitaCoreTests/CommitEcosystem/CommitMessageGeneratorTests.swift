@@ -7,18 +7,22 @@ import Testing
 struct CommitMessageGeneratorTests {
     @Test func draftStateLifecycleAccessors() {
         let idle = CommitMessageDraftState.idle
-        #expect(!idle.isGenerating)
-        #expect(idle.activeAgent == nil)
-        #expect(idle.generatedMessage == nil)
+        #expect(idle == .idle)
         #expect(idle.errorMessage == nil)
 
         let generating = CommitMessageDraftState.generating(agent: .claude)
-        #expect(generating.isGenerating)
-        #expect(generating.activeAgent == .claude)
+        guard case .generating(.claude) = generating else {
+            Issue.record("Expected generating state")
+            return
+        }
 
         let message = GeneratedCommitMessage(subject: "Add signing badge", body: "Displays GPG status.", agent: .claude)
         let ready = CommitMessageDraftState.ready(message)
-        #expect(ready.generatedMessage == message)
+        guard case .ready(let payload) = ready else {
+            Issue.record("Expected ready state")
+            return
+        }
+        #expect(payload == message)
         #expect(message.fullMessage == "Add signing badge\n\nDisplays GPG status.")
 
         let failed = CommitMessageDraftState.failed("CLI timed out")

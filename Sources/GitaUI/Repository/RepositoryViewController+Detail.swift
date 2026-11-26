@@ -40,6 +40,7 @@ extension RepositoryViewController {
         codePane.onDiffOptionsChanged = { [weak self] options in self?.model.setDiffOptions(options) }
         codePane.onOpenInEditor = { [weak self] line in self?.openInEditor(at: line) }
         codePane.diffView.onShowLineHistory = { [weak self] range in self?.openLineHistory(range: range) }
+        codePane.diffView.canCopyPermalink = { [weak self] in self?.canCopyDiffPermalink == true }
         codePane.diffView.onCopyPermalink = { [weak self] path, lines in
             self?.copyFilePermalink(path: path, revision: nil, lines: lines)
         }
@@ -311,7 +312,9 @@ extension RepositoryViewController {
 
     func applySelectedStash() {
         guard let stash = model.selectedStash else { return }
-        model.perform(String(localized: "Apply stash")) { try await $0.applyStash(ref: stash.ref) }
+        model.perform(String(localized: "Apply stash")) {
+            try await $0.applyStash(ref: stash.ref, expectedCommitID: stash.commitID)
+        }
     }
 
     func reviewConflicts() {

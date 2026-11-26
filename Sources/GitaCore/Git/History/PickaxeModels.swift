@@ -75,8 +75,8 @@ public enum CodeSearchState: Sendable, Equatable {
 }
 
 /// Parses lightweight `--name-only` pickaxe output into `PickaxeMatch` entries.
-public enum PickaxeParser {
-    public static func parseNameOnly(_ text: String) -> [PickaxeMatch] {
+enum PickaxeParser {
+    static func parseNameOnly(_ text: String) -> [PickaxeMatch] {
         let chunks = text.split(separator: LineHistoryParser.recordSeparator, omittingEmptySubsequences: true)
         var matches: [PickaxeMatch] = []
         matches.reserveCapacity(chunks.count)

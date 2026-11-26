@@ -2,7 +2,7 @@ import AppKit
 import GitaCore
 
 @MainActor
-public final class AgentControlFacade {
+final class AgentControlFacade {
     private let collisionRadar: CollisionRadarService
     private let flightRecorder: FlightRecorderService
     private let arena: AgentArenaService
@@ -15,9 +15,9 @@ public final class AgentControlFacade {
     private var flightWindows: [URL: AgentControlWindow] = [:]
     private var arenaWindows: [URL: AgentArenaWindowController] = [:]
     private var queues: [URL: AgentControlQueue] = [:]
-    public var onHookError: ((URL, String) -> Void)?
+    var onHookError: ((URL, String) -> Void)?
 
-    public init(
+    init(
         collisionRadar: CollisionRadarService = CollisionRadarService(),
         flightRecorder: FlightRecorderService = FlightRecorderService(),
         arena: AgentArenaService = AgentArenaService()
@@ -27,14 +27,14 @@ public final class AgentControlFacade {
         self.arena = arena
     }
 
-    public func makeCollisionRadarViewController(for repositoryRoot: URL) -> CollisionRadarViewController {
+    func makeCollisionRadarViewController(for repositoryRoot: URL) -> CollisionRadarViewController {
         let presenter = CollisionRadarPresenter(service: collisionRadar, repositoryRoot: canonical(repositoryRoot))
         let controller = CollisionRadarViewController(presenter: presenter)
         radars.add(controller)
         return controller
     }
 
-    public func presentCollisionRadar(for repositoryRoot: URL) {
+    func presentCollisionRadar(for repositoryRoot: URL) {
         let root = canonical(repositoryRoot)
         if radarWindows[root] == nil {
             let controller = makeCollisionRadarViewController(for: root)
@@ -45,14 +45,14 @@ public final class AgentControlFacade {
         radarWindows[root]?.present()
     }
 
-    public func makeFlightRecorderViewController(for repositoryRoot: URL) -> AgentFlightRecorderViewController {
+    func makeFlightRecorderViewController(for repositoryRoot: URL) -> AgentFlightRecorderViewController {
         let presenter = FlightRecorderPresenter(service: flightRecorder, repositoryRoot: canonical(repositoryRoot))
         let controller = AgentFlightRecorderViewController(presenter: presenter)
         recorders.add(controller)
         return controller
     }
 
-    public func presentFlightRecorder(for repositoryRoot: URL) {
+    func presentFlightRecorder(for repositoryRoot: URL) {
         let root = canonical(repositoryRoot)
         if flightWindows[root] == nil {
             let controller = makeFlightRecorderViewController(for: root)
@@ -69,7 +69,7 @@ public final class AgentControlFacade {
             minimum: NSSize(width: 680, height: 400))
     }
 
-    public func showArena(for repositoryRoot: URL, baseCommit: String = "HEAD") {
+    func showArena(for repositoryRoot: URL, baseCommit: String = "HEAD") {
         let root = canonical(repositoryRoot)
         let window =
             arenaWindows[root]
@@ -80,7 +80,7 @@ public final class AgentControlFacade {
         window.showWindow(nil)
     }
 
-    public func makeReviewedHunksPresenter(for repositoryRoot: URL) -> ReviewedHunksPresenter {
+    func makeReviewedHunksPresenter(for repositoryRoot: URL) -> ReviewedHunksPresenter {
         let root = canonical(repositoryRoot)
         let store = stores[root] ?? ReviewedHunksStore(storageURL: ReviewedHunksStore.defaultStorageURL(for: root))
         stores[root] = store
@@ -95,11 +95,11 @@ public final class AgentControlFacade {
         return presenter
     }
 
-    public func makeReviewedHunksBar(presenter: ReviewedHunksPresenter) -> ReviewedHunksBarView {
+    func makeReviewedHunksBar(presenter: ReviewedHunksPresenter) -> ReviewedHunksBarView {
         ReviewedHunksBarView(presenter: presenter)
     }
 
-    public func handleHookEvent(_ event: AgentHookEvent, repositoryRoot: URL) {
+    func handleHookEvent(_ event: AgentHookEvent, repositoryRoot: URL) {
         let root = canonical(repositoryRoot)
         let history = FlightHistory(service: flightRecorder, root: root)
         queue(for: root).append { [weak self, flightRecorder, resolver] in
@@ -125,20 +125,6 @@ public final class AgentControlFacade {
         }
     }
 
-    public func setFlightRecorderEnabled(_ enabled: Bool, for repositoryRoot: URL) {
-        let root = canonical(repositoryRoot)
-        queue(for: root).append { [weak self, flightRecorder] in
-            await flightRecorder.setEnabled(enabled, for: root)
-            if !Task.isCancelled { self?.refreshRecorders(for: root) }
-        }
-    }
-
-    public func isFlightRecorderEnabled(for repositoryRoot: URL) async -> Bool {
-        let root = canonical(repositoryRoot)
-        await queues[root]?.last?.value
-        return await flightRecorder.isEnabled(for: root)
-    }
-
     private func refreshRecorders(for root: URL) {
         for controller in recorders.allObjects
         where controller.presenter.history.root == root
@@ -157,7 +143,7 @@ public final class AgentControlFacade {
         return queue
     }
 
-    public var hasActiveRace: Bool {
+    var hasActiveRace: Bool {
         arenaWindows.values.contains { window in
             switch window.arena.presenter.state {
             case .racing, .cancelling: true
@@ -166,7 +152,7 @@ public final class AgentControlFacade {
         }
     }
 
-    public func cancelAll() {
+    func cancelAll() {
         radars.allObjects.forEach { $0.presenter.cancel() }
         recorders.allObjects.forEach { $0.presenter.cancel() }
         reviews.allObjects.forEach { $0.cancel() }

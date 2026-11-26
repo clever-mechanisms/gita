@@ -2,14 +2,14 @@ import AppKit
 import GitaCore
 
 /// Filter mode for the Reflog / Visual Undo Browser.
-public enum ReflogFilter: Equatable, Sendable {
+enum ReflogFilter: Equatable, Sendable {
     case all
     case orphaned
     case resets
     case rebases
     case commits
 
-    public var title: String {
+    var title: String {
         switch self {
         case .all: String(localized: "All")
         case .orphaned: String(localized: "Orphaned")
@@ -19,9 +19,9 @@ public enum ReflogFilter: Equatable, Sendable {
         }
     }
 
-    public static let ordered: [Self] = [.all, .orphaned, .resets, .rebases, .commits]
+    static let ordered: [Self] = [.all, .orphaned, .resets, .rebases, .commits]
 
-    public func matches(_ entry: ReflogEntry) -> Bool {
+    func matches(_ entry: ReflogEntry) -> Bool {
         switch self {
         case .all: true
         case .orphaned: entry.isOrphaned
@@ -33,43 +33,26 @@ public enum ReflogFilter: Equatable, Sendable {
 }
 
 /// Lifecycle state for loading a selected reflog entry's changed files and per-file diff preview.
-public enum ReflogDiffState: Equatable, Sendable {
+enum ReflogDiffState: Equatable, Sendable {
     case idle
     case loading(commitID: String)
     case loadingFile(commitID: String, files: [String], path: String)
     case loaded(commitID: String, files: [String], path: String?, diff: String)
     case failed(commitID: String, files: [String], path: String?, message: String)
 
-    public var isLoading: Bool {
-        switch self {
-        case .loading, .loadingFile: true
-        default: false
-        }
-    }
-
-    public var files: [String] {
+    var files: [String] {
         switch self {
         case .idle, .loading: []
         case .loadingFile(_, let files, _), .loaded(_, let files, _, _), .failed(_, let files, _, _): files
         }
     }
 
-    public var selectedPath: String? {
+    var selectedPath: String? {
         switch self {
         case .idle, .loading: nil
         case .loadingFile(_, _, let path): path
         case .loaded(_, _, let path, _), .failed(_, _, let path, _): path
         }
-    }
-
-    public var diffText: String {
-        if case .loaded(_, _, _, let diff) = self { return diff }
-        return ""
-    }
-
-    public var errorMessage: String? {
-        if case .failed(_, _, _, let message) = self { return message }
-        return nil
     }
 }
 
@@ -77,58 +60,53 @@ public enum ReflogDiffState: Equatable, Sendable {
 @MainActor
 struct ReflogActionBadge {
     let title: String
-    let symbol: String
     let accentColor: NSColor
 
     static func badge(for kind: ReflogActionKind) -> Self {
         switch kind {
         case .commit:
-            Self(title: String(localized: "Commit"), symbol: "circle.fill", accentColor: Theme.success)
+            Self(title: String(localized: "Commit"), accentColor: Theme.success)
         case .amend:
-            Self(title: String(localized: "Amend"), symbol: "pencil.circle.fill", accentColor: Theme.needsInputText)
+            Self(title: String(localized: "Amend"), accentColor: Theme.needsInputText)
         case .checkout:
-            Self(title: String(localized: "Checkout"), symbol: "arrow.triangle.branch", accentColor: Theme.working)
+            Self(title: String(localized: "Checkout"), accentColor: Theme.working)
         case .reset:
-            Self(
-                title: String(localized: "Reset"),
-                symbol: "arrow.uturn.backward.circle.fill",
-                accentColor: Theme.failure
-            )
+            Self(title: String(localized: "Reset"), accentColor: Theme.failure)
         case .rebase:
-            Self(title: String(localized: "Rebase"), symbol: "arrow.triangle.swap", accentColor: Theme.merged)
+            Self(title: String(localized: "Rebase"), accentColor: Theme.merged)
         case .merge:
-            Self(title: String(localized: "Merge"), symbol: "arrow.triangle.merge", accentColor: Theme.running)
+            Self(title: String(localized: "Merge"), accentColor: Theme.running)
         case .cherryPick:
-            Self(title: String(localized: "Cherry-pick"), symbol: "sparkles", accentColor: Theme.merged)
+            Self(title: String(localized: "Cherry-pick"), accentColor: Theme.merged)
         case .pull:
-            Self(title: String(localized: "Pull"), symbol: "arrow.down.circle", accentColor: Theme.running)
+            Self(title: String(localized: "Pull"), accentColor: Theme.running)
         case .branch:
-            Self(title: String(localized: "Branch"), symbol: "tuningfork", accentColor: Theme.working)
+            Self(title: String(localized: "Branch"), accentColor: Theme.working)
         case .stash:
-            Self(title: String(localized: "Stash"), symbol: "tray.and.arrow.down", accentColor: Theme.secondaryText)
+            Self(title: String(localized: "Stash"), accentColor: Theme.secondaryText)
         case .other:
-            Self(title: String(localized: "Action"), symbol: "clock.arrow.circlepath", accentColor: Theme.secondaryText)
+            Self(title: String(localized: "Action"), accentColor: Theme.secondaryText)
         }
     }
 }
 
 /// Coordinates reflog loading, filtering, per-file diff preview loading, and recovery actions without a window.
 @MainActor
-public final class ReflogPresenter {
-    public typealias ReflogLoader = @Sendable (String, Int) async throws -> [ReflogEntry]
-    public typealias FilesLoader = @Sendable (String) async throws -> [String]
-    public typealias FileDiffLoader = @Sendable (String, String?) async throws -> String
-    public typealias BranchCreator = @Sendable (String, String) async throws -> Void
+final class ReflogPresenter {
+    typealias ReflogLoader = @Sendable (String, Int) async throws -> [ReflogEntry]
+    typealias FilesLoader = @Sendable (String) async throws -> [String]
+    typealias FileDiffLoader = @Sendable (String, String?) async throws -> String
+    typealias BranchCreator = @Sendable (String, String) async throws -> Void
 
-    public private(set) var loadState: ReflogLoadState = .idle
-    public private(set) var diffState: ReflogDiffState = .idle
-    public private(set) var filter: ReflogFilter = .all
-    public private(set) var searchQuery = ""
-    public private(set) var selectedEntryID: String?
-    public private(set) var refName = "HEAD"
+    private(set) var loadState: ReflogLoadState = .idle
+    private(set) var diffState: ReflogDiffState = .idle
+    private(set) var filter: ReflogFilter = .all
+    private(set) var searchQuery = ""
+    private(set) var selectedEntryID: String?
+    private(set) var refName = "HEAD"
 
-    public var onChange: (() -> Void)?
-    public var onRepositoryMutated: (() -> Void)?
+    var onChange: (() -> Void)?
+    var onRepositoryMutated: (() -> Void)?
 
     private let loadReflog: ReflogLoader
     private let loadFiles: FilesLoader
@@ -137,16 +115,16 @@ public final class ReflogPresenter {
     private let listTask = LatestTask()
     private let diffTask = LatestTask()
 
-    public init(service: GitService) {
-        self.loadReflog = { ref, limit in try await service.reflog(ref: ref, limit: limit) }
-        self.loadFiles = { commitID in try await service.reflogChangedFiles(commitID: commitID).map(\.path) }
-        self.loadFileDiff = { commitID, path in try await service.reflogCommitDiff(commitID: commitID, path: path) }
-        self.createBranchAction = { name, commitID in
-            try await service.createBranchFromReflog(name: name, commitID: commitID)
-        }
+    convenience init(service: GitService) {
+        self.init(
+            loadReflog: { ref, limit in try await service.reflog(ref: ref, limit: limit) },
+            loadFiles: { commitID in try await service.reflogChangedFiles(commitID: commitID).map(\.path) },
+            loadFileDiff: { commitID, path in try await service.reflogCommitDiff(commitID: commitID, path: path) },
+            createBranch: { name, commitID in try await service.createBranchFromReflog(name: name, commitID: commitID) }
+        )
     }
 
-    public init(
+    init(
         loadReflog: @escaping ReflogLoader,
         loadFiles: @escaping FilesLoader,
         loadFileDiff: @escaping FileDiffLoader,
@@ -158,20 +136,20 @@ public final class ReflogPresenter {
         self.createBranchAction = createBranch
     }
 
-    public var visibleEntries: [ReflogEntry] {
+    var visibleEntries: [ReflogEntry] {
         Self.filteredEntries(from: loadState.entries, filter: filter, query: searchQuery)
     }
 
-    public var orphanedCount: Int {
+    var orphanedCount: Int {
         loadState.entries.filter(\.isOrphaned).count
     }
 
-    public var selectedEntry: ReflogEntry? {
+    var selectedEntry: ReflogEntry? {
         guard let selectedEntryID else { return nil }
         return visibleEntries.first { $0.id == selectedEntryID }
     }
 
-    public var statusSummary: String {
+    var statusSummary: String {
         switch loadState {
         case .idle:
             return ""
@@ -192,7 +170,7 @@ public final class ReflogPresenter {
         }
     }
 
-    public static func filteredEntries(
+    static func filteredEntries(
         from entries: [ReflogEntry], filter: ReflogFilter, query: String
     ) -> [ReflogEntry] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -207,11 +185,11 @@ public final class ReflogPresenter {
         }
     }
 
-    public func suggestedRecoveryBranchName(for entry: ReflogEntry) -> String {
+    func suggestedRecoveryBranchName(for entry: ReflogEntry) -> String {
         "recover-\(entry.shortID)"
     }
 
-    public func reload(ref: String? = nil, limit: Int = 200) {
+    func reload(ref: String? = nil, limit: Int = 200) {
         if let ref { refName = ref }
         let targetRef = refName
         loadState = .loading
@@ -234,41 +212,41 @@ public final class ReflogPresenter {
         )
     }
 
-    public func setFilter(_ next: ReflogFilter) {
+    func setFilter(_ next: ReflogFilter) {
         guard filter != next else { return }
         filter = next
         ensureValidSelection()
         onChange?()
     }
 
-    public func setSearchQuery(_ query: String) {
+    func setSearchQuery(_ query: String) {
         guard searchQuery != query else { return }
         searchQuery = query
         ensureValidSelection()
         onChange?()
     }
 
-    public func select(entryID: String?) {
+    func select(entryID: String?) {
         guard selectedEntryID != entryID else { return }
         selectedEntryID = entryID
         loadSelectedCommitFiles()
         onChange?()
     }
 
-    public func selectFile(_ path: String) {
+    func selectFile(_ path: String) {
         guard let commitID = selectedEntry?.commitID else { return }
         let files = diffState.files
         guard files.contains(path), diffState.selectedPath != path else { return }
         loadDiffForFile(commitID: commitID, files: files, path: path)
     }
 
-    public func createBranch(named name: String, at entry: ReflogEntry) async throws {
+    func createBranch(named name: String, at entry: ReflogEntry) async throws {
         try await createBranchAction(name, entry.commitID)
         onRepositoryMutated?()
         reload()
     }
 
-    public func cancelAll() {
+    func cancelAll() {
         listTask.cancel()
         diffTask.cancel()
     }
