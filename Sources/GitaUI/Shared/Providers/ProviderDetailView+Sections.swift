@@ -72,6 +72,13 @@ extension ProviderDetailView {
             ? Deck.label(ProviderDetailFacts.noJobsText(value), color: Theme.secondaryText)
             : Deck.vstack(jobs, spacing: 3)
         rows.append((String(localized: "Jobs"), jobsView))
+        let failedJob = value.jobs.items.first { $0.state == .failure }
+        if value.state == .failure || failedJob != nil {
+            let repository: String? =
+                if case .workflowRun(let repo, _, _) = item.target { repo } else { nil }
+            let fix = PartsButton.fixWorkflow(value, job: failedJob, repository: repository, from: self)
+            rows.append((String(localized: "Agent"), Deck.hstack([fix], spacing: 8)))
+        }
         content.addArrangedSubview(grid(rows))
     }
     private func jobView(_ job: WorkflowJob) -> NSView {

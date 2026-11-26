@@ -7,7 +7,8 @@ import GitaCore
 @MainActor
 final class MainToolbar {
     enum ID: String, CaseIterable {
-        case sidebar, fetch, pull, push, stash, repository, branch, openIn, agents, workspaces, open, worktree, refresh
+        case sidebar, fetch, pull, push, stash, repository, branch, flightCheck, openIn, agents, workspaces, open,
+            worktree, refresh
 
         /// The plain buttons: their label, symbol and the app action they send.
         var action: (label: String, symbol: String, selector: Selector)? {
@@ -19,7 +20,7 @@ final class MainToolbar {
             case .worktree:
                 (String(localized: "Worktree"), Deck.worktreeSymbol, #selector(RepositoryCommandResponder.newWorktree))
             case .refresh: (String(localized: "Refresh"), "arrow.clockwise", #selector(AppDelegate.refresh))
-            case .sidebar, .fetch, .pull, .push, .repository, .openIn, .agents, .workspaces: nil
+            case .sidebar, .fetch, .pull, .push, .repository, .flightCheck, .openIn, .agents, .workspaces: nil
             }
         }
     }
@@ -27,7 +28,7 @@ final class MainToolbar {
         .init(ID.sidebar.rawValue), .init(ID.fetch.rawValue), .init(ID.pull.rawValue), .init(ID.push.rawValue),
         .init(ID.stash.rawValue),
         .flexibleSpace, .init(ID.repository.rawValue), .flexibleSpace,
-        .init(ID.openIn.rawValue), .init(ID.agents.rawValue),
+        .init(ID.flightCheck.rawValue), .init(ID.openIn.rawValue), .init(ID.agents.rawValue),
     ]
     static let allowedItems: [NSToolbarItem.Identifier] =
         ID.allCases.map { .init($0.rawValue) } + [.flexibleSpace, .space]
@@ -47,6 +48,7 @@ final class MainToolbar {
     private weak var pullButton: ToolbarSyncButton?
     private weak var pushButton: ToolbarSyncButton?
     private weak var pill: RepositoryPill?
+    private weak var flightCheckSlot: FlightCheckToolbarSlot?
     private weak var agentsButton: PartsButton?
     private var observer: NSObjectProtocol?
     /// What the dynamic items showed last: they redraw only when it changes.
@@ -154,6 +156,11 @@ final class MainToolbar {
             }
             self.pill = pill
             return pill
+        case .flightCheck:
+            item.label = String(localized: "Flight Check")
+            let slot = FlightCheckToolbarSlot()
+            flightCheckSlot = slot
+            return slot
         case .openIn:
             item.label = String(localized: "Open in")
             let button = self.button(item.label, symbol: "arrow.up.forward.square") {}
@@ -253,7 +260,7 @@ final class MainToolbar {
             "\(sync.ahead)", "\(sync.behind)", "\(sync.movedBranchCount)", "\(sync.currentUpstreamMoved)",
             "\(model?.isMutating == true)", model?.status ?? "", "\(summary.working)", "\(summary.needsInput)",
             "\(paneShown)",
-            "\(fetchButton != nil)\(pullButton != nil)\(pushButton != nil)\(pill != nil)\(agentsButton != nil)",
+            "\(fetchButton != nil)\(pullButton != nil)\(pushButton != nil)\(pill != nil)\(flightCheckSlot != nil)\(agentsButton != nil)",
             activity.map { "\($0.kind)\($0.text)" } ?? "",
         ]
         let signature = parts.joined(separator: "|")
@@ -263,6 +270,7 @@ final class MainToolbar {
         if let pullButton { ToolbarSyncButtons.showPull(sync, on: pullButton) }
         if let pushButton { ToolbarSyncButtons.showPush(sync, on: pushButton) }
         if let pill { showRepository(activity, on: pill) }
+        flightCheckSlot?.update(root: snapshot?.root, gitService: model?.service)
         expireResult()
         if let agentsButton {
             ToolbarAgentsButton.show(

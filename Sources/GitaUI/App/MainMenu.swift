@@ -181,6 +181,9 @@ struct MainMenu {
         item(
             String(localized: "Repository Health & Maintenance…"), #selector(AppDelegate.showRepositoryHealth),
             in: repo, symbol: "wrench.and.screwdriver")
+        item(
+            String(localized: "Run Pre-Push Flight Check…"), #selector(AppDelegate.showFlightCheck),
+            in: repo, symbol: "checkmark.shield")
         repo.addItem(.separator())
         item(
             String(localized: "Export Patch…"), #selector(AppDelegate.exportPatch), in: repo,
@@ -283,6 +286,9 @@ struct MainMenu {
         window.addItem(.separator())
         item(String(localized: "Activity"), #selector(AppDelegate.showActivity), key: "a", in: window)
             .keyEquivalentModifierMask = [.command, .shift]
+        item(
+            String(localized: "Workspace Command Center"), #selector(AppDelegate.showWorkspaceCommandCenter),
+            in: window, symbol: "square.grid.2x2")
         window.addItem(.separator())
         window.addItem(
             NSMenuItem(

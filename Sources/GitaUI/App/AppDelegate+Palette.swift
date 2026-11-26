@@ -59,6 +59,12 @@ extension AppDelegate {
         #selector(openInExternalMergeTool): [
             "merge", "conflict", "external", "kaleidoscope", "vscode", "beyond compare", "filemerge",
         ],
+        #selector(showWorkspaceCommandCenter): [
+            "workspace", "command center", "control plane", "multi-repo", "lockstep", "timeline", "all repositories",
+        ],
+        #selector(showFlightCheck): [
+            "flight check", "pre-push", "checks", "tests", "preflight", "control plane",
+        ],
     ]
 
     /// View › Command Palette… (⌘K by default).
