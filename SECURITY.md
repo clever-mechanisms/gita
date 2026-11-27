@@ -7,7 +7,7 @@ releases. Update to the newest release from the GitHub Releases page before you 
 
 | Version | Security fixes |
 | --- | --- |
-| Latest release (currently 0.2.x) | Yes |
+| Latest release (currently 0.3.x) | Yes |
 | Earlier releases | No |
 
 ## Reporting a vulnerability
