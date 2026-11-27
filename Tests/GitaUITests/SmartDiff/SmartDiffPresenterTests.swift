@@ -160,10 +160,13 @@ struct SmartDiffPresenterTests {
         UITestSupport.bootstrap()
         let url = try #require(URL(string: "https://example.test"))
         let pair = VisualPreviewPair(productionURL: url, previewURL: url, title: "Comparison")
-        let controller = VisualPreviewDiffWindowController(pair: pair)
+        let controller = VisualPreviewDiffViewController(pair: pair)
         let view = controller.comparison
-        defer { view.tearDown() }
-        let window = try #require(controller.window)
+        let window = UITestSupport.host(controller, size: NSSize(width: 1_160, height: 760))
+        defer {
+            controller.tearDown()
+            window.close()
+        }
         view.presenter.beginLoading()
         window.layoutIfNeeded()
         let live = view.productionWebView
@@ -186,21 +189,18 @@ struct SmartDiffPresenterTests {
         #expect(clip.frame == live.frame && preview.alphaValue == 0.25)
     }
 
-    @Test func windowReuseAndTeardown() throws {
+    @Test func inlinePreviewControllerTeardownCleansWebViews() throws {
         UITestSupport.bootstrap()
-        let facade = SmartDiffFacade()
-        // Validation fails before WebKit receives a request. Exercise the actual window close/delegate path.
         let invalid = try #require(URL(string: "http://invalid.test"))
         let preview = try #require(URL(string: "https://preview.test"))
-        let first = facade.openVisualPreviewDiff(productionURL: invalid, previewURL: preview)
-        #expect(facade.openVisualPreviewDiff(productionURL: invalid, previewURL: preview) === first)
-        let web = first.comparison.previewWebView
+        let pair = VisualPreviewPair(productionURL: invalid, previewURL: preview, title: "Preview")
+        let controller = VisualPreviewDiffViewController(pair: pair)
+        let window = UITestSupport.host(controller, size: NSSize(width: 1_160, height: 760))
+        defer { window.close() }
+        let web = controller.comparison.previewWebView
         #expect(web.navigationDelegate != nil)
-        first.close()
+        controller.tearDown()
         #expect(web.navigationDelegate == nil && web.superview == nil)
         #expect(web.configuration.userContentController.userScripts.isEmpty)
-        let second = facade.openVisualPreviewDiff(productionURL: invalid, previewURL: preview)
-        #expect(second !== first)
-        second.close()
     }
 }

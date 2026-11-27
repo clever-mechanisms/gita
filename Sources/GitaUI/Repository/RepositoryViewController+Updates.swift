@@ -54,6 +54,7 @@ extension RepositoryViewController {
         showCommitField()
         commitEcosystemRepositoryChanged()
         syncBisectPresenter()
+        toolPagesRepositoryChanged()
         sheets.repositoryChanged(to: model.service)
         historyControls.search.stringValue = model.searchQuery
         unpushed.update(model.snapshot)
@@ -105,6 +106,7 @@ extension RepositoryViewController {
     }
 
     private func showPage(_ section: Section) {
+        let previousSection = lastPageSection
         lastPageSection = section
         let panes = SectionPanes(section)
         historyPane.isHidden = !panes.showsHistoryPane
@@ -112,6 +114,16 @@ extension RepositoryViewController {
         if section != .history { sidebarSelection = nil }
         commitFooter.isHidden = !panes.showsCommitFooter && !(section == .history && model.isReviewingWorkingChanges)
         if isShowingLocalChanges { refreshCommitSigningAndTemplateIfNeeded() }
+        if !section.isToolPage {
+            toolHost.returnSection = section
+            deactivateToolPage()
+            toolHost.container.isHidden = true
+            prWorkspace.isHidden = false
+        } else {
+            if !previousSection.isToolPage { toolHost.returnSection = previousSection }
+            prWorkspace.isHidden = true
+            toolHost.container.isHidden = false
+        }
         if panes.showsHistoryPane {
             updateHistoryScope()
             // A section switch changes no row content: reload the rows only when the zoom changed; the panes always
@@ -127,6 +139,9 @@ extension RepositoryViewController {
             rebuildSidebar()
             rebuildSelection()
             refreshStrip()
+        } else if section.isToolPage {
+            rebuildSidebar()
+            activateToolPage(for: section)
         } else {
             rebuildSidebar()
             providerPage.setZoom(percent: model.historyZoomPercent)

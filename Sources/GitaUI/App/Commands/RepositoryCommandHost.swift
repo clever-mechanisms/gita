@@ -25,6 +25,9 @@ protocol RepositoryCommandHost: AnyObject {
     func inspectStorage(at root: URL)
     func invalidateStorage(repositoryRoot root: URL)
     func cachedStorageSize(for root: URL) -> String?
+    func showWorkspaceStorage()
+    func storageWindowContext(repositoryRoot: URL?) -> StorageWindowContext
+    var agentControl: AgentControlFacade { get }
 }
 
 extension RepositoryCommandHost {
@@ -33,4 +36,9 @@ extension RepositoryCommandHost {
     func inspectStorage(at _: URL) {}
     func invalidateStorage(repositoryRoot _: URL) {}
     func cachedStorageSize(for _: URL) -> String? { nil }
+    func showWorkspaceStorage() {}
+    func storageWindowContext(repositoryRoot: URL?) -> StorageWindowContext {
+        StorageWindowContext(repositoryRoot: repositoryRoot)
+    }
+    var agentControl: AgentControlFacade { AgentControlFacade() }
 }

@@ -40,7 +40,7 @@ final class EcosystemStatusPillView: NSView {
     }
 }
 
-/// Submodules tab view: action toolbar, submodule table with status pills, empty/error states, and context menu.
+/// Submodules tab view: action toolbar, submodule table card with status pills, icon empty state, and context menu.
 @MainActor
 final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     private enum ColumnID {
@@ -51,8 +51,10 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
 
     private let presenter: SubmodulesLFSPresenter
     private let table = NSTableView()
-    private let emptyLabel = Deck.wrapping("", font: Theme.body, color: Theme.secondaryText)
+    private var tableSurface: EcosystemTabChrome.TableCardSurface?
     private let statusBanner = FillView(color: Theme.failure.withAlphaComponent(0.12))
+    private let statusBannerIcon = Deck.icon(
+        "exclamationmark.triangle.fill", size: 12.5, weight: .semibold, color: Theme.failure)
     private let statusBannerLabel = Deck.wrapping("", font: Theme.caption, color: Theme.failure)
     private let initAllButton: PartsButton
     private let syncAllButton: PartsButton
@@ -96,11 +98,16 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
         updateEmptyAndBanner(state: state)
     }
 
+    func applyTheme() {
+        tableSurface?.applyTheme()
+        statusBanner.color = Theme.failure.withAlphaComponent(0.12)
+        statusBanner.borderColor = Theme.failure.withAlphaComponent(0.32)
+        table.reloadData()
+    }
+
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        table.backgroundColor = Theme.window
-        statusBanner.color = Theme.failure.withAlphaComponent(0.12)
-        statusBanner.borderColor = Theme.failure.withAlphaComponent(0.35)
+        applyTheme()
     }
 
     func numberOfRows(in _: NSTableView) -> Int { items.count }
@@ -132,18 +139,18 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
         let submodule = items[targetRow]
         let isBusy = presenter.submoduleState.isBusy
         menu.addItem(makePrimarySubmoduleMenuItem(for: submodule, isBusy: isBusy))
-        let syncItem = MenuAction(String(localized: "Sync URL")) { [weak self] in
+        let syncItem = MenuAction(String(localized: "Sync URL"), symbol: "arrow.triangle.2.circlepath") { [weak self] in
             self?.presenter.syncSubmodules(path: submodule.path)
         }
         syncItem.isEnabled = !isBusy
         menu.addItem(syncItem)
         menu.addItem(.separator())
-        let openItem = MenuAction(String(localized: "Open in Tab")) { [weak self] in
+        let openItem = MenuAction(String(localized: "Open in Tab"), symbol: "macwindow.badge.plus") { [weak self] in
             self?.presenter.openSubmoduleInTab(submodule)
         }
         openItem.isEnabled = submodule.status != .uninitialized
         menu.addItem(openItem)
-        let revealItem = MenuAction(String(localized: "Reveal in Finder")) { [weak self] in
+        let revealItem = MenuAction(String(localized: "Reveal in Finder"), symbol: "folder") { [weak self] in
             self?.presenter.revealSubmoduleInFinder(submodule)
         }
         menu.addItem(revealItem)
@@ -155,7 +162,8 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
             isUninitialized
             ? String(localized: "Initialize Submodule")
             : String(localized: "Update Submodule")
-        let item = MenuAction(title) { [weak self] in
+        let symbol = isUninitialized ? "arrow.down.circle" : "arrow.triangle.2.circlepath"
+        let item = MenuAction(title, symbol: symbol) { [weak self] in
             if isUninitialized {
                 self?.presenter.initializeSubmodules(path: submodule.path)
             } else {
@@ -167,15 +175,16 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
     }
 
     private func configureControls() {
+        for button in [initAllButton, syncAllButton, openTabButton, revealButton] {
+            button.fixedHeight = 26
+        }
         initAllButton.setAccessibilityIdentifier("submodules.initAll")
         syncAllButton.setAccessibilityIdentifier("submodules.syncAll")
         openTabButton.setAccessibilityIdentifier("submodules.openInTab")
         revealButton.setAccessibilityIdentifier("submodules.revealInFinder")
-        statusBanner.cornerRadius = 6
-        statusBanner.borderColor = Theme.failure.withAlphaComponent(0.35)
-        statusBanner.isHidden = true
-        Deck.pin(statusBannerLabel, in: statusBanner, insets: NSEdgeInsets(top: 6, left: 10, bottom: 6, right: 10))
-        emptyLabel.alignment = .center
+        EcosystemTabChrome.configureBanner(
+            statusBanner, icon: statusBannerIcon, label: statusBannerLabel, tint: Theme.failure,
+            textColor: Theme.failure)
     }
 
     private func configureTable() {
@@ -202,9 +211,9 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
             [initAllButton, syncAllButton, Deck.spacer(), openTabButton, revealButton],
             spacing: 6
         )
-        actionsRow.edgeInsets = NSEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
-        EcosystemTabChrome.layout(
-            in: self, header: actionsRow, statusBanner: statusBanner, table: table, emptyLabel: emptyLabel,
+        actionsRow.edgeInsets = NSEdgeInsets(top: 12, left: 18, bottom: 2, right: 18)
+        tableSurface = EcosystemTabChrome.layout(
+            in: self, header: actionsRow, statusBanner: statusBanner, table: table, emptySymbol: "shippingbox",
             emptyWidth: 420)
     }
 
@@ -236,13 +245,12 @@ final class SubmodulesTabView: NSView, NSTableViewDataSource, NSTableViewDelegat
             statusBanner.isHidden = true
         }
         if state.isLoading {
-            emptyLabel.stringValue = String(localized: "Loading submodules…")
-            emptyLabel.isHidden = false
+            tableSurface?.showEmpty(String(localized: "Loading submodules…"), symbol: "shippingbox")
         } else if items.isEmpty {
-            emptyLabel.stringValue = String(localized: "No submodules configured in this repository.")
-            emptyLabel.isHidden = false
+            tableSurface?.showEmpty(
+                String(localized: "No submodules configured in this repository."), symbol: "shippingbox")
         } else {
-            emptyLabel.isHidden = true
+            tableSurface?.showEmpty("", symbol: "shippingbox")
         }
     }
 

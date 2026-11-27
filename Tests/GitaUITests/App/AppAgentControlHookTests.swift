@@ -12,7 +12,7 @@ struct AppAgentControlHookTests {
         func cancelAll() { cancellations += 1 }
     }
 
-    @Test func menuValidationAndPaletteSearchTermsFollowRepositoryAvailability() {
+    @Test func menuValidationAndPaletteSearchTermsFollowRepositoryAvailability() throws {
         UITestSupport.bootstrap()
         let shell = AppShellHarness()
         let app = shell.app
@@ -21,20 +21,21 @@ struct AppAgentControlHookTests {
             (#selector(AppDelegate.showAgentFlightRecorder), "rewind"),
             (#selector(AppDelegate.showAgentArena), "compare agents"),
         ]
-        let menu = NSMenu()
-        app.installAgentControlMenuItems(in: menu)
-        #expect(menu.items.map(\.action) == commands.map { $0.0 })
+        let mainMenu = MainMenu.build(target: app)
+        let agentsMenu = try #require(mainMenu.item(withTitle: String(localized: "Agents"))?.submenu)
+        let toolItems = agentsMenu.items.filter { $0.action != #selector(AppDelegate.showAgentsPane) }
+        #expect(toolItems.map(\.action) == commands.map { $0.0 })
         for (action, alias) in commands {
             #expect(AppDelegate.paletteAliases[action]?.contains(alias) == true)
         }
-        #expect(menu.items.allSatisfy { !app.validateMenuItem($0) })
+        #expect(toolItems.allSatisfy { !app.validateMenuItem($0) })
         let root = URL(filePath: "/tmp/agent-control-hooks")
         app.model.service = GitService(root: root)
-        #expect(menu.items.allSatisfy { !app.validateMenuItem($0) })
+        #expect(toolItems.allSatisfy { !app.validateMenuItem($0) })
         app.model.snapshot = RepositorySnapshot(
             root: root, branch: "main", head: nil, changes: [], commits: [], references: [], worktrees: [],
             stashes: [], remoteURL: nil, gitDirectory: root.appending(path: ".git"))
-        #expect(menu.items.allSatisfy { app.validateMenuItem($0) })
+        #expect(toolItems.allSatisfy { app.validateMenuItem($0) })
     }
 
     @Test func quittingPromptsOnlyForAnActiveRaceAndHonorsBothAnswers() {

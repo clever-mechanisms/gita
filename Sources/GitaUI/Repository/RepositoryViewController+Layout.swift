@@ -11,6 +11,8 @@ extension RepositoryViewController {
         buildDetailPane()
         Style.fill(prWorkspace, in: pagePane)
         Style.fill(providerPage, in: prWorkspace.listHost)
+        Style.fill(toolHost.container, in: pagePane)
+        toolHost.container.isHidden = true
         providerPage.setZoom(percent: model.historyZoomPercent)
         buildWelcome()
     }

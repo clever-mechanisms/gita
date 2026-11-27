@@ -9,9 +9,7 @@ final class AgentControlFacade {
     private let resolver = AgentCheckoutResolver()
     private let radars = NSHashTable<CollisionRadarViewController>.weakObjects()
     private let recorders = NSHashTable<AgentFlightRecorderViewController>.weakObjects()
-    private var radarWindows: [URL: AgentControlWindow] = [:]
-    private var flightWindows: [URL: AgentControlWindow] = [:]
-    private var arenaWindows: [URL: AgentArenaWindowController] = [:]
+    private let arenas = NSHashTable<AgentArenaViewController>.weakObjects()
     private var queues: [URL: AgentControlQueue] = [:]
     var onHookError: ((URL, String) -> Void)?
 
@@ -32,17 +30,6 @@ final class AgentControlFacade {
         return controller
     }
 
-    func presentCollisionRadar(for repositoryRoot: URL) {
-        let root = canonical(repositoryRoot)
-        if radarWindows[root] == nil {
-            let controller = makeCollisionRadarViewController(for: root)
-            let window = toolWindow(controller, root: root, name: "CollisionRadar")
-            window.onClose = { [weak controller] in controller?.presenter.cancel() }
-            radarWindows[root] = window
-        }
-        radarWindows[root]?.present()
-    }
-
     func makeFlightRecorderViewController(for repositoryRoot: URL) -> AgentFlightRecorderViewController {
         let presenter = FlightRecorderPresenter(service: flightRecorder, repositoryRoot: canonical(repositoryRoot))
         let controller = AgentFlightRecorderViewController(presenter: presenter)
@@ -50,32 +37,12 @@ final class AgentControlFacade {
         return controller
     }
 
-    func presentFlightRecorder(for repositoryRoot: URL) {
-        let root = canonical(repositoryRoot)
-        if flightWindows[root] == nil {
-            let controller = makeFlightRecorderViewController(for: root)
-            let window = toolWindow(controller, root: root, name: "FlightRecorder")
-            window.onClose = { [weak controller] in controller?.presenter.cancel() }
-            flightWindows[root] = window
-        }
-        flightWindows[root]?.present()
-    }
-
-    private func toolWindow(_ controller: NSViewController, root: URL, name: String) -> AgentControlWindow {
-        AgentControlWindow(
-            content: controller, repositoryRoot: root, autosave: "Gita." + name + "Window",
-            minimum: NSSize(width: 680, height: 400))
-    }
-
-    func showArena(for repositoryRoot: URL, baseCommit: String = "HEAD") {
-        let root = canonical(repositoryRoot)
-        let window =
-            arenaWindows[root]
-            ?? AgentArenaWindowController(
-                presenter: AgentArenaPresenter(service: arena, repositoryRoot: root))
-        arenaWindows[root] = window
-        if window.arena.presenter.canStart { window.arena.setup.setBase(baseCommit) }
-        window.showWindow(nil)
+    func makeArenaViewController(for repositoryRoot: URL, baseCommit: String = "HEAD") -> AgentArenaViewController {
+        let presenter = AgentArenaPresenter(service: arena, repositoryRoot: canonical(repositoryRoot))
+        let controller = AgentArenaViewController(presenter)
+        controller.setup.setBase(baseCommit)
+        arenas.add(controller)
+        return controller
     }
 
     @discardableResult
@@ -124,8 +91,8 @@ final class AgentControlFacade {
     }
 
     var hasActiveRace: Bool {
-        arenaWindows.values.contains { window in
-            switch window.arena.presenter.state {
+        arenas.allObjects.contains { controller in
+            switch controller.presenter.state {
             case .racing, .cancelling: true
             default: false
             }
@@ -135,7 +102,7 @@ final class AgentControlFacade {
     func cancelAll() {
         radars.allObjects.forEach { $0.presenter.cancel() }
         recorders.allObjects.forEach { $0.presenter.cancel() }
-        arenaWindows.values.forEach { $0.arena.presenter.cancelAndCleanup() }
+        arenas.allObjects.forEach { $0.presenter.cancelAndCleanup() }
         queues.values.forEach { $0.cancelReads() }
     }
 }

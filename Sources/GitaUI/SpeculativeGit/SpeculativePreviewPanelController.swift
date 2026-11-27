@@ -1,6 +1,7 @@
 import AppKit
 import GitaCore
 
+@MainActor
 final class SpeculativePreviewPanelController: NSViewController {
     let presenter: SpeculativePreviewPresenter
     var isHostedInSheet = false { didSet { if isViewLoaded { render() } } }
@@ -11,9 +12,11 @@ final class SpeculativePreviewPanelController: NSViewController {
     private let list = SpeculativeList(id: "preview.steps", label: String(localized: "Steps and conflicted files"))
     private let editor = NSTextView()
     private let status = Deck.wrapping("", color: Theme.secondaryText)
+    private let emptyIconBox = FillView(color: Theme.control)
+    private let emptyIcon = NSImageView()
     private let fileStatus = Deck.wrapping("", color: Theme.failure)
     private lazy var fileNotice = Deck.hstack([fileStatus, retryFile])
-    private lazy var header = Deck.hstack([badge, summary, Deck.spacer(), indicator, refresh])
+    private lazy var header = makeHeaderBar()
     private let separator = Deck.separator()
     private let split = NSSplitView()
     private let placeholder = NSView()
@@ -42,7 +45,10 @@ final class SpeculativePreviewPanelController: NSViewController {
     init(presenter: SpeculativePreviewPresenter) {
         self.presenter = presenter
         super.init(nibName: nil, bundle: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleThemeChanged), name: .gitaThemeChanged, object: nil)
     }
+
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
@@ -51,24 +57,17 @@ final class SpeculativePreviewPanelController: NSViewController {
         view.setAccessibilityIdentifier("speculative.preview.panel")
         split.isVertical = true
         split.dividerStyle = .thin
-        split.addArrangedSubview(Style.scroll(list))
+        split.addArrangedSubview(HistoryToolChrome.borderedSurface(Style.scroll(list)))
         split.addArrangedSubview(
-            SpeculativeViews.preview(
-                editor, id: "preview.excerpt",
-                label: String(localized: "Dry-run conflict preview")))
+            HistoryToolChrome.borderedSurface(
+                SpeculativeViews.preview(
+                    editor, id: "preview.excerpt",
+                    label: String(localized: "Dry-run conflict preview"))))
         for (index, pane) in split.arrangedSubviews.enumerated() {
             pane.widthAnchor.constraint(greaterThanOrEqualToConstant: index == 0 ? 220 : 280).isActive = true
             split.setHoldingPriority(.init(index == 0 ? 260 : 250), forSubviewAt: index)
         }
-        let center = Deck.vstack([status, retry, emptyRefresh], spacing: 8)
-        center.alignment = .centerX
-        placeholder.addSubview(center)
-        center.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            center.centerXAnchor.constraint(equalTo: placeholder.centerXAnchor),
-            center.centerYAnchor.constraint(equalTo: placeholder.centerYAnchor),
-            center.widthAnchor.constraint(lessThanOrEqualTo: placeholder.widthAnchor, constant: -16),
-        ])
+        configurePlaceholder()
         let body = NSView()
         Deck.pin(split, in: body)
         Deck.pin(placeholder, in: body)
@@ -90,16 +89,53 @@ final class SpeculativePreviewPanelController: NSViewController {
         super.viewWillAppear()
         if case .idle = presenter.state { presenter.refresh() }
     }
+
     override func viewWillDisappear() {
         super.viewWillDisappear()
         presenter.cancel()
     }
+
     override func cancelOperation(_ sender: Any?) {
         if let window = view.window, let parent = window.sheetParent {
             parent.endSheet(window, returnCode: .cancel)
         } else {
             view.window?.performClose(sender)
         }
+    }
+
+    private func makeHeaderBar() -> NSView {
+        let iconBadge = StorageStyle.iconBadge(
+            "shield.lefthalf.filled", tint: Theme.accent, boxSize: 28, symbolSize: 13, cornerRadius: 7)
+        return Deck.hstack([iconBadge, summary, badge, Deck.spacer(), indicator, refresh], spacing: 8)
+    }
+
+    private func configurePlaceholder() {
+        emptyIconBox.cornerRadius = 10
+        emptyIconBox.translatesAutoresizingMaskIntoConstraints = false
+        emptyIcon.translatesAutoresizingMaskIntoConstraints = false
+        emptyIconBox.addSubview(emptyIcon)
+        NSLayoutConstraint.activate([
+            emptyIconBox.widthAnchor.constraint(equalToConstant: 40),
+            emptyIconBox.heightAnchor.constraint(equalToConstant: 40),
+            emptyIcon.centerXAnchor.constraint(equalTo: emptyIconBox.centerXAnchor),
+            emptyIcon.centerYAnchor.constraint(equalTo: emptyIconBox.centerYAnchor),
+        ])
+        status.alignment = .center
+        let center = Deck.vstack([emptyIconBox, status, retry, emptyRefresh], spacing: 8)
+        center.alignment = .centerX
+        placeholder.addSubview(center)
+        center.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            center.centerXAnchor.constraint(equalTo: placeholder.centerXAnchor),
+            center.centerYAnchor.constraint(equalTo: placeholder.centerYAnchor),
+            center.widthAnchor.constraint(lessThanOrEqualTo: placeholder.widthAnchor, constant: -24),
+        ])
+    }
+
+    @objc private func handleThemeChanged() {
+        guard isViewLoaded else { return }
+        view.needsDisplay = true
+        render()
     }
 
     private func render() {
@@ -122,12 +158,15 @@ final class SpeculativePreviewPanelController: NSViewController {
             emptyRefresh.isHidden = false
             refresh.isHidden = true
             badge.badgeState = .idle
+            setPlaceholderIcon("shield.lefthalf.filled", color: Theme.secondaryText)
             status.stringValue = String(localized: "Refresh to preview these changes.")
         case .loading:
             badge.badgeState = .checking
+            setPlaceholderIcon("arrow.triangle.2.circlepath", color: Theme.working)
             status.stringValue = String(localized: "Checking changes…")
         case .failed(let message):
             badge.badgeState = .unavailable(message)
+            setPlaceholderIcon("exclamationmark.triangle", color: Theme.failure)
             status.stringValue = message
             status.textColor = Theme.failure
             retry.isHidden = false
@@ -136,6 +175,11 @@ final class SpeculativePreviewPanelController: NSViewController {
         }
         summary.toolTip = summary.stringValue
         if isHostedInSheet { onStatusChange?(sheetStatus) }
+    }
+
+    private func setPlaceholderIcon(_ symbol: String, color: NSColor) {
+        emptyIconBox.color = color.withAlphaComponent(0.12)
+        emptyIcon.setSymbol(symbol, size: 18, weight: .medium, color: color)
     }
 
     private var sheetStatus: SheetStatus {
@@ -166,6 +210,7 @@ final class SpeculativePreviewPanelController: NSViewController {
         guard !steps.isEmpty else {
             emptyRefresh.isHidden = false
             refresh.isHidden = true
+            setPlaceholderIcon("checkmark.shield", color: Theme.success)
             status.stringValue = String(localized: "The plan has no steps to preview.")
             return
         }

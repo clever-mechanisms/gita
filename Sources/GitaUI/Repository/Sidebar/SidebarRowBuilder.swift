@@ -98,7 +98,8 @@ struct SidebarRowBuilder {
                 .nav(
                     Nav(
                         target: .page(.storage), title: String(localized: "Storage & Health"),
-                        symbol: "internaldrive", count: input.storageSize ?? "", selected: false)))
+                        symbol: "internaldrive", count: input.storageSize ?? "",
+                        selected: input.selection == .storage)))
         } else if rows.count == 3 {
             rows.append(.empty(String(localized: "No matching references")))
         }

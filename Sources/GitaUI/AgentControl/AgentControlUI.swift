@@ -13,16 +13,39 @@ enum AgentControlUI {
         return caption
     }
 
+    static func buttonParts(
+        _ title: String, symbol: String? = nil, style: PartsButton.Background = .quiet
+    ) -> [PartsButton.Part] {
+        let textColor = style == .accent ? Deck.onAccent : Theme.text
+        let iconColor = style == .accent ? Deck.onAccent : Theme.secondaryText
+        var parts: [PartsButton.Part] = []
+        if let symbol { parts.append(.symbol(symbol, color: iconColor, size: 12)) }
+        parts.append(.text(title, font: Theme.bodyEmphasis, color: textColor))
+        return parts
+    }
+
     static func button(
-        _ title: String, _ id: String, style: PartsButton.Background = .quiet, action: @escaping () -> Void
+        _ title: String, _ id: String, symbol: String? = nil, style: PartsButton.Background = .quiet,
+        action: @escaping () -> Void
     ) -> PartsButton {
-        let color = style == .accent ? Deck.onAccent : Theme.text
         let button = PartsButton(
-            [.text(title, font: Theme.bodyEmphasis, color: color)],
+            buttonParts(title, symbol: symbol, style: style),
             background: style, accessibility: title, onClick: action)
-        button.spacing = 4
+        button.spacing = 5
         identify(button, id)
         return button
+    }
+
+    static func setButtonContent(_ button: PartsButton, title: String, symbol: String? = nil) {
+        button.parts = buttonParts(title, symbol: symbol, style: button.background)
+        button.setAccessibilityLabel(title)
+    }
+
+    static func applySegmentSymbols(_ control: NSSegmentedControl, symbols: [String], size: CGFloat = 12) {
+        for (index, symbol) in symbols.enumerated() where index < control.segmentCount {
+            control.setImage(Deck.template(symbol, size: size, weight: .medium), forSegment: index)
+            control.setImageScaling(.scaleProportionallyDown, forSegment: index)
+        }
     }
 
     static func identify(_ view: NSView, _ id: String) {
@@ -68,7 +91,7 @@ final class AgentControlBody: NSView {
     let spinner = DelayedSpinnerController()
     private let message = Deck.wrapping("", color: Theme.secondaryText)
     private let center = NSStackView()
-    private let failure = Deck.icon(Style.stateSymbol(.failure), size: 14, color: Theme.failure)
+    private let iconSlot = NSStackView()
     private var action: NSView?
     private let content: NSView
 
@@ -76,11 +99,14 @@ final class AgentControlBody: NSView {
         self.content = content
         super.init(frame: .zero)
         Style.fill(content, in: self)
+        iconSlot.orientation = .horizontal
+        iconSlot.alignment = .centerY
         center.orientation = .vertical
         center.alignment = .centerX
-        center.spacing = 8
+        center.spacing = 10
         center.addArrangedSubview(spinner.indicator)
-        center.addArrangedSubview(Deck.hstack([failure, message], spacing: 4))
+        center.addArrangedSubview(iconSlot)
+        center.addArrangedSubview(message)
         addSubview(center)
         center.translatesAutoresizingMaskIntoConstraints = false
         message.alignment = .center
@@ -95,11 +121,20 @@ final class AgentControlBody: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError("Programmatic view") }
 
-    func show(_ text: String, busy: Bool = false, failed: Bool = false, button: NSView? = nil) {
+    func show(
+        _ text: String, symbol: String? = nil, busy: Bool = false, failed: Bool = false, button: NSView? = nil
+    ) {
         action?.removeFromSuperview()
         action = button
         if let button { center.addArrangedSubview(button) }
-        failure.isHidden = !failed
+        iconSlot.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if !busy {
+            let iconName = symbol ?? (failed ? Style.stateSymbol(.failure) : "sparkles")
+            let tint = failed ? Theme.failure : Theme.secondaryText
+            iconSlot.addArrangedSubview(
+                StorageStyle.iconBadge(iconName, tint: tint, boxSize: 36, symbolSize: 16, cornerRadius: 9))
+        }
+        iconSlot.isHidden = busy
         message.stringValue = text
         message.textColor = failed ? Theme.failure : Theme.secondaryText
         center.isHidden = false

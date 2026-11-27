@@ -4,12 +4,19 @@ import GitaCore
 @MainActor
 final class CollisionRadarViewController: NSViewController {
     let presenter: CollisionRadarPresenter
+    var onBack: (() -> Void)? {
+        didSet {
+            if isViewLoaded { header.onBack = onBack }
+        }
+    }
     private let list = AgentControlList(title: String(localized: "Colliding worktrees and files"), id: "radar.list")
     private let diff = DiffView()
     private let banner = AgentControlUI.truncationCaption()
     private let diagnostics = DiffView()
     private lazy var diagnosticHeight = diagnostics.heightAnchor.constraint(equalToConstant: 48)
-    private lazy var retryPreview = AgentControlUI.button(String(localized: "Retry Preview"), "radar.retryPreview") {
+    private lazy var retryPreview = AgentControlUI.button(
+        String(localized: "Retry Preview"), "radar.retryPreview", symbol: "arrow.clockwise"
+    ) {
         [weak self] in self?.presenter.selectCollision(self?.presenter.selectedCollisionID)
     }
     private let summary = Deck.hstack([])
@@ -23,9 +30,19 @@ final class CollisionRadarViewController: NSViewController {
             previewSpinner.indicator, Deck.spacer(), retryPreview,
         ]), banner, diff, diagnostics,
     ])
-    private lazy var scan = AgentControlUI.button(String(localized: "Scan"), "radar.scan", style: .accent) {
+    private lazy var scan = AgentControlUI.button(
+        String(localized: "Scan"), "radar.scan", symbol: "dot.radiowaves.left.and.right", style: .accent
+    ) {
         [weak self] in self?.presenter.scan()
     }
+    private lazy var header = AgentControlHeaderView(
+        .init(
+            symbol: "dot.radiowaves.left.and.right",
+            title: String(localized: "Collision Radar"),
+            subtitle: String(localized: "Detect overlapping edits across worktrees"),
+            id: "radar"),
+        leading: [summary],
+        trailing: [scan])
 
     init(presenter: CollisionRadarPresenter) {
         self.presenter = presenter
@@ -37,8 +54,8 @@ final class CollisionRadarViewController: NSViewController {
     required init?(coder _: NSCoder) { fatalError("Programmatic controller") }
 
     override func loadView() {
-        let header = Deck.hstack([AgentControlUI.label(title ?? "", font: Theme.title), summary, Deck.spacer(), scan])
-        let surface = AgentControlSurface([header, Deck.separator(), body], primary: scan, id: "radar.root")
+        header.onBack = onBack
+        let surface = AgentControlSurface([body], header: header, primary: scan, id: "radar.root")
         view = surface
         diagnosticHeight.isActive = true
         AgentControlUI.identify(diff, "radar.preview")
@@ -85,11 +102,16 @@ final class CollisionRadarViewController: NSViewController {
                     font: Theme.caption, color: Theme.secondaryText))
         }
         switch presenter.state {
-        case .idle: message(String(localized: "Scan the worktrees for overlapping changes."))
+        case .idle:
+            message(
+                String(localized: "Scan the worktrees for overlapping changes."),
+                symbol: "dot.radiowaves.left.and.right")
         case .scanning: body.show(String(localized: "Scanning worktrees…"), busy: true)
         case .empty(let count):
-            message(Self.emptyMessage(worktreeCount: count))
-        case .failed(let reason): message(reason, failed: true)
+            message(
+                Self.emptyMessage(worktreeCount: count),
+                symbol: count <= 1 ? Deck.worktreeSymbol : "checkmark.shield")
+        case .failed(let reason): message(reason, symbol: "exclamationmark.triangle.fill", failed: true)
         case .loaded: showPairs()
         }
     }
@@ -100,14 +122,15 @@ final class CollisionRadarViewController: NSViewController {
             : String(localized: "No collisions across \(worktreeCount) worktrees.")
     }
 
-    private func message(_ text: String, failed: Bool = false) {
+    private func message(_ text: String, symbol: String, failed: Bool = false) {
         let title = failed ? String(localized: "Retry") : String(localized: "Scan Worktrees")
-        let button = AgentControlUI.button(title, "radar.rescan") {
+        let buttonSymbol = failed ? "arrow.clockwise" : "dot.radiowaves.left.and.right"
+        let button = AgentControlUI.button(title, "radar.rescan", symbol: buttonSymbol) {
             [weak self] in self?.presenter.scan()
         }
         scan.nextKeyView = button
         button.nextKeyView = scan
-        body.show(text, failed: failed, button: button)
+        body.show(text, symbol: symbol, failed: failed, button: button)
     }
 
     private func showPairs() {

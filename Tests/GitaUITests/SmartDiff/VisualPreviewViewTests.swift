@@ -170,4 +170,35 @@ struct VisualPreviewViewTests {
         }
         #expect(generalUpdates == 0)
     }
+
+    @Test func inlineViewControllerProvidesHeaderBackActionAndModeIcons() throws {
+        UITestSupport.bootstrap()
+        let production = try #require(URL(string: "https://app.example.com"))
+        let preview = try #require(URL(string: "https://pr-42.example.com"))
+        let pair = VisualPreviewPair(productionURL: production, previewURL: preview, title: "Web Preview")
+        let controller = VisualPreviewDiffViewController(pair: pair, initialRoute: "/pricing")
+        defer { controller.tearDown() }
+        var returned = false
+        controller.onBack = { returned = true }
+        let window = UITestSupport.host(controller, size: NSSize(width: 960, height: 640))
+        defer { window.close() }
+        #expect(controller.title == "Web Preview")
+        #expect(controller.comparison.presenter.route == "/pricing")
+        let back = try #require(
+            SharedFixtures.descendants(controller.view, of: PartsButton.self).first {
+                $0.accessibilityIdentifier() == "smartdiff.preview.back"
+            })
+        #expect(!back.isHidden && back.accessibilityPerformPress() && returned)
+        for mode in VisualPreviewDiffMode.allCases {
+            let modeButton = try #require(
+                SharedFixtures.descendants(controller.view, of: PartsButton.self).first {
+                    $0.accessibilityIdentifier() == "smartdiff.preview.mode." + mode.rawValue
+                })
+            let hasSymbol = modeButton.parts.contains {
+                if case .symbol = $0 { return true }
+                return false
+            }
+            #expect(hasSymbol)
+        }
+    }
 }

@@ -1,5 +1,21 @@
 import Foundation
 
+public enum GitConfigScope: Sendable, Equatable {
+    case local
+    case global
+    case system
+    case unset
+
+    init(rawScope: Substring) {
+        switch rawScope.lowercased() {
+        case "local", "worktree": self = .local
+        case "global": self = .global
+        case "system": self = .system
+        default: self = .unset
+        }
+    }
+}
+
 public enum FSMonitorSetting: Sendable, Equatable {
     case enabled, disabled, unset
     case customHook(String)
@@ -44,6 +60,26 @@ public struct RepositoryHealthSnapshot: Sendable, Equatable {
     public let untrackedCache: GitConfigSwitch
     public let commitGraph: CommitGraphInfo
     public let maintenance: GitMaintenanceInfo
+    public var fsMonitorScope: GitConfigScope = .unset
+    public var untrackedCacheScope: GitConfigScope = .unset
+}
+
+public struct GlobalGitPerformanceSnapshot: Sendable, Equatable {
+    public let fsMonitor: FSMonitorSetting
+    public let untrackedCache: GitConfigSwitch
+    public let registeredMaintenanceRepos: [String]
+
+    public var registeredMaintenanceCount: Int { registeredMaintenanceRepos.count }
+
+    public init(
+        fsMonitor: FSMonitorSetting,
+        untrackedCache: GitConfigSwitch,
+        registeredMaintenanceRepos: [String]
+    ) {
+        self.fsMonitor = fsMonitor
+        self.untrackedCache = untrackedCache
+        self.registeredMaintenanceRepos = registeredMaintenanceRepos
+    }
 }
 
 public struct HealthActionResult: Sendable, Equatable {

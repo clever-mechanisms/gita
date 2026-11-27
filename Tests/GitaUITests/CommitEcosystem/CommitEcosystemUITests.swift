@@ -177,11 +177,22 @@ struct CommitEcosystemUITests {
         presenter.onOpenInTab = { openedURLs.append($0) }
         presenter.onRevealInFinder = { revealedURLs.append($0) }
 
-        let windowController = SubmodulesLFSWindowController(presenter: presenter)
-        let window = windowController.prepareWindow(initialTab: .submodules)
-        #expect(window.title.contains("demo-repo"))
+        let viewController = SubmodulesLFSViewController(presenter: presenter)
+        let window = UITestSupport.host(viewController, size: NSSize(width: 900, height: 560))
+        defer {
+            viewController.cancel()
+            window.close()
+        }
+        viewController.selectTab(.submodules)
+        #expect(presenter.repositoryName == "demo-repo")
+        #expect(viewController.backButton.isHidden)
+        var backedOut = false
+        viewController.onBack = { backedOut = true }
+        #expect(!viewController.backButton.isHidden)
+        viewController.backButton.onClick?()
+        #expect(backedOut)
 
-        presenter.loadSubmodules()
+        viewController.loadIfNeeded()
         try await waitUntil { !presenter.submoduleState.isLoading }
         #expect(presenter.submoduleState.submodules.count == 2)
         #expect(presenter.submoduleTabBadge == "2")
@@ -196,7 +207,7 @@ struct CommitEcosystemUITests {
         #expect(openedURLs == [root.appendingPathComponent("deps/core", isDirectory: true).standardizedFileURL])
         #expect(revealedURLs == [root.appendingPathComponent("deps/core", isDirectory: true).standardizedFileURL])
 
-        presenter.selectTab(.lfs)
+        viewController.selectTab(.lfs)
         try await waitUntil { presenter.lfsState.status != nil }
         #expect(presenter.selectedTab == .lfs)
         #expect(presenter.lfsState.status == lfsStatus)
@@ -211,13 +222,19 @@ struct CommitEcosystemUITests {
 
         // Force Unlock goes through confirmation before mutating, and cancelReads() does not abort it.
         let lfsTab = LFSTabView(presenter: presenter)
+        presenter.selectedLFSFilePath = "art/logo.psd"
+        lfsTab.reload()
+        let lfsMenu = NSMenu()
+        lfsTab.menuNeedsUpdate(lfsMenu)
+        let lfsMenuActions = lfsMenu.items.filter { !$0.isSeparatorItem }
+        #expect(lfsMenuActions.count == 3 && lfsMenuActions.allSatisfy { $0.image != nil })
         var promptedOwners: [String] = []
         lfsTab.confirmForceUnlock = { entry, proceed in
             promptedOwners.append(entry.owner)
             proceed()
         }
         lfsTab.requestForceUnlock(lock)
-        presenter.cancelReads()
+        viewController.cancel()
         try await waitUntil { !forceUnlocked.isEmpty && !presenter.lfsState.isBusy }
         #expect(promptedOwners == ["Bob"])
         #expect(forceUnlocked == ["art/logo.psd"])
@@ -235,6 +252,7 @@ struct CommitEcosystemUITests {
             view.reload()
             view.menuNeedsUpdate(menu)
             #expect(menu.items.first?.title == title)
+            #expect(menu.items.filter { !$0.isSeparatorItem }.allSatisfy { $0.image != nil })
             #expect(menu.item(withTitle: "Open in Tab")?.isEnabled == canOpen)
             #expect(menu.item(withTitle: "Reveal in Finder") != nil)
             menu.performActionForItem(at: 0)

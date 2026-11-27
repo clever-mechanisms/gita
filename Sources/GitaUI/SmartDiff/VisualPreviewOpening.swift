@@ -31,12 +31,11 @@ extension RepositoryViewController: VisualPreviewOpening {
         if let pair = SmartDiffFacade.shared.resolvePreviewPair(
             vercelContext: vercelContext, previewDeployment: deployment)
         {
-            SmartDiffFacade.shared.openVisualPreviewDiff(
-                productionURL: pair.productionURL, previewURL: pair.previewURL, title: pair.title)
+            openToolPage(.visualPreviewDiff(pair: pair, initialRoute: "/"))
         } else if let previewURL = Deck.safeWebURL(deployment.previewURL) {
-            SmartDiffFacade.shared.openVisualPreviewDiff(
-                productionURL: previewURL, previewURL: previewURL,
-                title: deployment.projectName)
+            let pair = VisualPreviewPair(
+                productionURL: previewURL, previewURL: previewURL, title: deployment.projectName)
+            openToolPage(.visualPreviewDiff(pair: pair, initialRoute: "/"))
         }
     }
 }

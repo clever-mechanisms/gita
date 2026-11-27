@@ -13,6 +13,7 @@ struct StorageHealthSummaryModel: Equatable {
     let headline: String
     let subtitle: String
     let status: Status
+    var scopeBadge = String(localized: "This repo (.git/config)")
 }
 
 struct StorageHealthCardModel: Equatable {
@@ -29,6 +30,21 @@ struct StorageHealthCardModel: Equatable {
     enum StatusTone: Equatable {
         case positive, neutral, warning
     }
+    enum ScopeOrigin: Equatable {
+        case thisRepo
+        case inheritedGlobal
+        case inheritedSystem
+
+        var label: String {
+            switch self {
+            case .thisRepo: String(localized: "This repo")
+            case .inheritedGlobal: String(localized: "Inherited from global")
+            case .inheritedSystem: String(localized: "Inherited from system")
+            }
+        }
+
+        var isInherited: Bool { self != .thisRepo }
+    }
     struct SecondaryToggle: Equatable {
         let isOn: Bool
         let action: StorageHealthAction
@@ -42,6 +58,7 @@ struct StorageHealthCardModel: Equatable {
     let statusText: String
     let statusTone: StatusTone
     let detail: String
+    var scopeOrigin: ScopeOrigin?
     var statPills: [String] = []
     let action: StorageHealthAction
     let control: Control
@@ -67,8 +84,10 @@ extension StoragePresenter {
             : String(localized: "\(enabledCount) of \(totalCount) optimizations enabled")
         let subtitle =
             enabledCount == totalCount
-            ? String(localized: "Git is configured for fast status, log, and background upkeep.")
-            : String(localized: "Enable recommended Git optimizations for faster status and graph operations.")
+            ? String(localized: "Configured for this repository (.git/config) for fast status, log, and upkeep.")
+            : String(
+                localized:
+                    "Applies to this repository (.git/config). Enable recommended optimizations for faster Git status.")
         let status: StorageHealthSummaryModel.Status =
             if actionState.isRunning {
                 .updating
@@ -90,24 +109,27 @@ extension StoragePresenter {
     ) -> [StorageHealthCardModel] {
         let enabled = !actionState.isRunning
         return [
-            fsMonitorCard(snapshot.fsMonitor, enabled: enabled),
-            untrackedCacheCard(snapshot.untrackedCache, enabled: enabled),
+            fsMonitorCard(snapshot.fsMonitor, scope: snapshot.fsMonitorScope, enabled: enabled),
+            untrackedCacheCard(snapshot.untrackedCache, scope: snapshot.untrackedCacheScope, enabled: enabled),
             commitGraphCard(snapshot.commitGraph, enabled: enabled),
             gcCard(snapshot.maintenance, hasActiveAgent: hasActiveAgent, enabled: enabled),
             maintenanceCard(snapshot.maintenance, enabled: enabled),
         ]
     }
 
-    private func fsMonitorCard(_ setting: FSMonitorSetting, enabled: Bool) -> StorageHealthCardModel {
+    private func fsMonitorCard(
+        _ setting: FSMonitorSetting, scope: GitConfigScope, enabled: Bool
+    ) -> StorageHealthCardModel {
         let title = String(localized: "Filesystem Monitor")
+        let origin = scopeOrigin(for: scope)
         if case .customHook(let hook) = setting {
             return StorageHealthCardModel(
                 section: .performance, symbol: "bolt.horizontal.circle.fill", iconTone: .blue,
                 title: title, statusText: String(localized: "Custom hook"), statusTone: .warning,
                 detail: String(
                     localized: "Custom hook active: \(hook). Gitā will not overwrite it without confirmation."),
-                action: .replaceCustomFSMonitor(hook), control: .button, buttonSymbol: "arrow.triangle.2.circlepath",
-                enabled: enabled)
+                scopeOrigin: origin, action: .replaceCustomFSMonitor(hook), control: .button,
+                buttonSymbol: "arrow.triangle.2.circlepath", enabled: enabled)
         }
         let on = setting == .enabled
         return StorageHealthCardModel(
@@ -115,10 +137,12 @@ extension StoragePresenter {
             title: title, statusText: on ? String(localized: "Enabled") : String(localized: "Off"),
             statusTone: on ? .positive : .neutral,
             detail: String(localized: "Use Git’s built-in filesystem monitor to speed up working tree checks."),
-            action: .fsMonitor(!on), control: .toggle(on), enabled: enabled)
+            scopeOrigin: origin, action: .fsMonitor(!on), control: .toggle(on), enabled: enabled)
     }
 
-    private func untrackedCacheCard(_ setting: GitConfigSwitch, enabled: Bool) -> StorageHealthCardModel {
+    private func untrackedCacheCard(
+        _ setting: GitConfigSwitch, scope: GitConfigScope, enabled: Bool
+    ) -> StorageHealthCardModel {
         let on = setting == .enabled
         return StorageHealthCardModel(
             section: .performance, symbol: "hare.fill", iconTone: .green,
@@ -126,7 +150,15 @@ extension StoragePresenter {
             statusText: on ? String(localized: "Enabled") : String(localized: "Off"),
             statusTone: on ? .positive : .neutral,
             detail: String(localized: "Cache untracked directory listings to speed up git status."),
-            action: .untrackedCache(!on), control: .toggle(on), enabled: enabled)
+            scopeOrigin: scopeOrigin(for: scope), action: .untrackedCache(!on), control: .toggle(on), enabled: enabled)
+    }
+
+    private func scopeOrigin(for scope: GitConfigScope) -> StorageHealthCardModel.ScopeOrigin {
+        switch scope {
+        case .global: .inheritedGlobal
+        case .system: .inheritedSystem
+        case .local, .unset: .thisRepo
+        }
     }
 
     private func commitGraphCard(_ graph: CommitGraphInfo, enabled: Bool) -> StorageHealthCardModel {
@@ -180,7 +212,7 @@ extension StoragePresenter {
             statusText: registered ? String(localized: "Registered") : String(localized: "Unregistered"),
             statusTone: registered ? .positive : .neutral,
             detail: String(localized: "Automatic maintenance: \(auto). Runs periodic background packing and prefetch."),
-            action: .maintenance, control: .button, buttonSymbol: "play.fill",
+            scopeOrigin: .thisRepo, action: .maintenance, control: .button, buttonSymbol: "play.fill",
             secondaryToggle: .init(
                 isOn: registered,
                 action: .maintenanceRegistration(!registered),

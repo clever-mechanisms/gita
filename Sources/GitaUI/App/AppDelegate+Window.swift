@@ -168,7 +168,9 @@ extension AppDelegate {
             sheet.performClose(nil)
             return false
         }
-        if tabsController?.isMutating == true {
+        if tabsController?.isMutating == true
+            || tabsController?.tabs.contains(where: { $0.controller.toolHost.hasActiveMutation }) == true
+        {
             environment.system.beep()
             return false
         }
@@ -237,8 +239,13 @@ extension AppDelegate {
 
     // MARK: Every window
 
-    /// A Git action runs in a tab of any window.
-    var isAnyMutating: Bool { places.contains { place in place.models.contains(where: \.isMutating) } }
+    /// A Git action or inline tool mutation runs in a tab of any window.
+    var isAnyMutating: Bool {
+        places.contains { place in
+            place.models.contains(where: \.isMutating)
+                || place.tabs?.tabs.contains(where: { $0.controller.toolHost.hasActiveMutation }) == true
+        }
+    }
 
     /// The repository view with a review sheet open, in the front window first.
     var reviewingController: RepositoryViewController? {
@@ -262,8 +269,8 @@ extension AppDelegate {
         repositoryController?.toggleAgentsPane()
     }
 
-    /// Opens the pane (Repository menu, deep links) without closing it when already open.
-    func showAgentsPane() {
+    /// Opens the pane (Agents menu, deep links) without closing it when already open.
+    @objc func showAgentsPane() {
         showWindow()
         repositoryController?.showAgentsPane()
     }

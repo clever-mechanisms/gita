@@ -148,4 +148,27 @@ struct AgentControlFlightRecorderUITests {
             UITestSupport.render(controller.view)
         }
     }
+
+    @Test func recordingUsesAccentSwitchAndHeaderSupportsBackCallback() throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        let controller = AgentControlFacade().makeFlightRecorderViewController(for: repo.url)
+        var wentBack = false
+        controller.onBack = { wentBack = true }
+        let window = UITestSupport.host(controller)
+        defer {
+            controller.presenter.cancel()
+            window.close()
+        }
+        let toggle = try #require(
+            SharedFixtures.descendants(controller.view, of: AccentSwitch.self).first {
+                $0.accessibilityIdentifier() == "agentControl.flight.recording"
+            })
+        #expect(toggle.accessibilitySubrole() == .switch)
+        let back = try #require(
+            SharedFixtures.descendants(controller.view, of: PartsButton.self).first {
+                $0.accessibilityIdentifier() == "agentControl.flight.back"
+            })
+        #expect(!back.isHidden && back.accessibilityPerformPress() && wentBack)
+    }
 }

@@ -3,6 +3,7 @@ import AppKit
 /// Deep-link targets inside a Settings pane.
 enum SettingsAnchor: Hashable {
     case remoteUpdates
+    case performance
 }
 
 /// Settings ▸ sidebar panes. Raw values are stored in `Preference.settingsPane`.

@@ -41,8 +41,9 @@ final class CIFixSheetController: ControlPlaneSheet, NSTextViewDelegate {
         let subtitle = Deck.caption(detail)
         subtitle.toolTip = detail
         let stack = Deck.vstack([heading, subtitle, revision])
-        let card = ControlPlaneCard(
-            Deck.hstack([Deck.icon(Style.stateSymbol(.failure), size: 14, color: Theme.failure), stack]))
+        let badge = StorageStyle.iconBadge(
+            Style.stateSymbol(.failure), tint: Theme.failure, boxSize: 32, symbolSize: 15, cornerRadius: 8)
+        let card = ControlPlaneCard(Deck.hstack([badge, stack], spacing: 10))
         ControlPlaneViews.identify(card, "ciFix.summary", String(localized: "Failed workflow \(title)"))
         return card
     }
@@ -55,9 +56,11 @@ final class CIFixSheetController: ControlPlaneSheet, NSTextViewDelegate {
         terminal.action = #selector(selectDestination)
         agents.font = Theme.body
         terminal.font = Theme.body
+        AgentControlUI.applySegmentSymbols(terminal, symbols: ["terminal", "arrow.up.forward.app"])
         ControlPlaneViews.identify(agents, "ciFix.agent", String(localized: "Coding agent"))
         ControlPlaneViews.identify(terminal, "ciFix.terminal", String(localized: "Terminal destination"))
-        chrome.add(Deck.hstack([agents, Deck.spacer(), terminal]), height: 32)
+        let agentPicker = Deck.hstack([Deck.icon("cpu", size: 13, color: Theme.secondaryText), agents], spacing: 6)
+        chrome.add(Deck.hstack([agentPicker, Deck.spacer(), terminal]), height: 32)
     }
 
     @objc private func agentsChanged() { presenter.updateAgents() }
@@ -78,6 +81,7 @@ final class CIFixSheetController: ControlPlaneSheet, NSTextViewDelegate {
         tabs.target = self
         tabs.action = #selector(selectPreview)
         tabs.font = Theme.body
+        AgentControlUI.applySegmentSymbols(tabs, symbols: ["text.bubble", "doc.text"])
         ControlPlaneViews.identify(tabs, "ciFix.preview", String(localized: "CI preview"))
         chrome.add(tabs, height: 28)
         Deck.pin(
@@ -132,6 +136,8 @@ final class CIFixSheetController: ControlPlaneSheet, NSTextViewDelegate {
         primary.title =
             presenter.selectedAgent.map { String(localized: "Fix with \($0.displayName)") }
             ?? String(localized: "Fix with Agent")
+        primary.image = Deck.template("wrench.and.screwdriver", size: 12, weight: .medium)
+        primary.imagePosition = .imageLeading
         switch presenter.state {
         case .idle: showStatus()
         case .loading: showStatus(String(localized: "Loading failed check…"), loading: true)
@@ -152,6 +158,7 @@ final class CIFixSheetController: ControlPlaneSheet, NSTextViewDelegate {
         case .launched: dismissSheet()
         case .failed(let message):
             primary.title = String(localized: "Retry")
+            primary.image = Deck.template("arrow.clockwise", size: 12, weight: .medium)
             primary.isEnabled = true
             showStatus(message, error: true)
         }

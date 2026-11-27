@@ -35,11 +35,6 @@ extension RepositoryViewController {
     }
 
     private func navigate(_ id: SidebarSelection) {
-        if id == .storage {
-            if let root = model.snapshot?.root { commands?.inspectStorage(at: root) }
-            rebuildSidebar()
-            return
-        }
         sidebarSelection = nil
         if let section = id.section {
             model.section = section

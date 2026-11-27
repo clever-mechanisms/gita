@@ -48,6 +48,9 @@ extension AppDelegate {
             "storage", "disk", "space", "bloat", "clean", "node_modules", "trash", "worktree size", "reclaim",
             "health", "maintenance", "gc", "garbage collection", "fsmonitor", "untracked cache", "commit-graph",
         ],
+        #selector(showWorkspaceStorage): [
+            "workspace storage", "all repositories", "storage", "disk", "space", "bloat", "clean", "reclaim",
+        ],
         #selector(exportPatch): ["patch", "diff", "format-patch", "export", "staged", "working", "commit"],
         #selector(applyPatch): ["patch", "apply", "3way", "import patch"],
         #selector(copyPermalink): ["permalink", "link", "github", "gitlab", "bitbucket", "url"],
@@ -113,8 +116,8 @@ extension AppDelegate {
 
     private func paletteCommands() -> [PaletteItem] {
         guard let menu = NSApp.mainMenu else { return [] }
-        // The palette itself, and Open Recent, whose repositories the palette lists.
-        let skipped: Set<Selector> = [#selector(showCommandPalette), #selector(openRecent)]
+        // The palette itself, Open Recent (whose repositories the palette lists), and the duplicate Agents-menu item.
+        let skipped: Set<Selector> = [#selector(showCommandPalette), #selector(openRecent), #selector(showAgentsPane)]
         let menus = PaletteItems.commands(in: menu, skipping: skipped, aliases: Self.paletteAliases) {
             [self] in validateMenuItem($0)
         }

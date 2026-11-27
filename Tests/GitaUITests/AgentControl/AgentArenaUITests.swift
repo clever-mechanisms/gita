@@ -116,33 +116,27 @@ struct AgentControlArenaUITests {
         #expect(try repo.git("branch", "--list", "gita/arena-*").isEmpty)
     }
 
-    @Test func closingAndEscapePreserveTheRaceAndComparison() async throws {
+    @Test func navigatingAwayPreservesTheRaceAndComparison() async throws {
         UITestSupport.bootstrap()
         let repo = try TemporaryRepository()
         let presenter = try configured(repo)
-        let controller = AgentArenaWindowController(presenter: presenter)
-        let window = try #require(controller.window)
-        controller.showWindow(nil)
-        let editor = try #require(SharedFixtures.descendants(controller.arena.view, of: ArenaPromptEditor.self).first)
+        let arena = AgentArenaViewController(presenter)
+        let window = UITestSupport.host(arena, size: NSSize(width: 820, height: 560))
+        defer { window.close() }
+        let editor = try #require(SharedFixtures.descendants(arena.view, of: ArenaPromptEditor.self).first)
         editor.string = "Shared prompt"
         window.makeFirstResponder(editor)
         let submit = try #require(SharedEvents.key("\r", code: KeyPress.returnKey, modifiers: .command))
         #expect(editor.performKeyEquivalent(with: submit))
-        let escape = try #require(SharedEvents.key("", code: KeyPress.escape))
-        #expect(controller.arena.view.performKeyEquivalent(with: escape))
         await presenter.task?.value
         guard case .comparing(let comparison) = presenter.state else {
-            throw SetupTestFailure(message: "Closing the running race lost its comparison")
+            throw SetupTestFailure(message: "Running the race lost its comparison")
         }
-        controller.showWindow(nil)
-        #expect(controller.arena.view.performKeyEquivalent(with: escape))
         #expect(presenter.state == .comparing(comparison))
         for workspace in presenter.workspaces {
             #expect(FileManager.default.fileExists(atPath: workspace.worktreePath.path))
         }
-        controller.showWindow(nil)
-        defer { window.close() }
-        try await confirmArenaActions(controller.arena, comparison: comparison)
+        try await confirmArenaActions(arena, comparison: comparison)
     }
 
     private func confirmArenaActions(_ arena: AgentArenaViewController, comparison: ArenaComparison) async throws {
@@ -187,16 +181,14 @@ struct AgentControlArenaUITests {
         try FileManager.default.removeItem(at: comparison.beta.worktreePath.deletingLastPathComponent())
     }
 
-    @Test func windowPropertiesAndControls() throws {
+    @Test func inlineViewPropertiesAndControls() throws {
         UITestSupport.bootstrap()
         let repo = try TemporaryRepository()
         let presenter = AgentArenaPresenter(service: AgentArenaService(), repositoryRoot: repo.url)
-        let controller = AgentArenaWindowController(presenter: presenter)
-        let window = try #require(controller.window)
+        let arena = AgentArenaViewController(presenter)
+        let window = UITestSupport.host(arena, size: NSSize(width: 820, height: 560))
         defer { window.close() }
-        #expect(!window.isReleasedWhenClosed)
-        #expect(window.minSize == NSSize(width: 780, height: 520))
-        let view = controller.arena.view
+        let view = arena.view
         #expect(view.accessibilityIdentifier() == "agentControl.arena.root")
         let ids = SharedFixtures.descendants(view, of: NSView.self).map { $0.accessibilityIdentifier() }
         #expect(ids.contains("agentControl.arena.prompt"))
@@ -217,8 +209,8 @@ struct AgentControlArenaUITests {
         presenter.betaConfig = ArenaAgentConfig(
             id: "beta-missing", displayName: "Beta", tool: .claudeCode,
             executable: "/nonexistent/gita-missing-agent", arguments: ["{prompt}"])
-        let controller = AgentArenaWindowController(presenter: presenter)
-        let window = try #require(controller.window)
+        let arena = AgentArenaViewController(presenter)
+        let window = UITestSupport.host(arena, size: NSSize(width: 820, height: 560))
         defer { window.close() }
         presenter.prompt = "Partial race"
         presenter.startRace()
@@ -230,16 +222,16 @@ struct AgentControlArenaUITests {
         for workspace in presenter.workspaces {
             #expect(FileManager.default.fileExists(atPath: workspace.worktreePath.path))
         }
-        let buttons = SharedFixtures.descendants(controller.arena.view, of: PartsButton.self)
+        let buttons = SharedFixtures.descendants(arena.view, of: PartsButton.self)
         let openAlpha = try #require(
             buttons.first { $0.accessibilityIdentifier() == "agentControl.arena.alpha.openWorktree" })
         let discard = try #require(buttons.first { $0.accessibilityIdentifier() == "agentControl.arena.failedDiscard" })
         var opened: URL?
-        controller.arena.openWorktree = { opened = $0 }
+        arena.openWorktree = { opened = $0 }
         #expect(openAlpha.accessibilityPerformPress())
         #expect(opened == presenter.workspaces.first { $0.id == .alpha }?.worktreePath)
         var confirmed = false
-        controller.arena.confirmDestructive = { _, _, accept in
+        arena.confirmDestructive = { _, _, accept in
             confirmed = true
             accept()
         }
@@ -249,5 +241,41 @@ struct AgentControlArenaUITests {
         #expect(presenter.state == .idle)
         #expect(presenter.workspaces.isEmpty)
         #expect(try repo.git("branch", "--list", "gita/arena-*").isEmpty)
+    }
+
+    @Test func inlineArenaFacadeTracksActiveRaceCancelAndBackAction() async throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        try repo.commit("answer", "base\n", message: "base")
+        let facade = AgentControlFacade(arena: AgentArenaService(runner: ArenaTestRunner()))
+        let controller = facade.makeArenaViewController(for: repo.url, baseCommit: "main")
+        let window = UITestSupport.host(controller, size: NSSize(width: 820, height: 560))
+        defer { window.close() }
+        #expect(controller.presenter.baseCommit == "main")
+        let back = try #require(
+            SharedFixtures.descendants(controller.view, of: PartsButton.self).first {
+                $0.accessibilityIdentifier() == "agentControl.arena.back"
+            })
+        #expect(back.isHidden)
+        var wentBack = false
+        controller.onBack = { wentBack = true }
+        #expect(!back.isHidden && back.accessibilityPerformPress() && wentBack)
+        let modes = try #require(
+            SharedFixtures.descendants(controller.view, of: NSSegmentedControl.self).first {
+                $0.accessibilityIdentifier() == "agentControl.arena.diffMode"
+            })
+        for segment in 0..<modes.segmentCount { #expect(modes.image(forSegment: segment) != nil) }
+        let config = ArenaAgentConfig(
+            id: "fixture", displayName: "Fixture", tool: .codex,
+            executable: "fixture-agent", arguments: ["{prompt}"])
+        controller.presenter.alphaConfig = config
+        controller.presenter.betaConfig = config
+        controller.presenter.checkArguments = ["/bin/sleep", "30"]
+        controller.presenter.prompt = "Inline race"
+        controller.presenter.startRace()
+        #expect(facade.hasActiveRace)
+        facade.cancelAll()
+        await controller.presenter.task?.value
+        #expect(!facade.hasActiveRace && controller.presenter.state == .idle)
     }
 }

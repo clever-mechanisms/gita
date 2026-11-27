@@ -60,9 +60,9 @@ struct AgentControlFlightRecorderSafetyTests {
         _ = try await service.captureSnapshot(in: repo.url)
         try repo.write("file", "working\n")
         let facade = AgentControlFacade(flightRecorder: service)
-        facade.presentFlightRecorder(for: repo.url)
-        let window = try #require(NSApp.windows.first { $0.subtitle == repo.url.lastPathComponent })
-        let controller = try #require(window.contentViewController as? AgentFlightRecorderViewController)
+        let controller = facade.makeFlightRecorderViewController(for: repo.url)
+        let window = UITestSupport.host(controller, size: NSSize(width: 880, height: 560))
+        controller.presenter.load()
         try await loaded(controller.presenter)
         controller.presenter.confirmDestructive = { _, _, _ in Issue.record("Return requested a destructive action") }
         let list = try #require(
@@ -72,6 +72,7 @@ struct AgentControlFlightRecorderSafetyTests {
         window.makeFirstResponder(list)
         let enter = try #require(SharedEvents.key("\r", code: KeyPress.returnKey))
         #expect(window.performKeyEquivalent(with: enter))
+        controller.presenter.cancel()
         window.close()
         try #require(
             await SharedFixtures.waitUntil(seconds: 20) {

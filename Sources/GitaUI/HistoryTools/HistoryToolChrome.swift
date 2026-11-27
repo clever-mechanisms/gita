@@ -52,11 +52,121 @@ final class HistoryToolBadgePill: NSView {
     }
 }
 
-/// Shared list pane used by Reflog, Line History, and Code Search windows.
+/// Unified `Theme.toolbar` inline header bar with optional Back button, `StorageStyle.iconBadge`, title/subtitle,
+/// and trailing action controls.
+@MainActor
+final class HistoryToolHeaderBar: RowView {
+    struct Spec {
+        let symbol: String
+        var tint: NSColor?
+        let title: String
+        var subtitle: String = ""
+        var titleAccessories: [NSView] = []
+        var trailing: [NSView] = []
+    }
+
+    var onBack: (() -> Void)? {
+        didSet { backButton.isHidden = onBack == nil }
+    }
+
+    var isBackEnabled: Bool {
+        get { backButton.isEnabled }
+        set { backButton.isEnabled = newValue }
+    }
+
+    private let backButton: PartsButton
+    private let titleLabel: NSTextField
+    private let subtitleLabel: NSTextField
+
+    init(_ spec: Spec) {
+        self.backButton = StorageStyle.actionButton(
+            String(localized: "Back"), symbol: "chevron.left", style: .quiet,
+            accessibility: String(localized: "Back")
+        ) {}
+        self.titleLabel = Deck.label(spec.title, font: TextLines.system(13.5, weight: .semibold), color: Theme.text)
+        self.subtitleLabel = Deck.caption(spec.subtitle)
+        super.init(frame: .zero)
+        hoverEnabled = false
+        fill = Theme.toolbar
+        backButton.setAccessibilityIdentifier("historyTool.back")
+        backButton.isHidden = true
+        backButton.onClick = { [weak self] in self?.onBack?() }
+        subtitleLabel.isHidden = spec.subtitle.isEmpty
+
+        let badge = StorageStyle.iconBadge(
+            spec.symbol, tint: spec.tint ?? Theme.accent, boxSize: 30, symbolSize: 14, cornerRadius: 7)
+        let titleRow = Deck.hstack([titleLabel] + spec.titleAccessories, spacing: 6)
+        let titleBlock = Deck.vstack([titleRow, subtitleLabel], spacing: 1)
+        titleBlock.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        var items: [NSView] = [backButton, badge, titleBlock, Deck.spacer()]
+        if !spec.trailing.isEmpty {
+            items.append(Deck.hstack(spec.trailing, spacing: 8))
+        }
+        let row = Deck.hstack(items, spacing: 10)
+        Deck.pin(row, in: self, insets: NSEdgeInsets(top: 8, left: 14, bottom: 8, right: 14))
+        heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+    }
+
+    @available(*, unavailable, message: "Built in code")
+    required init?(coder _: NSCoder) { fatalError("Built in code") }
+
+    func setSubtitle(_ text: String) {
+        subtitleLabel.stringValue = text
+        subtitleLabel.isHidden = text.isEmpty
+        subtitleLabel.toolTip = text
+    }
+}
+
+/// Centered empty/loading/error state with SF Symbol badge and helpful message text.
+@MainActor
+final class HistoryToolEmptyStateView: NSView {
+    let titleLabel = Deck.wrapping("", font: Theme.bodyEmphasis, color: Theme.secondaryText)
+    private let detailLabel = Deck.wrapping("", font: Theme.caption, color: Theme.tertiaryText)
+    private let iconView = NSImageView()
+    private let iconBox = FillView(color: Theme.control)
+
+    init(symbol: String = "tray", extraViews: [NSView] = []) {
+        super.init(frame: .zero)
+        iconBox.cornerRadius = 10
+        iconBox.translatesAutoresizingMaskIntoConstraints = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.setSymbol(symbol, size: 18, weight: .medium, color: Theme.secondaryText)
+        iconBox.addSubview(iconView)
+        NSLayoutConstraint.activate([
+            iconBox.widthAnchor.constraint(equalToConstant: 40),
+            iconBox.heightAnchor.constraint(equalToConstant: 40),
+            iconView.centerXAnchor.constraint(equalTo: iconBox.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconBox.centerYAnchor),
+        ])
+        titleLabel.alignment = .center
+        detailLabel.alignment = .center
+        detailLabel.isHidden = true
+        let stack = Deck.vstack([iconBox, titleLabel, detailLabel] + extraViews, spacing: 8)
+        stack.alignment = .centerX
+        Deck.pin(stack, in: self)
+    }
+
+    @available(*, unavailable, message: "Built in code")
+    required init?(coder _: NSCoder) { fatalError("Built in code") }
+
+    func apply(hidden: Bool, symbol: String, title: String, detail: String = "", tint: NSColor = Theme.secondaryText) {
+        isHidden = hidden
+        guard !hidden else { return }
+        iconView.setSymbol(symbol, size: 18, weight: .medium, color: tint)
+        iconBox.color = tint.withAlphaComponent(0.12)
+        titleLabel.stringValue = title
+        titleLabel.textColor = tint == Theme.failure ? Theme.failure : Theme.secondaryText
+        detailLabel.stringValue = detail
+        detailLabel.isHidden = detail.isEmpty
+    }
+}
+
+/// Shared list pane used by Reflog, Line History, and Code Search inline views.
 @MainActor
 final class HistoryToolTablePane: RowView {
     let table = NSTableView()
-    let emptyLabel = Deck.label("", font: Theme.body, color: Theme.secondaryText)
+    let emptyState = HistoryToolEmptyStateView()
 
     init(
         columnID: String,
@@ -81,8 +191,7 @@ final class HistoryToolTablePane: RowView {
         table.setAccessibilityIdentifier(accessibilityID)
 
         let scroll = Style.scroll(table)
-        emptyLabel.alignment = .center
-        var children: [NSView] = [scroll, emptyLabel]
+        var children: [NSView] = [scroll, emptyState]
         if let footer { children.append(footer) }
         for view in children {
             view.translatesAutoresizingMaskIntoConstraints = false
@@ -93,9 +202,9 @@ final class HistoryToolTablePane: RowView {
             scroll.topAnchor.constraint(equalTo: topAnchor),
             scroll.leadingAnchor.constraint(equalTo: leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
-            emptyLabel.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
-            emptyLabel.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -24),
+            emptyState.centerXAnchor.constraint(equalTo: scroll.centerXAnchor),
+            emptyState.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
+            emptyState.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -32),
         ]
         if let footer {
             constraints += [
@@ -231,64 +340,93 @@ final class HistoryToolDetailPane: RowView {
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 }
 
-/// Shared layout helpers used across HistoryTools windows to avoid boilerplate chrome duplication.
+/// Shared layout helpers used across HistoryTools inline controllers.
 @MainActor
 enum HistoryToolChrome {
-    struct SplitWindowSpec {
-        let title: String
-        let size: NSSize
-        let minSize: NSSize
-        let topBar: NSView
-        var topBarHeight: CGFloat?
+    struct InlineSplitSpec {
+        let header: NSView
+        var subBar: NSView?
         let list: NSView
         let detail: NSView
         let dividerPosition: CGFloat
     }
 
-    static func makeSplitWindow(_ spec: SplitWindowSpec, delegate: any NSWindowDelegate) -> NSWindow {
-        let win = NSWindow(
-            contentRect: NSRect(origin: .zero, size: spec.size),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: true
-        )
-        win.title = spec.title
-        win.minSize = spec.minSize
-        win.isReleasedWhenClosed = false
-        win.delegate = delegate
+    struct SegmentSpec {
+        let title: String
+        let symbol: String
+    }
 
+    static func makeInlineSplitView(_ spec: InlineSplitSpec) -> NSView {
         let root = ThemedBackgroundView()
-        win.contentView = root
-        let divider = Deck.separator()
         let split = DeckSplitView()
         split.isVertical = true
         split.dividerStyle = .thin
-        split.addArrangedSubview(spec.list)
-        split.addArrangedSubview(spec.detail)
+        split.addArrangedSubview(borderedSurface(spec.list))
+        split.addArrangedSubview(borderedSurface(spec.detail))
 
-        for view in [spec.topBar, divider, split] as [NSView] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            root.addSubview(view)
+        let body = NSView()
+        Deck.pin(split, in: body, insets: NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10))
+
+        var sections: [NSView] = [spec.header, Deck.separator()]
+        if let subBar = spec.subBar {
+            sections += [subBar, Deck.separator()]
         }
-        var constraints = [
-            spec.topBar.topAnchor.constraint(equalTo: root.topAnchor),
-            spec.topBar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            spec.topBar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            divider.topAnchor.constraint(equalTo: spec.topBar.bottomAnchor),
-            divider.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            divider.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            split.topAnchor.constraint(equalTo: divider.bottomAnchor),
-            split.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            split.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            split.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-        ]
-        if let topBarHeight = spec.topBarHeight {
-            constraints.append(spec.topBar.heightAnchor.constraint(equalToConstant: topBarHeight))
+        sections.append(body)
+
+        var previous: NSView?
+        for section in sections {
+            section.translatesAutoresizingMaskIntoConstraints = false
+            root.addSubview(section)
+            let top = previous?.bottomAnchor ?? root.topAnchor
+            NSLayoutConstraint.activate([
+                section.topAnchor.constraint(equalTo: top),
+                section.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+                section.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            ])
+            previous = section
         }
-        NSLayoutConstraint.activate(constraints)
+        body.bottomAnchor.constraint(equalTo: root.bottomAnchor).isActive = true
         split.setPosition(spec.dividerPosition, ofDividerAt: 0)
-        win.center()
-        return win
+        return root
+    }
+
+    static func borderedSurface(_ content: NSView) -> NSView {
+        let card = FillView(color: Theme.window)
+        card.borderColor = Theme.separator
+        card.cornerRadius = 8
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 8
+        card.layer?.masksToBounds = true
+        Deck.pin(content, in: card, insets: NSEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+        return card
+    }
+
+    static func configureSegmentedControl(
+        _ control: NSSegmentedControl,
+        segments: [SegmentSpec],
+        target: AnyObject,
+        action: Selector
+    ) {
+        control.segmentCount = segments.count
+        control.segmentStyle = .rounded
+        control.trackingMode = .selectOne
+        control.controlSize = .small
+        for (idx, segment) in segments.enumerated() {
+            control.setLabel(segment.title, forSegment: idx)
+            control.setImage(Deck.template(segment.symbol, size: 11, weight: .medium), forSegment: idx)
+            control.setImageScaling(.scaleProportionallyDown, forSegment: idx)
+        }
+        control.selectedSegment = 0
+        control.target = target
+        control.action = action
+    }
+
+    static func reloadTable(_ table: NSTableView?, selectedIndex: Int?) {
+        guard let table else { return }
+        table.reloadData()
+        if let selectedIndex {
+            table.selectRowIndexes(IndexSet(integer: selectedIndex), byExtendingSelection: false)
+        }
     }
 
     static func pinRowStack(_ rows: [NSView], in parent: NSView) {
@@ -301,5 +439,21 @@ enum HistoryToolChrome {
 
     static func commitMetaText(for commit: GitCommit) -> String {
         "\(String(commit.id.prefix(7))) · \(commit.author)"
+    }
+
+    static func commitDetailMeta(for commit: GitCommit) -> String {
+        "\(commitMetaText(for: commit)) · \(DeckFormat.relative(commit.date))"
+    }
+
+    static func repositoryDisplayName(_ name: String?, root: URL?) -> String {
+        name ?? root?.lastPathComponent ?? String(localized: "Repository")
+    }
+
+    static func observeTheme(_ observer: AnyObject, selector: Selector) {
+        NotificationCenter.default.addObserver(observer, selector: selector, name: .gitaThemeChanged, object: nil)
+    }
+
+    static func copySHAButton(_ action: @escaping () -> Void) -> PartsButton {
+        PartsButton.quiet(String(localized: "Copy SHA"), symbol: "doc.on.doc", action: action)
     }
 }

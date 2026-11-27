@@ -9,10 +9,14 @@ final class AgentArenaSetup {
     private let prompt = ArenaPromptEditor()
     private let alpha = NSPopUpButton()
     private let beta = NSPopUpButton()
-    lazy var start = AgentControlUI.button(String(localized: "Start Race"), "arena.start", style: .accent) {
+    lazy var start = AgentControlUI.button(
+        String(localized: "Start Race"), "arena.start", symbol: "play.fill", style: .accent
+    ) {
         [weak self] in self?.submit()
     }
-    private lazy var cancel = AgentControlUI.button(String(localized: "Cancel"), "arena.cancel") {
+    private lazy var cancel = AgentControlUI.button(
+        String(localized: "Cancel"), "arena.cancel", symbol: "xmark.circle"
+    ) {
         [weak self] in self?.onCancel?()
     }
 
@@ -94,8 +98,7 @@ final class AgentArenaSetup {
         prompt.isEditable = editable
         start.isHidden = !editable
         let title = comparing ? String(localized: "Discard Both") : String(localized: "Cancel")
-        cancel.parts = [.text(title, font: Theme.bodyEmphasis, color: Theme.text)]
-        cancel.setAccessibilityLabel(title)
+        AgentControlUI.setButtonContent(cancel, title: title, symbol: "xmark.circle")
         cancel.isEnabled = canCancel
     }
 

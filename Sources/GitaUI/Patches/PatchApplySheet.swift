@@ -48,11 +48,17 @@ final class PatchApplySheetController: NSWindowController, NSWindowDelegate {
     private let totals = SettingsForm.label("", font: Theme.mono)
     private let mode = NSButton(
         checkboxWithTitle: String(localized: "Three-way apply (--3way)"), target: nil, action: nil)
-    private lazy var recheck = ActionButton(title: String(localized: "Check again")) { [weak self] in
+    private lazy var recheck = SettingsForm.button(
+        String(localized: "Check again"), symbol: "arrow.clockwise"
+    ) { [weak self] in
         self?.refreshPreview()
     }
-    private lazy var submit = ActionButton(title: String(localized: "Apply")) { [weak self] in self?.applyReviewed() }
-    private lazy var dismiss = ActionButton(title: String(localized: "Cancel")) { [weak self] in self?.close() }
+    private lazy var submit = SettingsForm.button(
+        String(localized: "Apply"), symbol: "checkmark.circle"
+    ) { [weak self] in self?.applyReviewed() }
+    private lazy var dismiss = SettingsForm.button(
+        String(localized: "Cancel"), symbol: "xmark"
+    ) { [weak self] in self?.close() }
     private(set) var state = PatchApplyState.idle { didSet { render() } }
     var onApplied: (() -> Void)?
 
@@ -68,10 +74,13 @@ final class PatchApplySheetController: NSWindowController, NSWindowDelegate {
         self.apply = apply
         super.init(window: chrome.window)
         chrome.window.delegate = self
-        chrome.add(
-            NSStackView(views: [
-                SettingsForm.label(patchURL.lastPathComponent, font: Theme.title), SheetChrome.spacer(), totals,
-            ]), height: 26)
+        let badge = StorageStyle.iconBadge(
+            "doc.badge.plus", tint: Theme.accent, boxSize: 30, symbolSize: 14, cornerRadius: 7)
+        let header = Deck.hstack(
+            [badge, SettingsForm.label(patchURL.lastPathComponent, font: Theme.title), SheetChrome.spacer(), totals],
+            spacing: 10
+        )
+        chrome.add(header, height: 34)
         let scroll = SheetChrome.plainTextEditor(
             files, size: 11, label: String(localized: "Files in patch"),
             id: "patch.files")

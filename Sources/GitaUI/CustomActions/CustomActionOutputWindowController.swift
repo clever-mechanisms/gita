@@ -13,8 +13,12 @@ final class CustomActionOutputWindowController: NSWindowController, NSWindowDele
     private let stdout = NSTextView()
     private let stderr = NSTextView()
     private weak var parentWindow: NSWindow?
-    private lazy var cancel = ActionButton(title: String(localized: "Cancel")) { [weak self] in self?.cancelRun() }
-    private lazy var copy = ActionButton(title: String(localized: "Copy output")) { [weak self] in self?.copyOutput() }
+    private lazy var cancel = SettingsForm.button(
+        String(localized: "Cancel"), symbol: "stop.circle"
+    ) { [weak self] in self?.cancelRun() }
+    private lazy var copy = SettingsForm.button(
+        String(localized: "Copy output"), symbol: "doc.on.doc"
+    ) { [weak self] in self?.copyOutput() }
     var onStateChange: ((CustomActionRunState) -> Void)?
     var onComplete: (() -> Void)?
     private var didNotifyComplete = false
@@ -36,25 +40,36 @@ final class CustomActionOutputWindowController: NSWindowController, NSWindowDele
         super.init(window: chrome.window)
         chrome.window.delegate = self
         status.font = Theme.mono
-        let header = NSStackView(views: [
-            SettingsForm.label(action.name, font: Theme.title),
-            ActionToolBadge(action.scope.localizedTitle, color: Theme.accent),
-            SheetChrome.spacer(), status, duration,
-        ])
+        let badge = StorageStyle.iconBadge(
+            "terminal", tint: Theme.accent, boxSize: 30, symbolSize: 14, cornerRadius: 7)
+        let header = Deck.hstack(
+            [
+                badge,
+                SettingsForm.label(action.name, font: Theme.title),
+                ActionToolBadge(action.scope.localizedTitle, color: Theme.accent),
+                SheetChrome.spacer(), status, duration,
+            ],
+            spacing: 8
+        )
         duration.font = Theme.mono
         command.font = Theme.mono
+        command.textColor = Theme.text
         command.isSelectable = true
-        chrome.add(header, height: 25)
-        chrome.add(command, height: 44)
+        let commandCard = FillView(color: Theme.inset)
+        commandCard.borderColor = Theme.separator
+        commandCard.cornerRadius = 6
+        Deck.pin(command, in: commandCard, insets: NSEdgeInsets(top: 6, left: 10, bottom: 6, right: 10))
+        chrome.add(header, height: 34)
+        chrome.add(commandCard, height: 48)
         let tabs = NSTabView()
         addTab(String(localized: "Standard output"), text: stdout, tabs: tabs)
         addTab(String(localized: "Standard error"), text: stderr, tabs: tabs)
         chrome.add(tabs, height: 240)
         chrome.setFlexibleRow(tabs, preferred: 240, minimum: 72)
-        chrome.complete(footer: [
-            copy, SheetChrome.spacer(), cancel,
-            ActionButton(title: String(localized: "Close")) { [weak self] in self?.close() },
-        ])
+        let closeButton = SettingsForm.button(String(localized: "Close"), symbol: "xmark") { [weak self] in
+            self?.close()
+        }
+        chrome.complete(footer: [copy, SheetChrome.spacer(), cancel, closeButton])
         render()
     }
 

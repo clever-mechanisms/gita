@@ -5,9 +5,14 @@ import GitaCore
 final class AgentFlightRecorderViewController: NSViewController {
     let presenter: FlightRecorderPresenter
     let scrubber = FlightTurnScrubberView()
-    private let recording = NSSwitch()
+    var onBack: (() -> Void)? {
+        didSet {
+            if isViewLoaded { header.onBack = onBack }
+        }
+    }
+    private let recording = AccentSwitch()
     private let detail = Deck.hstack([])
-    private let strip = FillView(color: Theme.inset)
+    private let strip = StorageStyle.card(cornerRadius: 8)
     private let refreshSpinner = DelayedSpinnerController()
     private let feedback = Deck.caption("")
     private lazy var comparison = AgentControlUI.popup(
@@ -16,18 +21,35 @@ final class AgentFlightRecorderViewController: NSViewController {
     private lazy var pane = FlightDiffPane(presenter)
     private lazy var body = AgentControlBody(content: pane, id: "flight.body")
     private lazy var snapshot = AgentControlUI.button(
-        String(localized: "Snapshot Now"), "flight.capture", style: .accent
+        String(localized: "Snapshot Now"), "flight.capture", symbol: "camera.fill", style: .accent
     ) {
         [weak self] in self?.presenter.captureManualSnapshot()
     }
-    private lazy var clear = AgentControlUI.button(String(localized: "Clear"), "flight.clear") {
+    private lazy var clear = AgentControlUI.button(
+        String(localized: "Clear"), "flight.clear", symbol: "trash"
+    ) {
         [weak self] in self?.presenter.clearSnapshots(on: self?.view.window)
     }
     private lazy var restore = AgentControlUI.button(
-        String(localized: "Restore Turn"), "flight.restore"
+        String(localized: "Restore Turn"), "flight.restore", symbol: "clock.arrow.circlepath"
     ) {
         [weak self] in self?.presenter.restoreSelectedTurn(on: self?.view.window)
     }
+    private lazy var header = AgentControlHeaderView(
+        .init(
+            symbol: "waveform.path.ecg",
+            title: String(localized: "Flight Recorder"),
+            subtitle: String(localized: "Time-travel snapshots for agent turns"),
+            id: "flight"),
+        leading: [
+            Deck.hstack(
+                [
+                    AgentControlUI.label(
+                        String(localized: "Recording"), font: Theme.captionEmphasis, color: Theme.secondaryText),
+                    recording, refreshSpinner.indicator,
+                ], spacing: 6)
+        ],
+        trailing: [snapshot, clear, restore])
 
     init(presenter: FlightRecorderPresenter) {
         self.presenter = presenter
@@ -42,17 +64,12 @@ final class AgentFlightRecorderViewController: NSViewController {
         let label = String(localized: "Recording")
         recording.setAccessibilityLabel(label)
         AgentControlUI.identify(recording, "flight.recording")
-        recording.target = self
-        recording.action = #selector(toggle)
-        let header = Deck.hstack([
-            AgentControlUI.label(label, font: Theme.title), recording, refreshSpinner.indicator, Deck.spacer(),
-            snapshot, clear, restore,
-        ])
-        strip.cornerRadius = 8
+        recording.onChange = { [weak self] enabled in self?.presenter.setEnabled(enabled) }
+        header.onBack = onBack
         let detailsRow = Deck.hstack([detail, Deck.spacer(), comparison])
-        Deck.pin(detailsRow, in: strip, insets: NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8))
+        Deck.pin(detailsRow, in: strip, insets: NSEdgeInsets(top: 5, left: 10, bottom: 5, right: 10))
         let surface = AgentControlSurface(
-            [header, Deck.separator(), scrubber, strip, body, feedback], primary: snapshot, id: "flight.root")
+            [scrubber, strip, body, feedback], header: header, primary: snapshot, id: "flight.root")
         view = surface
         recording.nextKeyView = snapshot
         snapshot.nextKeyView = clear
@@ -83,12 +100,10 @@ final class AgentFlightRecorderViewController: NSViewController {
         refreshSpinner.stop()
     }
 
-    @objc private func toggle() { presenter.setEnabled(recording.state == .on) }
-
     private func render() {
         let state = presenter.state
         let loaded = isLoaded(state)
-        recording.state = presenter.isEnabled ? .on : .off
+        recording.setOn(presenter.isEnabled, animated: false)
         recording.isEnabled = canToggleRecording(state)
         restore.isEnabled = loaded
         clear.isEnabled = loaded
@@ -129,7 +144,10 @@ final class AgentFlightRecorderViewController: NSViewController {
 
     private func renderBody(_ state: FlightRecorderState) {
         switch state {
-        case .idle: message(String(localized: "Open the snapshot history."), String(localized: "Load History"))
+        case .idle:
+            message(
+                String(localized: "Open the snapshot history."), String(localized: "Load History"),
+                icon: "waveform.path.ecg", buttonSymbol: "clock.arrow.circlepath")
         case .loading:
             if presenter.diff != nil {
                 body.showContent()
@@ -144,12 +162,18 @@ final class AgentFlightRecorderViewController: NSViewController {
             }
         case .restoring: body.show(String(localized: "Restoring the working tree…"), busy: true)
         case .disabled:
-            message(String(localized: "Recording is off for this repository."), String(localized: "Enable Recording"))
+            message(
+                String(localized: "Recording is off for this repository."), String(localized: "Enable Recording"),
+                icon: "record.circle", buttonSymbol: "record.circle")
         case .empty:
             message(
-                String(localized: "Capture a snapshot to record the first turn."), String(localized: "Capture Snapshot")
-            )
-        case .failed(let reason): message(reason, String(localized: "Retry"), failed: true)
+                String(localized: "Capture a snapshot to record the first turn."),
+                String(localized: "Capture Snapshot"),
+                icon: "camera", buttonSymbol: "camera.fill")
+        case .failed(let reason):
+            message(
+                reason, String(localized: "Retry"), icon: "exclamationmark.triangle.fill",
+                buttonSymbol: "arrow.clockwise", failed: true)
         case .loaded:
             wireContentKeyLoop()
             pane.render()
@@ -166,8 +190,10 @@ final class AgentFlightRecorderViewController: NSViewController {
         }
     }
 
-    private func message(_ text: String, _ action: String, failed: Bool = false) {
-        let button = AgentControlUI.button(action, "flight.stateAction") { [weak self] in
+    private func message(
+        _ text: String, _ action: String, icon: String, buttonSymbol: String, failed: Bool = false
+    ) {
+        let button = AgentControlUI.button(action, "flight.stateAction", symbol: buttonSymbol) { [weak self] in
             guard let self else { return }
             switch self.presenter.state {
             case .disabled: self.presenter.setEnabled(true)
@@ -177,7 +203,7 @@ final class AgentFlightRecorderViewController: NSViewController {
         }
         restore.nextKeyView = button
         button.nextKeyView = recording
-        body.show(text, failed: failed, button: button)
+        body.show(text, symbol: icon, failed: failed, button: button)
     }
 
     private func showDetails() {

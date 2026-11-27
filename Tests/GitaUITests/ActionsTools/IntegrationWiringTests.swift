@@ -63,31 +63,21 @@ struct IntegrationWiringTests {
         #expect(library.actions(for: .file).isEmpty)
     }
 
-    @Test func auxiliaryWindowRegistryReusesPerServiceAndRebuildsWhenServiceChanges() throws {
-        UITestSupport.bootstrap()
-        let repo = try TemporaryRepository()
-        let firstService = GitService(root: repo.url)
-        let secondService = GitService(root: repo.url)
-        let registry = AuxiliaryWindowRegistry()
+    @Test func inlineToolHostUnmountsPreviousControllerWhenSwitchingTools() async throws {
+        let fixture = try await RepositoryWindowFixture()
+        defer { fixture.close() }
+        let controller = fixture.controller
+        controller.openToolPage(.reflog(ref: "HEAD"))
+        let first = try #require(controller.toolHost.activeController as? ReflogViewController)
+        #expect(controller.model.section == .reflog)
+        #expect(!controller.toolHost.container.isHidden)
+        #expect(controller.prWorkspace.isHidden)
 
-        var created = 0
-        let first: NSWindowController = registry.controller(for: repo.url, kind: .reflog, service: firstService) {
-            created += 1
-            return NSWindowController(window: NSWindow())
-        }
-        let reused: NSWindowController = registry.controller(for: repo.url, kind: .reflog, service: firstService) {
-            created += 1
-            return NSWindowController(window: NSWindow())
-        }
-        #expect(first === reused)
-        #expect(created == 1)
-
-        let rebuilt: NSWindowController = registry.controller(for: repo.url, kind: .reflog, service: secondService) {
-            created += 1
-            return NSWindowController(window: NSWindow())
-        }
-        #expect(rebuilt !== first)
-        #expect(created == 2)
+        controller.openToolPage(.codeSearch())
+        let second = try #require(controller.toolHost.activeController as? CodeSearchViewController)
+        #expect(first.parent == nil)
+        #expect(second.parent === controller)
+        #expect(controller.model.section == .codeSearch)
     }
 
     @Test func commitSigningRowHidesWhenUnconfiguredAndWithoutTemplate() {

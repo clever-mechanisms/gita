@@ -166,7 +166,7 @@ struct SettingsGitPaneTests {
         #expect(cards.map(\.titleLabel.stringValue) == [String(localized: "Pull"), String(localized: "Merge")])
         #expect(cards.allSatisfy { $0.help != nil })
         let helps = pane.view.settingsDescendants(of: SettingsHelpButton.self)
-        #expect(helps.count == 5)
+        #expect(helps.count == 8)
         let help = try #require(helps.last)
         #expect(help.toolTip == help.explanation)
         #expect(help.accessibilityHelp() == help.explanation)
@@ -214,6 +214,80 @@ struct SettingsGitPaneTests {
         pane.refresh()
         #expect(pane.mergedCommits.selectedSegment == 0)
         #expect(pane.graphLines.selectedSegment == 0)
+    }
+
+    @Test func globalPerformanceSettingsLoadToggleAndRespectCustomHook() async throws {
+        let recorder = SettingsRecorder()
+        defer { recorder.tearDown() }
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let globalConfig = tempDir.appendingPathComponent("gitconfig")
+        let service = RepositoryHealthService(globalConfigURL: globalConfig)
+
+        let pane = GitSettingsPane(environment: recorder.environment, healthService: service)
+        #expect(pane.view(for: .performance) === pane.performanceGroup)
+        #expect(pane.view(for: .remoteUpdates) === pane.remoteUpdatesGroup)
+        pane.refresh()
+        try await SettingsWait.until { !pane.performance.state.isBusy }
+        #expect(!pane.performance.globalFSMonitor.isOn)
+        #expect(pane.performance.globalFSMonitor.isEnabled)
+        #expect(!pane.performance.globalUntrackedCache.isOn)
+        #expect(pane.performance.globalUntrackedCache.isEnabled)
+        #expect(pane.performance.maintenanceCountLabel.stringValue == String(localized: "None registered"))
+
+        pane.performance.globalFSMonitor.settingsPress()
+        try await SettingsWait.until { !pane.performance.state.isBusy }
+        #expect(pane.performance.globalFSMonitor.isOn)
+
+        pane.performance.globalUntrackedCache.settingsPress()
+        try await SettingsWait.until { !pane.performance.state.isBusy }
+        #expect(pane.performance.globalUntrackedCache.isOn)
+
+        let persisted = try await service.inspectGlobalDefaults()
+        #expect(persisted.fsMonitor == .enabled)
+        #expect(persisted.untrackedCache == .enabled)
+
+        let customConfig = """
+            [core]
+            \tfsmonitor = ./my-hook
+            [maintenance]
+            \trepo = /tmp/one
+            \trepo = /tmp/two
+            """
+        try Data(customConfig.utf8).write(to: globalConfig)
+        pane.refresh()
+        try await SettingsWait.until { !pane.performance.state.isBusy }
+        #expect(!pane.performance.globalFSMonitor.isEnabled)
+        #expect(pane.performance.globalFSMonitorStatus.stringValue == String(localized: "Custom hook"))
+        #expect(pane.performance.fsMonitorRow?.subtitleLabel?.stringValue.contains("./my-hook") == true)
+        #expect(pane.performance.maintenanceCountLabel.stringValue == String(localized: "\(2) repositories"))
+        #expect(GitPerformanceControls.formatMaintenanceCount(1) == String(localized: "1 repository"))
+        pane.didDisappear()
+    }
+
+    @Test func globalPerformanceSettingsHandleFailureCleanly() async throws {
+        struct FailingRunner: CommandRunning {
+            func run(
+                executable _: String, arguments _: [String], directory _: URL?, timeout _: TimeInterval,
+                outputLimit _: Int
+            ) async throws -> CommandResult {
+                throw CommandError.timedOut
+            }
+        }
+        let recorder = SettingsRecorder()
+        defer { recorder.tearDown() }
+        let service = RepositoryHealthService(runner: FailingRunner())
+        let pane = GitSettingsPane(environment: recorder.environment, healthService: service)
+        pane.refresh()
+        try await SettingsWait.until { !pane.performance.state.isBusy }
+        guard case .failed = pane.performance.state else {
+            Issue.record("Expected failed state when global config cannot be read")
+            return
+        }
+        #expect(!pane.performance.globalFSMonitor.isEnabled)
+        #expect(!pane.performance.globalUntrackedCache.isEnabled)
+        #expect(pane.performance.maintenanceCountLabel.stringValue == String(localized: "Unavailable"))
     }
 
     @Test func menuBarSwitches() {

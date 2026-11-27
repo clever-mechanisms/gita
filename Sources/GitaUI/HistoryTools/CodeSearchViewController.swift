@@ -1,14 +1,19 @@
 import AppKit
 import GitaCore
 
-/// Native macOS utility window for Git Pickaxe code search (`git log -S` literal and `-G` regex).
+/// Embeddable inline controller for Git Pickaxe code search (`git log -S` literal and `-G` regex).
 @MainActor
-final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
+final class CodeSearchViewController: NSViewController, NSSearchFieldDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("codeSearch.row")
     private static let cellID = NSUserInterfaceItemIdentifier("codeSearch.cell")
 
     let presenter: CodeSearchPresenter
-    var onJumpToCommit: ((String) -> Void)?
+    var onJumpToCommit: ((String) -> Void)? {
+        didSet { if isViewLoaded { updateDetail() } }
+    }
+    var onBack: (() -> Void)? {
+        didSet { headerBar?.onBack = onBack }
+    }
 
     private let repositoryRoot: URL?
     private let repositoryName: String
@@ -25,41 +30,39 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
     private let commitMeta = Deck.caption("")
     private let jumpButton: PartsButton
     private let copySHAButton: PartsButton
+    private var headerBar: HistoryToolHeaderBar?
     private var listPane: HistoryToolTablePane?
     private var detailPane: HistoryToolDetailPane?
 
     convenience init(service: GitService, repositoryRoot: URL? = nil, repositoryName: String? = nil) {
-        let name = repositoryName ?? repositoryRoot?.lastPathComponent ?? String(localized: "Repository")
         self.init(
-            presenter: CodeSearchPresenter(service: service), repositoryName: name, repositoryRoot: repositoryRoot)
+            presenter: CodeSearchPresenter(service: service),
+            repositoryName: HistoryToolChrome.repositoryDisplayName(repositoryName, root: repositoryRoot),
+            repositoryRoot: repositoryRoot
+        )
     }
 
     init(presenter: CodeSearchPresenter, repositoryName: String, repositoryRoot: URL? = nil) {
         self.repositoryRoot = repositoryRoot
         self.repositoryName = repositoryName
         self.presenter = presenter
-        self.searchButton = PartsButton(
-            [
-                .symbol("magnifyingglass", color: Deck.onAccent, size: 11),
-                .text(String(localized: "Search"), font: Theme.bodyEmphasis, color: Deck.onAccent),
-            ],
-            background: .accent,
+        self.searchButton = StorageStyle.actionButton(
+            String(localized: "Search"), symbol: "magnifyingglass", style: .accent,
             accessibility: String(localized: "Search code history")
-        )
+        ) {}
         self.jumpButton = PartsButton.quiet(String(localized: "Jump to Commit"), symbol: "arrow.up.right.square") {}
-        self.copySHAButton = PartsButton.quiet(String(localized: "Copy SHA"), symbol: "doc.on.doc") {}
-        super.init(window: nil)
+        self.copySHAButton = HistoryToolChrome.copySHAButton {}
+        super.init(nibName: nil, bundle: nil)
         configureSearchActions()
         presenter.onChange = { [weak self] in self?.render() }
+        HistoryToolChrome.observeTheme(self, selector: #selector(handleThemeChanged))
     }
 
     @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    /// Shows the Code Search window, optionally prefilling an initial query or path filter.
     func show(initialPattern: String? = nil, pathFilter: String? = nil) {
-        let win = prepareWindow()
-        AuxiliaryWindowActivation.show(win)
+        loadViewIfNeeded()
         if let initialPattern {
             queryField.stringValue = initialPattern
             presenter.setPattern(initialPattern)
@@ -68,38 +71,34 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
             pathField.stringValue = pathFilter
             presenter.setPathFilter(pathFilter)
         }
-        win.makeFirstResponder(queryField)
+        focusQuery()
         if let initialPattern, !initialPattern.isEmpty {
             presenter.search()
         }
     }
 
-    @discardableResult
-    func prepareWindow() -> NSWindow {
-        if let window { return window }
-        let win = makeWindow()
-        self.window = win
-        render()
-        return win
+    func focusQuery() {
+        loadViewIfNeeded()
+        view.window?.makeFirstResponder(queryField)
     }
 
-    func windowWillClose(_: Notification) {
+    func cancel() {
         presenter.cancel()
-        AuxiliaryWindowActivation.closing(window)
     }
 
-    private func configureSearchActions() {
-        searchButton.fixedHeight = 24
-        searchButton.horizontalPadding = 10
-        searchButton.onClick = { [weak self] in self?.runSearch() }
-        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
-        copySHAButton.onClick = { [weak self] in self?.copySelectedSHA() }
-        searchButton.setAccessibilityIdentifier("codeSearch.search")
-        jumpButton.setAccessibilityIdentifier("codeSearch.jump")
-        copySHAButton.setAccessibilityIdentifier("codeSearch.copySHA")
-    }
+    override func loadView() {
+        configureSpinner()
+        let header = HistoryToolHeaderBar(
+            HistoryToolHeaderBar.Spec(
+                symbol: "doc.text.magnifyingglass",
+                title: String(localized: "Code Search"),
+                subtitle: repositoryName,
+                trailing: [spinner, statusLabel]
+            )
+        )
+        header.onBack = onBack
+        headerBar = header
 
-    private func makeWindow() -> NSWindow {
         let list = HistoryToolTablePane(
             columnID: "codeSearch.result",
             rowHeight: CodeSearchRowCell.rowHeight,
@@ -119,18 +118,35 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
         detail.fileBar.onSelectFile = { [weak self] path in self?.presenter.selectFile(path) }
         detailPane = detail
 
-        return HistoryToolChrome.makeSplitWindow(
-            HistoryToolChrome.SplitWindowSpec(
-                title: String(localized: "Code Search · \(repositoryName)"),
-                size: NSSize(width: 1_020, height: 620),
-                minSize: NSSize(width: 740, height: 420),
-                topBar: makeSearchControls(),
+        view = HistoryToolChrome.makeInlineSplitView(
+            HistoryToolChrome.InlineSplitSpec(
+                header: header,
+                subBar: makeSearchControls(),
                 list: list,
                 detail: detail,
                 dividerPosition: 410
-            ),
-            delegate: self
+            )
         )
+        render()
+    }
+
+    private func configureSearchActions() {
+        searchButton.onClick = { [weak self] in self?.runSearch() }
+        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
+        copySHAButton.onClick = { [weak self] in self?.copySelectedSHA() }
+        searchButton.setAccessibilityIdentifier("codeSearch.search")
+        jumpButton.setAccessibilityIdentifier("codeSearch.jump")
+        copySHAButton.setAccessibilityIdentifier("codeSearch.copySHA")
+    }
+
+    private func configureSpinner() {
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.usesThreadedAnimation = false
+        spinner.isDisplayedWhenStopped = false
+        spinner.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        spinner.heightAnchor.constraint(equalToConstant: 14).isActive = true
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
     private func makeSearchControls() -> NSView {
@@ -145,14 +161,15 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
         queryField.action = #selector(submitSearch)
         queryField.setAccessibilityIdentifier("codeSearch.query")
 
-        modeControl.segmentCount = 2
-        modeControl.segmentStyle = .rounded
-        modeControl.trackingMode = .selectOne
-        modeControl.setLabel(String(localized: "Literal (-S)"), forSegment: 0)
-        modeControl.setLabel(String(localized: "Regex (-G)"), forSegment: 1)
-        modeControl.selectedSegment = 0
-        modeControl.target = self
-        modeControl.action = #selector(modeChanged)
+        HistoryToolChrome.configureSegmentedControl(
+            modeControl,
+            segments: [
+                .init(title: String(localized: "Literal (-S)"), symbol: "text.quote"),
+                .init(title: String(localized: "Regex (-G)"), symbol: "asterisk.circle"),
+            ],
+            target: self,
+            action: #selector(modeChanged)
+        )
         modeControl.setAccessibilityIdentifier("codeSearch.mode")
 
         pathField.placeholderString = String(localized: "Path filter (optional, e.g. Sources/GitaCore)")
@@ -167,27 +184,27 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
         ignoreCaseButton.target = self
         ignoreCaseButton.action = #selector(ignoreCaseChanged)
 
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.usesThreadedAnimation = false
-        spinner.isDisplayedWhenStopped = false
-        spinner.widthAnchor.constraint(equalToConstant: 14).isActive = true
-        spinner.heightAnchor.constraint(equalToConstant: 14).isActive = true
-
         let topRow = Deck.hstack([queryField, modeControl, searchButton], spacing: 8)
-        let bottomRow = Deck.hstack([pathField, ignoreCaseButton, spinner, statusLabel], spacing: 10)
+        let pathIcon = Deck.icon("folder", size: 11, color: Theme.secondaryText)
+        let bottomRow = Deck.hstack([pathIcon, pathField, ignoreCaseButton, Deck.spacer()], spacing: 8)
         let stack = Deck.vstack([topRow, bottomRow], spacing: 8)
         topRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         bottomRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         queryField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         pathField.widthAnchor.constraint(equalToConstant: 260).isActive = true
-        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         Deck.pin(stack, in: container, insets: NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14))
         return container
     }
 
+    @objc private func handleThemeChanged() {
+        guard isViewLoaded else { return }
+        view.needsDisplay = true
+        render()
+    }
+
     private func render() {
+        guard isViewLoaded else { return }
         searchButton.isEnabled = presenter.canSearch
         statusLabel.stringValue = presenter.statusSummary
         statusLabel.textColor = presenter.state.errorMessage != nil ? Theme.failure : Theme.secondaryText
@@ -198,33 +215,45 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
         }
 
         let matches = presenter.matches
-        if let table = listPane?.table {
-            table.reloadData()
-            if let selectedID = presenter.selectedCommitID,
-                let index = matches.firstIndex(where: { $0.commit.id == selectedID })
-            {
-                table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
-            }
+        let selectedIndex = presenter.selectedCommitID.flatMap { selectedID in
+            matches.firstIndex { $0.commit.id == selectedID }
         }
+        HistoryToolChrome.reloadTable(listPane?.table, selectedIndex: selectedIndex)
         updateEmptyState(count: matches.count)
         updateDetail()
     }
 
     private func updateEmptyState(count: Int) {
-        guard let emptyLabel = listPane?.emptyLabel else { return }
+        guard let emptyState = listPane?.emptyState else { return }
         switch presenter.state {
         case .idle:
-            emptyLabel.stringValue = String(localized: "Enter a literal string or regex and press Return")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "doc.text.magnifyingglass",
+                title: String(localized: "Search commit history"),
+                detail: String(localized: "Enter a literal string or regex and press Return.")
+            )
         case .searching:
-            emptyLabel.stringValue = String(localized: "Searching commit diffs…")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "magnifyingglass",
+                title: String(localized: "Searching commit diffs…"),
+                tint: Theme.working
+            )
         case .failed(_, let message):
-            emptyLabel.stringValue = message
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "exclamationmark.triangle",
+                title: message,
+                tint: Theme.failure
+            )
         case .results:
-            emptyLabel.stringValue = String(localized: "No matching commits found")
-            emptyLabel.isHidden = count > 0
+            emptyState.apply(
+                hidden: count > 0,
+                symbol: "magnifyingglass",
+                title: String(localized: "No matching commits found"),
+                detail: String(localized: "Try broadening your pattern or clearing the path filter.")
+            )
         }
     }
 
@@ -240,9 +269,8 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
                 "", loading: presenter.state.isSearching, emptyMessage: String(localized: "No diff selected"))
             return
         }
-        let shortSHA = String(match.commit.id.prefix(7))
         commitTitle.stringValue = match.commit.subject
-        commitMeta.stringValue = "\(shortSHA) · \(match.commit.author) · \(DeckFormat.relative(match.commit.date))"
+        commitMeta.stringValue = HistoryToolChrome.commitDetailMeta(for: match.commit)
         detailPane.fileBar.apply(paths: match.matchedFiles, selected: presenter.diffState.selectedPath)
         jumpButton.isEnabled = onJumpToCommit != nil
         copySHAButton.isEnabled = true
@@ -294,14 +322,14 @@ final class CodeSearchWindowController: NSWindowController, NSWindowDelegate, NS
     }
 }
 
-extension CodeSearchWindowController: NSTableViewDataSource, NSTableViewDelegate {
-    public func numberOfRows(in _: NSTableView) -> Int { presenter.matches.count }
+extension CodeSearchViewController: NSTableViewDataSource, NSTableViewDelegate {
+    func numberOfRows(in _: NSTableView) -> Int { presenter.matches.count }
 
-    public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+    func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
         DeckTableRowView.reused(in: tableView, id: Self.rowID)
     }
 
-    public func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
+    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
         guard presenter.matches.indices.contains(row) else { return nil }
         let cell =
             tableView.makeView(withIdentifier: Self.cellID, owner: nil) as? CodeSearchRowCell
@@ -311,7 +339,7 @@ extension CodeSearchWindowController: NSTableViewDataSource, NSTableViewDelegate
         return cell
     }
 
-    public func tableViewSelectionDidChange(_: Notification) {
+    func tableViewSelectionDidChange(_: Notification) {
         guard let row = listPane?.table.selectedRow else { return }
         presenter.select(commitID: presenter.matches.indices.contains(row) ? presenter.matches[row].commit.id : nil)
     }

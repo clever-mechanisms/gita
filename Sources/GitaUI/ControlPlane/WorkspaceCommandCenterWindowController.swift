@@ -54,6 +54,8 @@ final class WorkspaceCommandCenterWindowController: NSWindowController, NSWindow
         tabs.target = self
         tabs.action = #selector(selectTab)
         tabs.font = Theme.body
+        AgentControlUI.applySegmentSymbols(
+            tabs, symbols: ["square.and.pencil", "arrow.triangle.branch", "clock.arrow.circlepath"])
         ControlPlaneViews.identify(tabs, "workspace.tabs", String(localized: "Workspace command center sections"))
         let toolbar = NSToolbar(identifier: "controlPlane.workspace.toolbar")
         toolbar.delegate = self

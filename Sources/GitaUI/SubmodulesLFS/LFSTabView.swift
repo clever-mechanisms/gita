@@ -1,7 +1,7 @@
 import AppKit
 import GitaCore
 
-/// Git LFS tab view: summary header (version + `.git/lfs` cache size), tracked patterns chips, and files + locks table.
+/// Git LFS tab view: summary header (version + `.git/lfs` cache size), tracked patterns chips, and files + locks card.
 @MainActor
 final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     private enum ColumnID {
@@ -19,8 +19,10 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
     private let unlockButton: PartsButton
     private let revealButton: PartsButton
     private let statusBanner = FillView(color: Theme.needsInput.withAlphaComponent(0.12))
+    private let statusBannerIcon = Deck.icon(
+        "exclamationmark.triangle.fill", size: 12.5, weight: .semibold, color: Theme.needsInputText)
     private let statusBannerLabel = Deck.wrapping("", font: Theme.caption, color: Theme.needsInputText)
-    private let emptyLabel = Deck.wrapping("", font: Theme.body, color: Theme.secondaryText)
+    private var tableSurface: EcosystemTabChrome.TableCardSurface?
     private let table = NSTableView()
     private var files: [LFSFileEntry] = []
     private var statusSnapshot: LFSStatus?
@@ -69,12 +71,17 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
         updateBannerAndEmpty(state: state)
     }
 
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        table.backgroundColor = Theme.window
+    func applyTheme() {
+        tableSurface?.applyTheme()
         patternsContainer.color = Theme.inset
         patternsContainer.borderColor = Theme.separator
         applyBannerAppearance(isFailure: lastRenderedBannerIsFailure)
+        table.reloadData()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyTheme()
     }
 
     func numberOfRows(in _: NSTableView) -> Int { files.count }
@@ -106,19 +113,19 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
         let file = files[targetRow]
         let isBusy = presenter.lfsState.isBusy
         if let lock = statusSnapshot?.lock(forPath: file.path) {
-            let unlockItem = MenuAction(String(localized: "Unlock File")) { [weak self] in
+            let unlockItem = MenuAction(String(localized: "Unlock File"), symbol: "lock.open") { [weak self] in
                 self?.presenter.unlockLFSFile(path: file.path, force: false)
             }
             unlockItem.isEnabled = !isBusy
             menu.addItem(unlockItem)
 
-            let forceItem = MenuAction(String(localized: "Force Unlock…")) { [weak self] in
+            let forceItem = MenuAction(String(localized: "Force Unlock…"), symbol: "lock.slash") { [weak self] in
                 self?.requestForceUnlock(lock)
             }
             forceItem.isEnabled = !isBusy
             menu.addItem(forceItem)
         } else {
-            let lockItem = MenuAction(String(localized: "Lock File")) { [weak self] in
+            let lockItem = MenuAction(String(localized: "Lock File"), symbol: "lock.fill") { [weak self] in
                 self?.presenter.lockLFSFile(path: file.path)
             }
             lockItem.isEnabled = !isBusy
@@ -126,7 +133,7 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
         }
         menu.addItem(.separator())
         menu.addItem(
-            MenuAction(String(localized: "Reveal in Finder")) { [weak self] in
+            MenuAction(String(localized: "Reveal in Finder"), symbol: "folder") { [weak self] in
                 self?.presenter.revealLFSFileInFinder(file)
             }
         )
@@ -155,16 +162,18 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
     }
 
     private func configureControls() {
+        for button in [lockButton, unlockButton, revealButton] {
+            button.fixedHeight = 26
+        }
         cacheLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         lockButton.setAccessibilityIdentifier("lfs.lockFile")
         unlockButton.setAccessibilityIdentifier("lfs.unlockFile")
         revealButton.setAccessibilityIdentifier("lfs.revealInFinder")
-        patternsContainer.cornerRadius = 6
+        patternsContainer.cornerRadius = 8
         patternsContainer.borderColor = Theme.separator
-        statusBanner.cornerRadius = 6
-        statusBanner.isHidden = true
-        Deck.pin(statusBannerLabel, in: statusBanner, insets: NSEdgeInsets(top: 6, left: 10, bottom: 6, right: 10))
-        emptyLabel.alignment = .center
+        EcosystemTabChrome.configureBanner(
+            statusBanner, icon: statusBannerIcon, label: statusBannerLabel, tint: Theme.needsInput,
+            textColor: Theme.needsInputText)
     }
 
     private func configureTable() {
@@ -190,13 +199,13 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
         let metaRow = Deck.hstack([versionLabel, Deck.spacer(), cacheLabel], spacing: 8)
         let actionRow = Deck.hstack([lockButton, unlockButton, Deck.spacer(), revealButton], spacing: 6)
         let headerStack = Deck.vstack([metaRow, actionRow, patternsContainer], spacing: 8)
-        headerStack.edgeInsets = NSEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        headerStack.edgeInsets = NSEdgeInsets(top: 12, left: 18, bottom: 2, right: 18)
         for view in [metaRow, actionRow, patternsContainer] as [NSView] {
-            view.widthAnchor.constraint(equalTo: headerStack.widthAnchor, constant: -28).isActive = true
+            view.widthAnchor.constraint(equalTo: headerStack.widthAnchor, constant: -36).isActive = true
         }
         Deck.pin(patternsStack, in: patternsContainer, insets: NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8))
-        EcosystemTabChrome.layout(
-            in: self, header: headerStack, statusBanner: statusBanner, table: table, emptyLabel: emptyLabel,
+        tableSurface = EcosystemTabChrome.layout(
+            in: self, header: headerStack, statusBanner: statusBanner, table: table, emptySymbol: "externaldrive",
             emptyWidth: 440)
     }
 
@@ -270,28 +279,30 @@ final class LFSTabView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMe
             statusBanner.isHidden = true
         }
         if state.isLoading {
-            emptyLabel.stringValue = String(localized: "Loading Git LFS status…")
-            emptyLabel.isHidden = false
+            tableSurface?.showEmpty(String(localized: "Loading Git LFS status…"), symbol: "externaldrive")
         } else if state.status?.isAvailable == false {
-            emptyLabel.stringValue = String(
-                localized:
-                    "Git LFS is not installed. Install it via Homebrew (brew install git-lfs) to manage LFS files."
-            )
-            emptyLabel.isHidden = false
+            tableSurface?.showEmpty(
+                String(
+                    localized:
+                        "Git LFS is not installed. Install it via Homebrew (brew install git-lfs) to manage LFS files."
+                ),
+                symbol: "externaldrive.badge.xmark")
         } else if files.isEmpty {
-            emptyLabel.stringValue = String(localized: "No Git LFS files tracked in this repository.")
-            emptyLabel.isHidden = false
+            tableSurface?.showEmpty(
+                String(localized: "No Git LFS files tracked in this repository."), symbol: "externaldrive")
         } else {
-            emptyLabel.isHidden = true
+            tableSurface?.showEmpty("", symbol: "externaldrive")
         }
     }
 
     private func applyBannerAppearance(isFailure: Bool) {
         lastRenderedBannerIsFailure = isFailure
         let accent = isFailure ? Theme.failure : Theme.needsInput
-        statusBannerLabel.textColor = isFailure ? Theme.failure : Theme.needsInputText
+        let textColor = isFailure ? Theme.failure : Theme.needsInputText
+        statusBannerLabel.textColor = textColor
+        statusBannerIcon.setSymbol("exclamationmark.triangle.fill", size: 12.5, weight: .semibold, color: textColor)
         statusBanner.color = accent.withAlphaComponent(0.12)
-        statusBanner.borderColor = accent.withAlphaComponent(0.35)
+        statusBanner.borderColor = accent.withAlphaComponent(0.32)
     }
 }
 

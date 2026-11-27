@@ -22,17 +22,24 @@ import os
         defer { fixture.remove() }
         try await fixture.initialize()
         let root = fixture.root
-        let service = RepositoryHealthService()
+        let globalConfig = fixture.container.appendingPathComponent("gitconfig")
+        let service = RepositoryHealthService(globalConfigURL: globalConfig)
         let initial = try await service.inspect(repositoryRoot: root)
         #expect(initial.maintenance.looseObjects > 0)
+        #expect(initial.fsMonitorScope == .unset)
+        #expect(initial.untrackedCacheScope == .unset)
         try await fixture.git(["config", "--local", "core.fsmonitor", "./monitor-hook"])
-        #expect(try await service.inspect(repositoryRoot: root).fsMonitor == .customHook("./monitor-hook"))
+        let hooked = try await service.inspect(repositoryRoot: root)
+        #expect(hooked.fsMonitor == .customHook("./monitor-hook"))
+        #expect(hooked.fsMonitorScope == .local)
         for enabled in [true, false] {
             try await service.setFSMonitor(enabled, in: root)
             try await service.setUntrackedCache(enabled, in: root)
             let snapshot = try await service.inspect(repositoryRoot: root)
             #expect(snapshot.fsMonitor == (enabled ? .enabled : .disabled))
+            #expect(snapshot.fsMonitorScope == .local)
             #expect(snapshot.untrackedCache == (enabled ? .enabled : .disabled))
+            #expect(snapshot.untrackedCacheScope == .local)
         }
         _ = try await service.writeCommitGraph(in: root)
         let graph = try await service.inspect(repositoryRoot: root).commitGraph
@@ -45,6 +52,55 @@ import os
         let final = try await service.inspect(repositoryRoot: root)
         #expect(final.maintenance.packedObjects > 0)
         #expect(final.maintenance.packs > 0)
+    }
+
+    @Test func inspectsAndMutatesIsolatedGlobalDefaultsAndScopes() async throws {
+        let fixture = try StorageFixture()
+        defer { fixture.remove() }
+        try await fixture.initialize()
+        let root = fixture.root
+        let globalConfig = fixture.container.appendingPathComponent("gitconfig")
+        let service = RepositoryHealthService(globalConfigURL: globalConfig)
+
+        let emptyGlobal = try await service.inspectGlobalDefaults()
+        #expect(emptyGlobal.fsMonitor == .unset)
+        #expect(emptyGlobal.untrackedCache == .unset)
+        #expect(emptyGlobal.registeredMaintenanceCount == 0)
+
+        try await service.setGlobalFSMonitor(true)
+        try await service.setGlobalUntrackedCache(true)
+        let enabledGlobal = try await service.inspectGlobalDefaults()
+        #expect(enabledGlobal.fsMonitor == .enabled)
+        #expect(enabledGlobal.untrackedCache == .enabled)
+
+        let inherited = try await service.inspect(repositoryRoot: root)
+        #expect(inherited.fsMonitor == .enabled && inherited.fsMonitorScope == .global)
+        #expect(inherited.untrackedCache == .enabled && inherited.untrackedCacheScope == .global)
+
+        try await service.setFSMonitor(false, in: root)
+        let overridden = try await service.inspect(repositoryRoot: root)
+        #expect(overridden.fsMonitor == .disabled && overridden.fsMonitorScope == .local)
+        #expect(overridden.untrackedCache == .enabled && overridden.untrackedCacheScope == .global)
+
+        try await service.setGlobalFSMonitor(false)
+        try await service.setGlobalUntrackedCache(false)
+        let disabledGlobal = try await service.inspectGlobalDefaults()
+        #expect(disabledGlobal.fsMonitor == .disabled)
+        #expect(disabledGlobal.untrackedCache == .disabled)
+
+        let configText = """
+            [core]
+            \tfsmonitor = ./custom-global-hook
+            \tuntrackedCache
+            [maintenance]
+            \trepo = \(root.path)
+            \trepo = /tmp/second-repo
+            """
+        try Data(configText.utf8).write(to: globalConfig)
+        let customGlobal = try await service.inspectGlobalDefaults()
+        #expect(customGlobal.fsMonitor == .customHook("./custom-global-hook"))
+        #expect(customGlobal.untrackedCache == .enabled)
+        #expect(customGlobal.registeredMaintenanceCount == 2)
     }
 
     @Test func maintenanceRegistrationRunsIsolatedGitCommands() async throws {

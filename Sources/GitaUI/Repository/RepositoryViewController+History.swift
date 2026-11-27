@@ -168,9 +168,10 @@ extension RepositoryViewController {
         rebuildSidebar()
     }
 
-    /// ⌘F: focus the Pull Requests filter when viewing Pull Requests, otherwise focus the history search.
+    /// ⌘F: focus the Pull Requests filter or Code Search query when viewing those pages, otherwise history search.
     func focusSearch() {
         if model.section == .pullRequests, providerPage.focusFilterSearch() { return }
+        if model.section == .codeSearch, focusCodeSearchQuery() { return }
         if model.section != .history { model.section = .history }
         view.window?.makeFirstResponder(historyControls.search)
     }

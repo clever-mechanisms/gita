@@ -10,7 +10,9 @@ final class FlightDiffPane: NSView {
     private lazy var hunks = AgentControlUI.popup(
         String(localized: "Hunk"), "flight.hunks", target: self,
         action: #selector(selectHunk))
-    private lazy var restore = AgentControlUI.button(String(localized: "Restore Hunk"), "flight.restoreHunk") {
+    private lazy var restore = AgentControlUI.button(
+        String(localized: "Restore Hunk"), "flight.restoreHunk", symbol: "clock.arrow.circlepath"
+    ) {
         [weak self] in self?.restoreHunk()
     }
 
@@ -39,7 +41,8 @@ final class FlightDiffPane: NSView {
                 title: path,
                 makeAction: { [weak self] in
                     let button = AgentControlUI.button(
-                        String(localized: "Restore File"), "flight.restoreFile.\(index)", style: .hover
+                        String(localized: "Restore File"), "flight.restoreFile.\(index)",
+                        symbol: "arrow.uturn.backward", style: .hover
                     ) {
                         [weak self] in self?.presenter.restoreFile(path, on: self?.window)
                     }

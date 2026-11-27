@@ -95,7 +95,8 @@ import Testing
             untrackedCache: .enabled, commitGraph: CommitGraphInfo(path: nil, modifiedAt: nil),
             maintenance: GitMaintenanceInfo(
                 automatic: .disabled, isRegistered: true, looseObjects: 12,
-                packedObjects: 2, packs: 1, looseKiB: 4, packedKiB: 8))
+                packedObjects: 2, packs: 1, looseKiB: 4, packedKiB: 8),
+            fsMonitorScope: .local, untrackedCacheScope: .global)
         #expect(
             presenter.hasActiveAgent(
                 in: root, snapshot: health, report: nil, activeAgentPaths: [external + "/subdir"]))
@@ -107,6 +108,8 @@ import Testing
                 in: root, snapshot: nil, report: nil, activeAgentPaths: ["/other/repo"]))
         let summary = presenter.healthSummary(for: health, actionState: .idle)
         #expect(summary.enabledCount == 3 && summary.totalCount == 4)
+        #expect(summary.scopeBadge.contains(".git/config"))
+        #expect(summary.subtitle.contains(".git/config"))
         #expect(
             summary.status
                 == .recommend(
@@ -119,10 +122,13 @@ import Testing
         #expect(running[0].control == .button)
         #expect(running[0].action == .replaceCustomFSMonitor("./monitor"))
         #expect(running[0].detail.contains("./monitor"))
+        #expect(running[0].scopeOrigin == .thisRepo)
         #expect(running[1].control == .toggle(true))
+        #expect(running[1].scopeOrigin == .inheritedGlobal)
         #expect(running[3].action == .garbageCollection(pruneNow: false))
         #expect(running[3].statPills.first?.contains("12") == true)
         #expect(running[4].secondaryToggle?.isOn == true)
+        #expect(running[4].scopeOrigin == .thisRepo)
         let idle = presenter.healthCards(for: health, actionState: .idle, hasActiveAgent: false)
         #expect(idle[3].action == .garbageCollection(pruneNow: true))
     }

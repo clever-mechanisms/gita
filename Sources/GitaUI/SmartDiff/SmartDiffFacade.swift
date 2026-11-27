@@ -4,20 +4,6 @@ import GitaCore
 @MainActor
 final class SmartDiffFacade {
     static let shared = SmartDiffFacade()
-    private struct WindowKey: Hashable {
-        let production: URL
-        let preview: URL
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.production == rhs.production && lhs.preview == rhs.preview
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(production)
-            hasher.combine(preview)
-        }
-    }
-    private var windows: [WindowKey: VisualPreviewDiffWindowController] = [:]
 
     init() {}
 
@@ -68,24 +54,5 @@ final class SmartDiffFacade {
         vercelContext: VercelContext?, previewDeployment: DeploymentDetail?
     ) -> VisualPreviewPair? {
         VisualPreviewURLValidator.resolvePair(vercelContext: vercelContext, previewDeployment: previewDeployment)
-    }
-
-    @discardableResult
-    func openVisualPreviewDiff(
-        productionURL: URL, previewURL: URL, title: String? = nil, initialRoute: String = "/"
-    ) -> VisualPreviewDiffWindowController {
-        let key = WindowKey(production: productionURL, preview: previewURL)
-        if let existing = windows[key] {
-            existing.showWindow(nil)
-            return existing
-        }
-        let pair = VisualPreviewPair(
-            productionURL: productionURL, previewURL: previewURL,
-            title: title ?? String(localized: "Production and preview"))
-        let controller = VisualPreviewDiffWindowController(pair: pair, initialRoute: initialRoute)
-        controller.onClose = { [weak self] in self?.windows.removeValue(forKey: key) }
-        windows[key] = controller
-        controller.showWindow(nil)
-        return controller
     }
 }

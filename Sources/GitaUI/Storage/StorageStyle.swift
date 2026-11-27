@@ -188,6 +188,40 @@ enum StorageStyle {
         view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
 
+    static func scopeSegmentedControl(
+        labels: [String], symbols: [String], onChange: @escaping (Int) -> Void
+    ) -> ActionSegmentedControl {
+        let control = ActionSegmentedControl(labels: labels, onChange: onChange)
+        for (index, name) in symbols.enumerated() where index < labels.count {
+            control.setImage(Deck.template(name, size: 12, weight: .medium), forSegment: index)
+            control.setImageScaling(.scaleProportionallyDown, forSegment: index)
+        }
+        control.segmentStyle = .automatic
+        control.segmentDistribution = .fit
+        return control
+    }
+
+    static func layoutHeaderChrome(headerBar: NSView, content: NSView, in rootView: NSView) {
+        let headerDivider = Deck.separator()
+        for subview in [headerBar, headerDivider, content] as [NSView] {
+            rootView.addSubview(subview)
+            subview.translatesAutoresizingMaskIntoConstraints = false
+        }
+        NSLayoutConstraint.activate([
+            headerBar.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            headerBar.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+            headerBar.topAnchor.constraint(equalTo: rootView.topAnchor),
+            headerBar.heightAnchor.constraint(equalToConstant: 48),
+            headerDivider.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            headerDivider.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+            headerDivider.topAnchor.constraint(equalTo: headerBar.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+            content.topAnchor.constraint(equalTo: headerDivider.bottomAnchor),
+            content.bottomAnchor.constraint(equalTo: rootView.bottomAnchor),
+        ])
+    }
+
     static func pinTopInset(_ view: NSView, in container: NSView, top: CGFloat = 18) {
         view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(view)

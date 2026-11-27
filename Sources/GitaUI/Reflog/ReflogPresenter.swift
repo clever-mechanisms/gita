@@ -19,6 +19,16 @@ enum ReflogFilter: Equatable, Sendable {
         }
     }
 
+    var symbol: String {
+        switch self {
+        case .all: "list.bullet"
+        case .orphaned: "exclamationmark.triangle"
+        case .resets: "arrow.uturn.backward"
+        case .rebases: "arrow.triangle.branch"
+        case .commits: "checkmark.circle"
+        }
+    }
+
     static let ordered: [Self] = [.all, .orphaned, .resets, .rebases, .commits]
 
     func matches(_ entry: ReflogEntry) -> Bool {

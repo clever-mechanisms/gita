@@ -5,6 +5,17 @@ import GitaCore
 final class AgentArenaViewController: NSViewController {
     let presenter: AgentArenaPresenter
     lazy var setup = AgentArenaSetup(presenter)
+    var onBack: (() -> Void)? {
+        didSet {
+            if isViewLoaded { header.onBack = onBack }
+        }
+    }
+    private lazy var header = AgentControlHeaderView(
+        .init(
+            symbol: "flag.checkered.2.crossed",
+            title: String(localized: "Fork & Race Arena"),
+            subtitle: String(localized: "Race two coding agents on isolated worktrees"),
+            id: "arena"))
     private lazy var alpha = card(.alpha)
     private lazy var beta = card(.beta)
     private let diff = DiffView()
@@ -24,7 +35,7 @@ final class AgentArenaViewController: NSViewController {
     init(_ presenter: AgentArenaPresenter) {
         self.presenter = presenter
         super.init(nibName: nil, bundle: nil)
-        title = String(localized: "Agent Arena")
+        title = String(localized: "Fork & Race Arena")
     }
 
     @available(*, unavailable)
@@ -35,16 +46,18 @@ final class AgentArenaViewController: NSViewController {
     }
 
     override func loadView() {
+        header.onBack = onBack
         let cards = Deck.hstack([alpha, beta])
         cards.distribution = .fillEqually
         modes.font = Theme.captionEmphasis
+        AgentControlUI.applySegmentSymbols(modes, symbols: ["arrow.left.arrow.right", "a.circle", "b.circle"])
         modes.setAccessibilityLabel(String(localized: "Diff comparison"))
         AgentControlUI.identify(modes, "arena.diffMode")
         AgentControlUI.identify(diff, "arena.diff")
         setup.onCancel = { [weak self] in self?.confirmRemoval(keeping: nil) }
         let controls = setup.build(keyViews: [alpha.pick, beta.pick, modes, diff.table])
         let surface = AgentControlSurface(
-            [controls, cards, Deck.separator(), body], primary: setup.start, id: "arena.root")
+            [controls, cards, Deck.separator(), body], header: header, primary: setup.start, id: "arena.root")
         view = surface
         presenter.onStateChange = { [weak self] in self?.render() }
         render()
@@ -64,7 +77,9 @@ final class AgentArenaViewController: NSViewController {
         switch presenter.state {
         case .idle:
             editable = presenter.canStart
-            body.show(String(localized: "Enter a shared prompt to compare two agents’ changes."))
+            body.show(
+                String(localized: "Enter a shared prompt to compare two agents’ changes."),
+                symbol: "flag.checkered.2.crossed")
         case .racing(_, _, _, let first, let second):
             (a, b) = (first, second)
             canCancel = true
@@ -141,10 +156,10 @@ final class AgentArenaViewController: NSViewController {
 
     private func showFailure(_ reason: String) -> [NSView] {
         guard !presenter.workspaces.isEmpty else {
-            let retry = AgentControlUI.button(String(localized: "Retry"), "arena.retry") {
+            let retry = AgentControlUI.button(String(localized: "Retry"), "arena.retry", symbol: "arrow.clockwise") {
                 [weak self] in self?.setup.submit()
             }
-            body.show(reason, failed: true, button: retry)
+            body.show(reason, symbol: "exclamationmark.triangle.fill", failed: true, button: retry)
             return [retry]
         }
         var rows: [NSView] = []
@@ -152,33 +167,38 @@ final class AgentArenaViewController: NSViewController {
         for workspace in presenter.workspaces {
             let name = AgentControlFormatting.contestant(workspace.id)
             let open = AgentControlUI.button(
-                String(localized: "Open \(name) Worktree"), "arena.\(workspace.id.rawValue).openWorktree"
+                String(localized: "Open \(name) Worktree"), "arena.\(workspace.id.rawValue).openWorktree",
+                symbol: "folder"
             ) { [weak self] in self?.openWorktree(workspace.worktreePath) }
             let path = AgentControlUI.label(workspace.worktreePath.path, font: Theme.mono, color: Theme.secondaryText)
             rows.append(Deck.hstack([open, path]))
             buttons.append(open)
         }
-        let discard = AgentControlUI.button(String(localized: "Discard Both"), "arena.failedDiscard") {
+        let discard = AgentControlUI.button(
+            String(localized: "Discard Both"), "arena.failedDiscard", symbol: "xmark.circle"
+        ) {
             [weak self] in self?.confirmRemoval(keeping: nil)
         }
         rows.append(discard)
         buttons.append(discard)
-        body.show(reason, failed: true, button: AgentControlUI.column(rows))
+        body.show(reason, symbol: "exclamationmark.triangle.fill", failed: true, button: AgentControlUI.column(rows))
         return buttons
     }
 
     private func showWinner(_ winner: ArenaContestantID, kept: URL, branch: String) -> [NSView] {
-        let open = AgentControlUI.button(String(localized: "Open Worktree"), "arena.openWorktree") {
+        let open = AgentControlUI.button(String(localized: "Open Worktree"), "arena.openWorktree", symbol: "folder") {
             [weak self] in self?.openWorktree(kept)
         }
-        let reset = AgentControlUI.button(String(localized: "Reset"), "arena.reset") {
+        let reset = AgentControlUI.button(
+            String(localized: "Reset"), "arena.reset", symbol: "arrow.counterclockwise"
+        ) {
             [weak self] in self?.presenter.cancelAndCleanup()
         }
         let path = AgentControlUI.label(kept.path, font: Theme.mono, color: Theme.secondaryText)
         let actions = AgentControlUI.column([path, Deck.hstack([open, reset])])
         body.show(
             String(localized: "\(AgentControlFormatting.contestant(winner)) won. Kept branch \(branch)"),
-            button: actions)
+            symbol: "trophy.fill", button: actions)
         return [open, reset]
     }
 }

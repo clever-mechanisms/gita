@@ -3,6 +3,7 @@ import AppKit
 @MainActor
 final class ControlPlaneEmptyStateView: NSView {
     private let spinner = NSProgressIndicator()
+    private let iconSlot = NSStackView()
     private let message = Deck.wrapping("", color: Theme.secondaryText)
     private let action: PartsButton
     private var delay: Task<Void, Never>?
@@ -14,7 +15,9 @@ final class ControlPlaneEmptyStateView: NSView {
         spinner.controlSize = .small
         spinner.usesThreadedAnimation = false
         spinner.isDisplayedWhenStopped = false
-        let stack = Deck.vstack([spinner, message, action], spacing: 8)
+        iconSlot.orientation = .horizontal
+        iconSlot.alignment = .centerY
+        let stack = Deck.vstack([spinner, iconSlot, message, action], spacing: 10)
         stack.alignment = .centerX
         addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -29,10 +32,18 @@ final class ControlPlaneEmptyStateView: NSView {
     required init?(coder _: NSCoder) { nil }
     deinit { delay?.cancel() }
 
-    func show(_ text: String, loading: Bool = false, retry: (() -> Void)? = nil) {
+    func show(_ text: String, symbol: String? = nil, loading: Bool = false, retry: (() -> Void)? = nil) {
         delay?.cancel()
         isHidden = false
         spinner.stopAnimation(nil)
+        iconSlot.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if !loading {
+            let iconName = symbol ?? (retry != nil ? "exclamationmark.triangle.fill" : "tray")
+            let tint = retry != nil ? Theme.failure : Theme.secondaryText
+            iconSlot.addArrangedSubview(
+                StorageStyle.iconBadge(iconName, tint: tint, boxSize: 36, symbolSize: 16, cornerRadius: 9))
+        }
+        iconSlot.isHidden = loading
         message.stringValue = text
         message.textColor = retry == nil ? Theme.secondaryText : Theme.failure
         action.isHidden = retry == nil
@@ -145,9 +156,9 @@ final class WorkspaceRows: NSView, NSTableViewDataSource, NSTableViewDelegate {
         self.cell = cell
         table.reloadData()
     }
-    func message(_ text: String, loading: Bool = false, retry: (() -> Void)? = nil) {
+    func message(_ text: String, symbol: String? = nil, loading: Bool = false, retry: (() -> Void)? = nil) {
         show(count: 0) { _ in NSView() }
-        placeholder.show(text, loading: loading, retry: retry)
+        placeholder.show(text, symbol: symbol, loading: loading, retry: retry)
     }
     func numberOfRows(in _: NSTableView) -> Int { count }
     func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? { Row() }

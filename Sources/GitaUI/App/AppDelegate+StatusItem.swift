@@ -23,6 +23,8 @@ extension AppDelegate: StatusItemHost {
             reveal: { [weak self] session in self?.reveal(session) },
             openWorkspace: { [weak self] id in self?.openWorkspace(id) },
             newWorkspace: { [weak self] in self?.newWorkspace() },
+            workspaceCommandCenter: { [weak self] in self?.showWorkspaceCommandCenter() },
+            workspaceStorage: { [weak self] in self?.showWorkspaceStorage() },
             installUpdate: { [weak self] in self?.installAvailableUpdate() })
     }
 

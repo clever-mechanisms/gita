@@ -122,9 +122,11 @@ final class CustomActionEditor {
         }
         rows.append(SettingsRow("", [add]))
         let pills = presenter.placeholders(for: draft.scope).map { key in
-            let button = ActionButton(title: key) { [weak self] in self?.insertPlaceholder(key) }
+            let button = SettingsForm.button(key, symbol: "plus.circle") { [weak self] in self?.insertPlaceholder(key) }
             button.bezelStyle = .inline
+            button.controlSize = .small
             button.font = Theme.mono
+            button.contentTintColor = Theme.working
             button.toolTip = presenter.description(for: key)
             return button
         }

@@ -95,6 +95,13 @@ struct SettingsWindowControllerTests {
             $0.titleLabel?.stringValue == String(localized: "Remote Updates")
         }
         #expect(remoteGroups?.count == 1)
+
+        controller.prepareWindow(.git, anchor: .performance)
+        #expect(controller.pane == .git)
+        let performanceGroups = window.contentView?.settingsDescendants(of: SettingsGroup.self).filter {
+            $0.titleLabel?.stringValue == String(localized: "Performance & Global Defaults")
+        }
+        #expect(performanceGroups?.count == 1)
         controller.windowWillClose(Notification(name: NSWindow.willCloseNotification, object: window))
     }
 

@@ -195,19 +195,21 @@ import Testing
 }
 
 @Suite @MainActor struct SpeculativeGitCommitBucketUITests {
-    @Test func windowSupportsAssignmentPreviewUndoAndValidation() async throws {
+    @Test func inlineControllerSupportsAssignmentPreviewUndoAndValidation() async throws {
         UITestSupport.bootstrap()
         let repo = try TemporaryRepository()
         try repo.commit("one", "one\n", message: "One")
         try repo.write("one", "two\n")
-        let controller = SpeculativeGitFacade.makeCommitBucketsWindow(gitService: GitService(root: repo.url))
-        defer { controller.close() }
+        let controller = CommitBucketsViewController(gitService: GitService(root: repo.url))
+        let window = UITestSupport.host(controller, size: NSSize(width: 960, height: 640))
+        defer {
+            controller.cancel()
+            window.close()
+        }
         let presenter = controller.presenter
         presenter.load()
         try await SheetsSupport.wait { presenter.state == .editing }
-        let window = try #require(controller.window)
         window.layoutIfNeeded()
-        #expect(window.minSize == NSSize(width: 920, height: 600))
         let commit = try SheetsSupport.require("speculative.buckets.commit", in: window, as: PartsButton.self)
         #expect(!commit.isEnabled)
         let first = try #require(presenter.plan.buckets.first)
@@ -230,65 +232,77 @@ import Testing
         #expect(presenter.plan.buckets.count == 1)
     }
 
-    private func assignedWindow(_ repo: TemporaryRepository) async throws -> CommitBucketsWindowController {
+    private func assignedController(
+        _ repo: TemporaryRepository
+    ) async throws
+        -> (CommitBucketsViewController, NSWindow)
+    {
         UITestSupport.bootstrap()
         try repo.commit("one", "base\n", message: "Base")
         try repo.write("one", "change\n")
-        let controller = SpeculativeGitFacade.makeCommitBucketsWindow(gitService: .init(root: repo.url))
+        let controller = CommitBucketsViewController(gitService: .init(root: repo.url))
+        let window = UITestSupport.host(controller, size: NSSize(width: 960, height: 640))
         let presenter = controller.presenter
         presenter.load()
         try await SheetsSupport.wait { presenter.state == .editing }
         let bucket = try #require(presenter.plan.buckets.first)
         presenter.assignFile(path: "one", to: bucket.id)
-        return controller
+        return (controller, window)
     }
 
     @Test func shortcutsAndReopenPreserveReviewedAssignments() async throws {
         let repo = try TemporaryRepository()
-        let controller = try await assignedWindow(repo)
-        defer { controller.close() }
-        let window = try #require(controller.window)
+        let (controller, window) = try await assignedController(repo)
+        defer {
+            controller.cancel()
+            window.close()
+        }
         let presenter = controller.presenter
         let reviewed = presenter.plan.buckets
         let add = try #require(SharedEvents.key("n", code: 45, modifiers: .command))
         let undo = try #require(SharedEvents.key("z", code: 6, modifiers: .command))
         let group = try #require(SharedEvents.key("g", code: 5, modifiers: [.option, .command]))
         let find = try #require(SharedEvents.key("f", code: 3, modifiers: .command))
-        #expect(window.performKeyEquivalent(with: find))
+        #expect(controller.handleShortcut(find))
         let filter = try SheetsSupport.require("speculative.buckets.filter", in: window, as: NSSearchField.self)
         #expect(filter.currentEditor() === window.firstResponder)
-        #expect(window.performKeyEquivalent(with: add) && presenter.plan.buckets.count == reviewed.count + 1)
-        #expect(!window.performKeyEquivalent(with: undo) && presenter.plan.buckets.count == reviewed.count + 1)
+        #expect(controller.handleShortcut(add) && presenter.plan.buckets.count == reviewed.count + 1)
+        #expect(!controller.handleShortcut(undo) && presenter.plan.buckets.count == reviewed.count + 1)
         let list = try SheetsSupport.require("speculative.buckets.unassigned", in: window, as: NSTableView.self)
         window.makeFirstResponder(list)
-        #expect(window.performKeyEquivalent(with: undo) && presenter.plan.buckets == reviewed)
-        #expect(window.performKeyEquivalent(with: group) && presenter.state == .suggesting)
+        #expect(controller.handleShortcut(undo) && presenter.plan.buckets == reviewed)
+        #expect(controller.handleShortcut(group) && presenter.state == .suggesting)
         let split = try SheetsSupport.require("speculative.buckets.split", in: window, as: NSSplitView.self)
         #expect(!split.isHidden && !filter.isEnabled)
-        window.contentViewController?.viewWillDisappear()
+        controller.viewWillDisappear()
         #expect(presenter.state == .editing && presenter.plan.buckets == reviewed)
         try repo.write("another", "new change")
-        window.contentViewController?.viewWillAppear()
+        controller.viewWillAppear()
         #expect(presenter.state == .loading)
         try await SheetsSupport.wait { presenter.state == .editing }
         #expect(presenter.plan.buckets == reviewed && presenter.unassignedItems.map(\.path) == ["another"])
     }
 
-    @Test func commitSurvivesDismissalAndRejectsClose() async throws {
+    @Test func commitSurvivesDismissalAndDisablesBackWhileCommitting() async throws {
         let repo = try TemporaryRepository()
-        let controller = try await assignedWindow(repo)
-        defer { controller.close() }
-        let window = try #require(controller.window)
+        let (controller, window) = try await assignedController(repo)
+        defer {
+            controller.cancel()
+            window.close()
+        }
         let presenter = controller.presenter
         var commits: [CommitBucketExecutionResult] = []
         presenter.onCommitted = { commits.append($0) }
+        var backCalls = 0
+        controller.onBack = { backCalls += 1 }
         let commit = try #require(SharedEvents.key("\r", code: KeyPress.returnKey, modifiers: .command))
-        #expect(window.performKeyEquivalent(with: commit))
-        let close = try #require(window.standardWindowButton(.closeButton))
-        #expect(window.delegate === controller && !controller.windowShouldClose(window) && !close.isEnabled)
+        #expect(controller.handleShortcut(commit))
+        let back = try SheetsSupport.require("historyTool.back", in: window, as: PartsButton.self)
+        #expect(controller.isCommitting && !back.isEnabled)
         controller.cancelOperation(nil)
+        #expect(backCalls == 0)
         presenter.cancel()
-        window.contentViewController?.viewWillDisappear()
+        controller.viewWillDisappear()
         let split = try SheetsSupport.require("speculative.buckets.split", in: window, as: NSSplitView.self)
         let field = try SheetsSupport.require("speculative.lane.0.title", in: window, as: NSTextField.self)
         #expect(presenter.isCommitting && !split.isHidden && !field.isEnabled)
@@ -296,15 +310,17 @@ import Testing
         let result = try #require(commits.first)
         #expect(commits.count == 1 && presenter.state == .completed(result))
         #expect(try repo.git("show", "HEAD:one") == "change\n")
-        #expect(controller.windowShouldClose(window) && close.isEnabled)
+        #expect(!controller.isCommitting && back.isEnabled)
     }
 
     @Test(arguments: [true, false])
     func commitFailurePreservesEditablePlanAndRetriesCommit(editBeforeRetry: Bool) async throws {
         let repo = try TemporaryRepository()
-        let controller = try await assignedWindow(repo)
-        defer { controller.close() }
-        let window = try #require(controller.window)
+        let (controller, window) = try await assignedController(repo)
+        defer {
+            controller.cancel()
+            window.close()
+        }
         let presenter = controller.presenter
         let plan = presenter.plan
         try repo.write("one", "changed since review\n")
@@ -331,6 +347,32 @@ import Testing
         #expect(presenter.isCommitting)
         try await SheetsSupport.wait { !presenter.isCommitting }
         #expect(try repo.git("show", "HEAD:one") == "change\n")
+    }
+
+    @Test func inlineCommitBucketsSupportsBackActionAndThemeUpdates() async throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        try repo.commit("one", "one\n", message: "One")
+        try repo.write("one", "two\n")
+        let controller = CommitBucketsViewController(gitService: GitService(root: repo.url))
+        let host = UITestSupport.host(controller)
+        defer {
+            controller.cancel()
+            host.close()
+        }
+        controller.presenter.load()
+        try await SheetsSupport.wait { controller.presenter.state == .editing }
+        let back = try SheetsSupport.require("historyTool.back", in: host, as: PartsButton.self)
+        #expect(back.isHidden)
+        var backCount = 0
+        controller.onBack = { backCount += 1 }
+        #expect(!back.isHidden && !controller.isCommitting)
+        #expect(back.accessibilityPerformPress() && backCount == 1)
+        controller.cancelOperation(nil)
+        #expect(backCount == 2)
+        NotificationCenter.default.post(name: .gitaThemeChanged, object: nil)
+        controller.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(controller.view)
     }
 }
 

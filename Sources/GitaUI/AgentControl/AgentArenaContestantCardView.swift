@@ -11,12 +11,11 @@ final class AgentArenaContestantCardView: NSView {
     init(_ contestant: ArenaContestantID, onPick: @escaping () -> Void) {
         let title = AgentControlFormatting.contestant(contestant)
         let prefix = "arena." + contestant.rawValue
-        pick = AgentControlUI.button(String(localized: "Pick Winner"), prefix + ".pick", action: onPick)
+        pick = AgentControlUI.button(
+            String(localized: "Pick Winner"), prefix + ".pick", symbol: "trophy.fill", action: onPick)
         pick.setAccessibilityLabel(String(localized: "Pick \(title) as winner"))
         super.init(frame: .zero)
-        let card = FillView(color: Theme.inset)
-        card.cornerRadius = 8
-        card.borderColor = Theme.separator
+        let card = StorageStyle.card(cornerRadius: 8)
         Style.fill(card, in: self)
         let header = Deck.hstack([
             AgentControlUI.label(title, font: Theme.caption, color: Theme.secondaryText),

@@ -371,4 +371,32 @@ extension ControlPlanePresenterTests {
         }
         #expect(outcomes.count == 1 && outcomes[0].status == .succeeded)
     }
+
+    @Test func commandCenterAndCIFixApplySegmentAndActionSymbols() throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        let presenter = workspace([WorkspaceRepository(root: repo.url)])
+        let controller = WorkspaceCommandCenterWindowController(title: "Workspace", presenter: presenter)
+        let window = try #require(controller.window)
+        defer { window.close() }
+        let tabsItem = try #require(
+            window.toolbar?.items.first { $0.itemIdentifier.rawValue == "controlPlane.workspace.tabs" })
+        let tabs = try #require(tabsItem.view as? NSSegmentedControl)
+        for segment in 0..<tabs.segmentCount { #expect(tabs.image(forSegment: segment) != nil) }
+        presenter.select(.timeline)
+        window.layoutIfNeeded()
+        let filter: NSSegmentedControl = try SheetsSupport.require("controlPlane.workspace.timeline.filter", in: window)
+        for segment in 0..<filter.segmentCount { #expect(filter.image(forSegment: segment) != nil) }
+        let target = try #require(CIFixTarget(root: repo.url, repositoryNameWithOwner: "dev/example", runID: 7))
+        let sheet = CIFixSheetController(
+            presenter: CIFixPresenter(
+                target: target, agents: [], fetch: { throw CancellationError() }, launch: { _, _, _ in }))
+        let terminal: NSSegmentedControl = try SheetsSupport.require(
+            "controlPlane.ciFix.terminal", in: sheet.chrome.window)
+        let previewTabs: NSSegmentedControl = try SheetsSupport.require(
+            "controlPlane.ciFix.preview", in: sheet.chrome.window)
+        for segment in 0..<terminal.segmentCount { #expect(terminal.image(forSegment: segment) != nil) }
+        for segment in 0..<previewTabs.segmentCount { #expect(previewTabs.image(forSegment: segment) != nil) }
+        #expect(sheet.primary.image != nil)
+    }
 }

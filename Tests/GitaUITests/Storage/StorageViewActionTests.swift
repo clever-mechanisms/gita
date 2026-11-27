@@ -46,9 +46,11 @@ struct StorageViewActionTests {
                 enabled: false),
         ]
         var actions: [StorageHealthAction] = []
-        let view = StorageHealthView(summary: summary, cards: cards, actionState: .succeeded("Saved")) {
-            actions.append($0)
-        }
+        var openedGlobalSettings = 0
+        let view = StorageHealthView(
+            summary: summary, cards: cards, actionState: .succeeded("Saved"),
+            openGlobalSettings: { openedGlobalSettings += 1 },
+            perform: { actions.append($0) })
         view.frame = NSRect(x: 0, y: 0, width: 880, height: 560)
         UITestSupport.render(view)
         let toggles = SharedFixtures.descendants(view, of: AccentSwitch.self)
@@ -56,6 +58,10 @@ struct StorageViewActionTests {
         #expect(cacheToggle.isOn)
         #expect(cacheToggle.accessibilityPerformPress())
         let buttons = SharedFixtures.descendants(view, of: PartsButton.self)
+        let globalButton = try #require(
+            buttons.first { $0.accessibilityLabel() == String(localized: "Global Defaults…") })
+        #expect(globalButton.accessibilityPerformPress())
+        #expect(openedGlobalSettings == 1)
         let enableAll = try #require(buttons.first { $0.accessibilityLabel() == recommend.title })
         #expect(enableAll.accessibilityPerformPress())
         let rebuild = try #require(buttons.first { $0.accessibilityLabel() == StorageHealthAction.commitGraph.title })
@@ -168,6 +174,8 @@ struct StorageViewActionTests {
         store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
 
         let controller = StorageWindowController(store: store)
+        var openedGlobal = 0
+        controller.onOpenGlobalSettings = { openedGlobal += 1 }
         let window = try #require(controller.window)
         window.setContentSize(NSSize(width: 920, height: 640))
         let contentView = try #require(window.contentView)
@@ -176,30 +184,87 @@ struct StorageViewActionTests {
             activeAgentPaths: [root.deletingLastPathComponent().appendingPathComponent("madtom").path])
         let dir = ProcessInfo.processInfo.environment["GITA_SNAPSHOT_DIR"]
 
-        // 1. This Repository (with node_modules checked so footer CTA is also verified)
-        controller.show(context: ctx, scope: .repository)
+        // Global Workspace Storage window (All Repositories)
+        controller.show(context: ctx)
         window.orderOut(nil)
-        contentView.layoutSubtreeIfNeeded()
-        if let checkbox = SharedFixtures.descendants(contentView, of: NSButton.self)
+        await store.scanWorkspace([root, otherRoot]).value
+        store.notify()
+        let globalButton = try #require(
+            SharedFixtures.descendants(contentView, of: PartsButton.self)
+                .first { $0.accessibilityIdentifier() == "storage.workspace.globalDefaults" })
+        #expect(globalButton.accessibilityPerformPress() && openedGlobal == 1)
+        try Self.captureBothModes(window, contentView, prefix: "storage-workspace", in: dir)
+
+        // Inline per-repo Storage & Health scopes (Disk Usage + Health & Maintenance)
+        let inline = StorageInlineViewController(store: store)
+        let inlineWindow = UITestSupport.host(inline, size: NSSize(width: 920, height: 640))
+        defer { inlineWindow.close() }
+        inline.configure(context: ctx, scope: .repository)
+        inline.view.layoutSubtreeIfNeeded()
+        if let checkbox = SharedFixtures.descendants(inline.view, of: NSButton.self)
             .first(where: { $0.identifier?.rawValue == root.appendingPathComponent("node_modules").path })
         {
             checkbox.performClick(nil)
         }
-        try Self.captureBothModes(window, contentView, prefix: "storage-repo", in: dir)
+        try Self.captureBothModes(inlineWindow, inline.view, prefix: "storage-repo", in: dir)
 
-        // 2. All Repositories
-        controller.show(context: ctx, scope: .workspace)
-        window.orderOut(nil)
-        await store.scanWorkspace([root, otherRoot]).value
-        store.notify()
-        try Self.captureBothModes(window, contentView, prefix: "storage-workspace", in: dir)
-
-        // 3. Health & Maintenance
-        controller.show(context: ctx, scope: .health)
-        window.orderOut(nil)
+        inline.configure(context: ctx, scope: .health)
         store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
         store.notify()
-        try Self.captureBothModes(window, contentView, prefix: "storage-health", in: dir)
+        try Self.captureBothModes(inlineWindow, inline.view, prefix: "storage-health", in: dir)
+    }
+
+    @Test func inlineViewControllerRendersDiskUsageAndHealthAndWiresCallbacks() async throws {
+        UITestSupport.bootstrap()
+        let root = URL(fileURLWithPath: "/tmp/inline-storage-repo")
+        let report = Self.realisticReport(root: root)
+        let snapshot = RepositoryHealthSnapshot(
+            worktreePaths: report.checkouts.map(\.id),
+            fsMonitor: .enabled,
+            untrackedCache: .enabled,
+            commitGraph: CommitGraphInfo(path: nil, modifiedAt: nil),
+            maintenance: GitMaintenanceInfo(
+                automatic: .unset, isRegistered: false,
+                looseObjects: 42, packedObjects: 100, packs: 1, looseKiB: 80, packedKiB: 120),
+            fsMonitorScope: .global,
+            untrackedCacheScope: .local)
+        let store = StorageStore(scan: { _, _ in report })
+        await store.scanRepository(root)?.value
+        store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
+
+        let controller = StorageInlineViewController(store: store)
+        var openedWorkspace = 0
+        var openedGlobal = 0
+        controller.onOpenWorkspaceStorage = { openedWorkspace += 1 }
+        controller.onOpenGlobalSettings = { openedGlobal += 1 }
+
+        let ctx = StorageWindowContext(repositoryRoot: root, knownRepositories: [root])
+        controller.configure(context: ctx, scope: .repository)
+        controller.view.frame = NSRect(x: 0, y: 0, width: 880, height: 560)
+        UITestSupport.render(controller.view)
+
+        let repoButtons = SharedFixtures.descendants(controller.view, of: PartsButton.self)
+        let allRepos = try #require(
+            repoButtons.first { $0.accessibilityIdentifier() == "storage.inline.allRepositories" })
+        #expect(allRepos.accessibilityPerformPress())
+        #expect(openedWorkspace == 1)
+
+        controller.configure(context: ctx, scope: .health)
+        store.healthStates[store.canonicalPath(root)] = .loaded(snapshot)
+        store.notify()
+        UITestSupport.render(controller.view)
+
+        let labels = SharedFixtures.descendants(controller.view, of: NSTextField.self).map(\.stringValue)
+        #expect(labels.contains(String(localized: "Inherited from global")))
+        #expect(labels.contains(String(localized: "This repo")))
+        #expect(labels.contains(String(localized: "This repo (.git/config)")))
+        let healthButtons = SharedFixtures.descendants(controller.view, of: PartsButton.self)
+        let globalButton = try #require(
+            healthButtons.first { $0.accessibilityLabel() == String(localized: "Global Defaults…") })
+        #expect(globalButton.accessibilityPerformPress())
+        #expect(openedGlobal == 1)
+
+        controller.cancel()
     }
 
     private static func captureBothModes(

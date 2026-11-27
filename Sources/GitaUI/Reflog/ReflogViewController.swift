@@ -1,24 +1,27 @@
 import AppKit
 import GitaCore
 
-/// Native macOS utility window for browsing Git reflog entries, inspecting orphaned commits,
+/// Embeddable inline controller for browsing Git reflog entries, inspecting orphaned commits,
 /// viewing per-file commit diffs, and safely recovering via Create Branch or Reviewed Reset.
 @MainActor
-final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate {
-    private static let refreshIdentifier = NSToolbarItem.Identifier("reflog.refresh")
-    private static let filterIdentifier = NSToolbarItem.Identifier("reflog.filter")
-    private static let searchIdentifier = NSToolbarItem.Identifier("reflog.search")
+final class ReflogViewController: NSViewController, NSSearchFieldDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("reflog.table.row")
 
     let presenter: ReflogPresenter
-    var onJumpToCommit: ((String) -> Void)?
+    var onJumpToCommit: ((String) -> Void)? {
+        didSet { if isViewLoaded { updateDetailPane() } }
+    }
     var onRepositoryMutated: (() -> Void)?
+    var onBack: (() -> Void)? {
+        didSet { headerBar?.onBack = onBack }
+    }
 
     private let service: GitService
     private let repositoryRoot: URL?
     private let repositoryName: String
     private let filterControl = NSSegmentedControl()
     private let searchField = NSSearchField()
+    private let refreshButton: PartsButton
     private let statusLabel = Deck.label(
         "", font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular), color: Theme.secondaryText)
     private let detailTitle = Deck.label("", font: Theme.title, color: Theme.text)
@@ -27,6 +30,7 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
     private let createBranchButton: PartsButton
     private let resetButton: PartsButton
     private let jumpButton: PartsButton
+    private var headerBar: HistoryToolHeaderBar?
     private var listPane: HistoryToolTablePane?
     private var detailPane: HistoryToolDetailPane?
     private var activeResetSheet: ResetReviewController?
@@ -36,6 +40,9 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
         self.repositoryRoot = repositoryRoot
         self.repositoryName = repositoryName ?? repositoryRoot?.lastPathComponent ?? String(localized: "Repository")
         self.presenter = ReflogPresenter(service: service)
+        self.refreshButton = StorageStyle.actionButton(
+            String(localized: "Refresh"), symbol: "arrow.clockwise", style: .quiet
+        ) {}
         self.createBranchButton = PartsButton.quiet(
             String(localized: "Create Branch Here…"), symbol: "arrow.triangle.branch"
         ) {}
@@ -45,64 +52,40 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
         self.jumpButton = PartsButton.quiet(
             String(localized: "Show in History"), symbol: "arrow.up.right.square"
         ) {}
-        super.init(window: nil)
+        super.init(nibName: nil, bundle: nil)
         bindActions()
         presenter.onChange = { [weak self] in self?.render() }
         presenter.onRepositoryMutated = { [weak self] in self?.onRepositoryMutated?() }
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleThemeChanged), name: .gitaThemeChanged, object: nil)
     }
 
     @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    /// Shows the Reflog Browser window and loads fresh reflog entries on demand.
-    func show(ref: String = "HEAD") {
-        let win = prepareWindow()
-        AuxiliaryWindowActivation.show(win)
+    func reload(ref: String = "HEAD") {
         presenter.reload(ref: ref)
     }
 
-    /// Builds the window hierarchy without ordering on screen (useful for tests).
-    @discardableResult
-    func prepareWindow() -> NSWindow {
-        if let window { return window }
-        let win = makeWindow()
-        self.window = win
-        render()
-        return win
-    }
-
-    func windowWillClose(_: Notification) {
+    func cancel() {
         activeResetSheet?.close()
         activeResetSheet = nil
         presenter.cancelAll()
-        AuxiliaryWindowActivation.closing(window)
     }
 
-    private func bindActions() {
-        createBranchButton.onClick = { [weak self] in self?.promptCreateBranch() }
-        resetButton.onClick = { [weak self] in self?.presentResetReview() }
-        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
-        createBranchButton.setAccessibilityIdentifier("reflog.createBranch")
-        resetButton.setAccessibilityIdentifier("reflog.resetHere")
-        jumpButton.setAccessibilityIdentifier("reflog.jumpCommit")
-    }
-
-    private func makeWindow() -> NSWindow {
-        let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 980, height: 600),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: true
+    override func loadView() {
+        configureHeaderControls()
+        let header = HistoryToolHeaderBar(
+            HistoryToolHeaderBar.Spec(
+                symbol: "clock.arrow.circlepath",
+                title: String(localized: "Reflog"),
+                subtitle: repositoryName,
+                trailing: [filterControl, searchField, refreshButton]
+            )
         )
-        win.title = String(localized: "Reflog · \(repositoryName)")
-        win.minSize = NSSize(width: 720, height: 420)
-        win.isReleasedWhenClosed = false
-        win.delegate = self
-        win.toolbarStyle = .unified
-        configureToolbar(on: win)
+        header.onBack = onBack
+        headerBar = header
 
-        let root = ThemedBackgroundView()
-        win.contentView = root
         let list = HistoryToolTablePane(
             columnID: "reflog.entry",
             rowHeight: ReflogRowCell.rowHeight,
@@ -126,40 +109,45 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
         detail.fileBar.onSelectFile = { [weak self] path in self?.presenter.selectFile(path) }
         detailPane = detail
 
-        let split = DeckSplitView()
-        split.isVertical = true
-        split.dividerStyle = .thin
-        split.addArrangedSubview(list)
-        split.addArrangedSubview(detail)
-        Deck.pin(split, in: root)
-        split.setPosition(430, ofDividerAt: 0)
-        win.center()
-        return win
+        view = HistoryToolChrome.makeInlineSplitView(
+            HistoryToolChrome.InlineSplitSpec(
+                header: header,
+                list: list,
+                detail: detail,
+                dividerPosition: 430
+            )
+        )
+        render()
     }
 
-    private func configureToolbar(on window: NSWindow) {
-        let filters = ReflogFilter.ordered
-        filterControl.segmentCount = filters.count
-        filterControl.segmentStyle = .rounded
-        filterControl.trackingMode = .selectOne
-        for (idx, item) in filters.enumerated() {
-            filterControl.setLabel(item.title, forSegment: idx)
+    private func bindActions() {
+        refreshButton.onClick = { [weak self] in self?.presenter.reload() }
+        createBranchButton.onClick = { [weak self] in self?.promptCreateBranch() }
+        resetButton.onClick = { [weak self] in self?.presentResetReview() }
+        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
+        refreshButton.setAccessibilityIdentifier("reflog.refresh")
+        createBranchButton.setAccessibilityIdentifier("reflog.createBranch")
+        resetButton.setAccessibilityIdentifier("reflog.resetHere")
+        jumpButton.setAccessibilityIdentifier("reflog.jumpCommit")
+    }
+
+    private func configureHeaderControls() {
+        let segments = ReflogFilter.ordered.map {
+            HistoryToolChrome.SegmentSpec(title: $0.title, symbol: $0.symbol)
         }
-        filterControl.selectedSegment = 0
-        filterControl.target = self
-        filterControl.action = #selector(filterSegmentChanged)
+        HistoryToolChrome.configureSegmentedControl(
+            filterControl, segments: segments, target: self, action: #selector(filterSegmentChanged))
+        filterControl.setAccessibilityIdentifier("reflog.filter")
 
         searchField.placeholderString = String(localized: "Filter reflog")
+        searchField.controlSize = .small
+        searchField.font = Theme.body
         searchField.delegate = self
         searchField.sendsSearchStringImmediately = true
         searchField.target = self
         searchField.action = #selector(searchChanged)
-
-        let toolbar = NSToolbar(identifier: "GitaReflogBrowser")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconOnly
-        toolbar.allowsUserCustomization = false
-        window.toolbar = toolbar
+        searchField.setAccessibilityIdentifier("reflog.search")
+        searchField.widthAnchor.constraint(equalToConstant: 170).isActive = true
     }
 
     private func makeStatusFooter() -> NSView {
@@ -178,34 +166,49 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
         return bar
     }
 
+    @objc private func handleThemeChanged() {
+        guard isViewLoaded else { return }
+        view.needsDisplay = true
+        render()
+    }
+
     private func render() {
+        guard isViewLoaded else { return }
         let entries = presenter.visibleEntries
-        if let table = listPane?.table {
-            table.reloadData()
-            if let selectedID = presenter.selectedEntryID,
-                let index = entries.firstIndex(where: { $0.id == selectedID })
-            {
-                table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
-            }
+        let selectedIndex = presenter.selectedEntryID.flatMap { selectedID in
+            entries.firstIndex { $0.id == selectedID }
         }
+        HistoryToolChrome.reloadTable(listPane?.table, selectedIndex: selectedIndex)
         statusLabel.stringValue = presenter.statusSummary
         updateEmptyState(entriesCount: entries.count)
         updateDetailPane()
     }
 
     private func updateEmptyState(entriesCount: Int) {
-        guard let emptyLabel = listPane?.emptyLabel else { return }
+        guard let emptyState = listPane?.emptyState else { return }
         if presenter.loadState.isLoading {
-            emptyLabel.stringValue = String(localized: "Loading reflog…")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "clock.arrow.circlepath",
+                title: String(localized: "Loading reflog…"),
+                tint: Theme.working
+            )
         } else if let error = presenter.loadState.errorMessage {
-            emptyLabel.stringValue = error
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "exclamationmark.triangle",
+                title: error,
+                tint: Theme.failure
+            )
         } else if entriesCount == 0 {
-            emptyLabel.stringValue = String(localized: "No matching reflog entries")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "clock.arrow.circlepath",
+                title: String(localized: "No matching reflog entries"),
+                detail: String(localized: "Try clearing the filter or switching to All entries.")
+            )
         } else {
-            emptyLabel.isHidden = true
+            emptyState.isHidden = true
         }
     }
 
@@ -236,25 +239,32 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
             "", loading: false, emptyMessage: String(localized: "Select an entry to preview its diff"))
     }
 
+    private struct DiffDisplay {
+        let diff: String
+        let loading: Bool
+        let emptyMessage: String
+        let path: String?
+    }
+
     private func renderDetailDiff(in detailPane: HistoryToolDetailPane) {
-        switch presenter.diffState {
+        let display = Self.diffDisplay(for: presenter.diffState)
+        detailPane.diffView.update(
+            display.diff, loading: display.loading, emptyMessage: display.emptyMessage, path: display.path)
+    }
+
+    private static func diffDisplay(for state: ReflogDiffState) -> DiffDisplay {
+        switch state {
         case .loaded(_, _, let path, let diff):
-            detailPane.diffView.update(
-                diff, loading: false, emptyMessage: String(localized: "Commit has no textual diff"), path: path)
+            DiffDisplay(
+                diff: diff, loading: false, emptyMessage: String(localized: "Commit has no textual diff"), path: path)
         case .failed(_, _, _, let message):
-            detailPane.diffView.update("", loading: false, emptyMessage: message)
-        case .idle, .loading, .loadingFile:
-            renderPendingDetailDiff(in: detailPane)
+            DiffDisplay(diff: "", loading: false, emptyMessage: message, path: nil)
+        case .idle:
+            DiffDisplay(diff: "", loading: false, emptyMessage: String(localized: "No diff available"), path: nil)
+        case .loading, .loadingFile:
+            DiffDisplay(diff: "", loading: true, emptyMessage: String(localized: "Loading file diff…"), path: nil)
         }
     }
-
-    private func renderPendingDetailDiff(in detailPane: HistoryToolDetailPane) {
-        let loading = presenter.diffState != .idle
-        let message = loading ? String(localized: "Loading file diff…") : String(localized: "No diff available")
-        detailPane.diffView.update("", loading: loading, emptyMessage: message)
-    }
-
-    @objc private func refreshTriggered() { presenter.reload() }
 
     @objc private func filterSegmentChanged() {
         let index = filterControl.selectedSegment
@@ -276,7 +286,7 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
     }
 
     private func promptCreateBranch() {
-        guard let window, let entry = presenter.selectedEntry else { return }
+        guard let window = view.window, let entry = presenter.selectedEntry else { return }
         let alert = NSAlert()
         alert.messageText = String(localized: "Create Branch at \(entry.shortID)")
         alert.informativeText = String(localized: "Create and switch to a new branch pointing at \(entry.selector).")
@@ -305,12 +315,12 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
         do {
             try await presenter.createBranch(named: branchName, at: entry)
         } catch {
-            if let win = window { _ = await NSAlert(error: error).beginSheetModal(for: win) }
+            if let win = view.window { _ = await NSAlert(error: error).beginSheetModal(for: win) }
         }
     }
 
     private func presentResetReview() {
-        guard let window, let entry = presenter.selectedEntry else { return }
+        guard let window = view.window, let entry = presenter.selectedEntry else { return }
         let commit = GitCommit(
             id: entry.commitID, parents: [], subject: entry.subject, author: entry.author, date: entry.date)
         let controller = ResetReviewController(
@@ -330,14 +340,14 @@ final class ReflogWindowController: NSWindowController, NSWindowDelegate, NSSear
     }
 }
 
-extension ReflogWindowController: NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate {
-    public func numberOfRows(in _: NSTableView) -> Int { presenter.visibleEntries.count }
+extension ReflogViewController: NSTableViewDataSource, NSTableViewDelegate {
+    func numberOfRows(in _: NSTableView) -> Int { presenter.visibleEntries.count }
 
-    public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+    func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
         DeckTableRowView.reused(in: tableView, id: Self.rowID)
     }
 
-    public func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
+    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
         let entries = presenter.visibleEntries
         guard entries.indices.contains(row) else { return nil }
         let cell =
@@ -348,48 +358,10 @@ extension ReflogWindowController: NSTableViewDataSource, NSTableViewDelegate, NS
         return cell
     }
 
-    public func tableViewSelectionDidChange(_: Notification) {
+    func tableViewSelectionDidChange(_: Notification) {
         guard let row = listPane?.table.selectedRow else { return }
         let entries = presenter.visibleEntries
         presenter.select(entryID: entries.indices.contains(row) ? entries[row].id : nil)
-    }
-
-    public func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.filterIdentifier, .flexibleSpace, Self.refreshIdentifier, Self.searchIdentifier]
-    }
-
-    public func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        toolbarDefaultItemIdentifiers(toolbar)
-    }
-
-    public func toolbar(
-        _: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar _: Bool
-    ) -> NSToolbarItem? {
-        switch identifier {
-        case Self.filterIdentifier:
-            let item = NSToolbarItem(itemIdentifier: identifier)
-            item.view = filterControl
-            item.label = String(localized: "Filter")
-            return item
-        case Self.refreshIdentifier:
-            let item = NSToolbarItem(itemIdentifier: identifier)
-            item.label = String(localized: "Refresh")
-            item.toolTip = String(localized: "Refresh reflog")
-            item.image = NSImage(
-                systemSymbolName: "arrow.clockwise", accessibilityDescription: String(localized: "Refresh"))
-            item.isBordered = true
-            item.target = self
-            item.action = #selector(refreshTriggered)
-            return item
-        case Self.searchIdentifier:
-            let item = NSSearchToolbarItem(itemIdentifier: identifier)
-            item.searchField = searchField
-            item.label = String(localized: "Search")
-            item.preferredWidthForSearchField = 200
-            return item
-        default:
-            return nil
-        }
     }
 }
 

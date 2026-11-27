@@ -29,6 +29,8 @@ import Testing
                 reveal: { self.calls.append("reveal:" + $0.id) },
                 openWorkspace: { self.calls.append("workspace:" + $0) },
                 newWorkspace: { self.calls.append("newWorkspace") },
+                workspaceCommandCenter: { self.calls.append("workspaceCommandCenter") },
+                workspaceStorage: { self.calls.append("workspaceStorage") },
                 installUpdate: { self.calls.append("installUpdate") })
         }
 
@@ -213,13 +215,18 @@ import Testing
         try #require(button(controller.view, "panel.open")).performClick(nil)
         try #require(button(controller.view, "panel.refresh")).performClick(nil)
         let menu = controller.moreMenu()
-        #expect(menu.items.map(\.keyEquivalent) == [",", "", "q"])
+        #expect(menu.items.map(\.keyEquivalent) == ["", "", "", ",", "", "q"])
         for item in menu.items where !item.isSeparatorItem {
+            #expect(item.image != nil)
             NSApp.sendAction(try #require(item.action), to: item.target, from: item)
         }
         try #require(button(controller.view, "panel.openRepository")).performClick(nil)
         try #require(button(controller.view, "panel.newWorkspace")).performClick(nil)
-        #expect(recorder.calls == ["openApp", "refresh", "settings", "quit", "openRepository", "newWorkspace"])
+        #expect(
+            recorder.calls == [
+                "openApp", "refresh", "workspaceCommandCenter", "workspaceStorage", "settings", "quit",
+                "openRepository", "newWorkspace",
+            ])
     }
 
     // MARK: Rows

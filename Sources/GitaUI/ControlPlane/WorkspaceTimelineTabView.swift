@@ -18,6 +18,11 @@ final class WorkspaceTimelineTabView: NSView {
         strip.target = self
         strip.action = #selector(filter)
         strip.font = Theme.body
+        AgentControlUI.applySegmentSymbols(
+            strip,
+            symbols: [
+                "tray.full", "point.topleft.down.to.point.bottomright.curvepath", "arrow.triangle.pull", "shippingbox",
+            ])
         ControlPlaneViews.identify(strip, "workspace.timeline.filter", String(localized: "Event kind"))
         let stack = Deck.vstack([strip, rows], spacing: 12)
         Deck.pin(stack, in: self)
@@ -29,13 +34,16 @@ final class WorkspaceTimelineTabView: NSView {
     func render() {
         strip.selectedSegment = presenter.filter.rawValue
         switch presenter.timeline {
-        case .empty: rows.message(String(localized: "No workspace events yet."))
+        case .empty:
+            rows.message(String(localized: "No workspace events yet."), symbol: "clock.arrow.circlepath")
         case .idle, .loading: rows.message(String(localized: "Reading workspace history…"), loading: true)
-        case .failed(let message): rows.message(message) { [weak presenter] in presenter?.refresh() }
+        case .failed(let message):
+            rows.message(message, symbol: "exclamationmark.triangle.fill") { [weak presenter] in presenter?.refresh() }
         case .loaded:
             let values = presenter.filteredEvents
             if values.isEmpty {
-                rows.message(String(localized: "No events match this filter."))
+                rows.message(
+                    String(localized: "No events match this filter."), symbol: "line.3.horizontal.decrease.circle")
             } else {
                 rows.show(count: values.count) { Self.row(values[$0]) }
             }
@@ -63,9 +71,11 @@ final class WorkspaceTimelineTabView: NSView {
             (symbol, label) = ("arrow.triangle.pull", String(localized: "PR #\(number)"))
         case .deployment(let environment, _, _): (symbol, label) = ("shippingbox", environment)
         }
+        let stateColor = Theme.color(for: event.state)
         let state = ControlPlaneBadge(
             stateTitle(event.state), symbol: Style.stateSymbol(event.state),
-            fill: Theme.inset, text: Theme.color(for: event.state), border: Theme.separator)
+            fill: stateColor.withAlphaComponent(0.12), text: stateColor,
+            border: stateColor.withAlphaComponent(0.32))
         let info = Deck.hstack([
             ControlPlaneViews.repoLabel(event.repository), Deck.caption(label), state,
             Deck.label(
@@ -76,9 +86,10 @@ final class WorkspaceTimelineTabView: NSView {
         title.toolTip = event.title
         let content = Deck.vstack([title, info])
         content.toolTip = event.subtitle
+        let badge = StorageStyle.iconBadge(symbol, tint: stateColor, boxSize: 28, symbolSize: 13, cornerRadius: 7)
         return Deck.hstack(
             [
-                Deck.icon(symbol, size: 14, color: Theme.secondaryText), content, Deck.spacer(),
+                badge, content, Deck.spacer(),
                 Deck.caption(DeckFormat.relative(event.timestamp)),
             ], spacing: 12)
     }

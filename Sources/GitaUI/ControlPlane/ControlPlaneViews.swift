@@ -110,12 +110,13 @@ final class ControlPlaneBadge: ControlPlaneSurface {
 final class ControlPlaneCard: ControlPlaneSurface {
     init(_ content: NSView) {
         super.init(frame: .zero)
-        Style.fill(content, in: self, inset: 8)
+        Style.fill(content, in: self, inset: 10)
     }
     required init?(coder _: NSCoder) { nil }
     override func draw(_: NSRect) {
         ControlPlaneViews.drawInset(
-            bounds, radius: 8, scale: window?.backingScaleFactor, fill: Theme.inset, border: Theme.separator)
+            bounds, radius: 10, scale: window?.backingScaleFactor,
+            fill: StorageStyle.cardSurface, border: StorageStyle.cardBorder)
     }
 }
 

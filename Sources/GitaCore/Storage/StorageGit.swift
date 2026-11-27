@@ -2,12 +2,21 @@ import Foundation
 
 struct StorageGit: Sendable {
     let runner: any CommandRunning
+    var globalConfigURL: URL?
 
-    func read(_ arguments: [String], at root: URL, allowingMissing: Bool = false) async throws -> CommandResult {
+    func read(_ arguments: [String], at root: URL?, allowingMissing: Bool = false) async throws -> CommandResult {
         try Task.checkCancellation()
-        let result = try await runner.run(.git(arguments, directory: root))
+        var request = CommandRequest.git(arguments, directory: root)
+        applyGlobalConfig(to: &request)
+        let result = try await runner.run(request)
         if allowingMissing && result.exitCode == 1 { return result }
         return try Self.checked(result)
+    }
+
+    func applyGlobalConfig(to request: inout CommandRequest) {
+        guard let globalConfigURL else { return }
+        request.environment.added["GIT_CONFIG_GLOBAL"] = globalConfigURL.path
+        request.environment.added["GIT_CONFIG_NOSYSTEM"] = "1"
     }
 
     static func checked(_ result: CommandResult) throws -> CommandResult {

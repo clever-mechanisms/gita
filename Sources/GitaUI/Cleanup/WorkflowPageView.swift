@@ -13,20 +13,17 @@ final class WorkflowTableView: NSTableView {
     }
 }
 
-/// Shared native window chrome for repository utilities (Cleanup Assistant, Stacked Branches):
-/// a `Theme.toolbar` header bar with a hero icon badge, an optional controls strip, a bordered card table,
-/// and a `Theme.toolbar` footer bar with an accent action button.
+/// Shared embeddable page chrome for repository utilities (Cleanup Assistant, Stacked Branches):
+/// a `Theme.toolbar` header bar with an optional Back button and hero icon badge, an optional controls strip,
+/// a bordered table card with icon empty state, and a `Theme.toolbar` footer bar with an accent action button.
 @MainActor
-final class WorkflowWindowContent {
+final class WorkflowPageView: NSView {
     private enum Metrics {
-        static let defaultSize = NSSize(width: 860, height: 520)
-        static let minSize = NSSize(width: 700, height: 380)
         static let rowHeight: CGFloat = 48
         static let horizontalInset: CGFloat = 18
         static let cardRadius: CGFloat = 10
     }
 
-    let window: NSWindow
     let table = WorkflowTableView()
     let headerTrailing = Deck.hstack([], spacing: 8)
     let controls = Deck.hstack([], spacing: 6)
@@ -36,27 +33,26 @@ final class WorkflowWindowContent {
     let empty = Deck.wrapping("", font: Theme.body, color: Theme.secondaryText)
     let refresh: PartsButton
     let action: PartsButton
+    private(set) lazy var backButton: PartsButton = Self.makeBackButton(identifier: "workflow.back") { [weak self] in
+        self?.onBack?()
+    }
+    var onBack: (() -> Void)? {
+        didSet { backButton.isHidden = onBack == nil }
+    }
+
+    private let background = ThemedBackgroundView()
     private let emptyIcon = Deck.icon("tray", size: 24, weight: .regular, color: Theme.tertiaryText)
     private let emptyBox: NSStackView
     private let scroll: NSScrollView
     private let controlsWrapper = NSView()
     private let headerBar = FillView(color: Theme.toolbar)
     private let footerBar = FillView(color: Theme.toolbar)
-    private let tableCard = FillView(color: Theme.window)
+    private let tableCard: FillView
     private let statusIcon = Deck.icon("info.circle", size: 12, weight: .regular, color: Theme.tertiaryText)
     private let column = NSTableColumn(identifier: .init("workflow.row"))
     private var themeObserver: NSObjectProtocol?
 
-    init(
-        title: String, repositoryName: String? = nil, symbol: String = "wand.and.stars",
-        actionTitle: String, actionSymbol: String? = nil
-    ) {
-        window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: Metrics.defaultSize),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = repositoryName.map { String(localized: "\(title) · \($0)") } ?? title
-        window.minSize = Metrics.minSize
-        window.isReleasedWhenClosed = false
+    init(title: String, symbol: String = "wand.and.stars", actionTitle: String, actionSymbol: String? = nil) {
         refresh = PartsButton.quiet(String(localized: "Refresh"), symbol: "arrow.clockwise") {}
         refresh.setAccessibilityIdentifier("workflow.refresh")
         refresh.fixedHeight = 26
@@ -65,17 +61,24 @@ final class WorkflowWindowContent {
         emptyBox.alignment = .centerX
         scroll = Style.scroll(table)
         scroll.drawsBackground = false
+        tableCard = Self.makeTableCard(scroll: scroll, emptyBox: emptyBox, radius: Metrics.cardRadius)
+        super.init(frame: .zero)
         configureTable(accessibilityTitle: title)
-        let root = ThemedBackgroundView()
+        Deck.pin(background, in: self)
         let headerSection = buildHeader(title: title, symbol: symbol)
         let controlsSection = buildControls()
-        let cardSection = buildTableCard()
+        let cardSection = buildTableCardWrapper()
         let footerSection = buildFooter()
         layoutRoot(
-            root, header: headerSection, controls: controlsSection, card: cardSection, footer: footerSection)
-        window.contentView = root
-        window.center()
+            background, header: headerSection, controls: controlsSection, card: cardSection, footer: footerSection)
         observeTheme()
+    }
+
+    @available(*, unavailable, message: "Built in code")
+    required init?(coder _: NSCoder) { fatalError("Built in code") }
+
+    isolated deinit {
+        stopObservingTheme()
     }
 
     var showsControls: Bool {
@@ -119,7 +122,7 @@ final class WorkflowWindowContent {
     }
 
     private func applyTheme() {
-        window.backgroundColor = Theme.window
+        window?.backgroundColor = Theme.window
         headerBar.color = Theme.toolbar
         footerBar.color = Theme.toolbar
         tableCard.color = Theme.window
@@ -140,11 +143,12 @@ final class WorkflowWindowContent {
     }
 
     private func buildHeader(title: String, symbol: String) -> NSView {
+        backButton.isHidden = true
         let badge = StorageStyle.iconBadge(symbol, tint: Theme.accent, boxSize: 32, symbolSize: 15, cornerRadius: 8)
         let titleLabel = Deck.label(title, font: TextLines.system(14, weight: .semibold), color: Theme.text)
         let titles = Deck.vstack([titleLabel, subtitle], spacing: 2)
         headerTrailing.addArrangedSubview(refresh)
-        let row = Deck.hstack([badge, titles, Deck.spacer(), headerTrailing], spacing: 12)
+        let row = Deck.hstack([backButton, badge, titles, Deck.spacer(), headerTrailing], spacing: 10)
         Deck.pin(
             row, in: headerBar,
             insets: NSEdgeInsets(top: 12, left: Metrics.horizontalInset, bottom: 12, right: Metrics.horizontalInset))
@@ -158,21 +162,9 @@ final class WorkflowWindowContent {
         return controlsWrapper
     }
 
-    private func buildTableCard() -> NSView {
-        tableCard.borderColor = Theme.separator
-        tableCard.cornerRadius = Metrics.cardRadius
-        let clip = NSView()
-        clip.wantsLayer = true
-        clip.layer?.cornerRadius = Metrics.cardRadius - 1
-        clip.layer?.masksToBounds = true
-        Deck.pin(scroll, in: clip)
-        Deck.pin(clip, in: tableCard, insets: NSEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+    private func buildTableCardWrapper() -> NSView {
         empty.alignment = .center
-        emptyBox.translatesAutoresizingMaskIntoConstraints = false
-        tableCard.addSubview(emptyBox)
         NSLayoutConstraint.activate([
-            emptyBox.centerXAnchor.constraint(equalTo: tableCard.centerXAnchor),
-            emptyBox.centerYAnchor.constraint(equalTo: tableCard.centerYAnchor),
             emptyBox.widthAnchor.constraint(equalTo: tableCard.widthAnchor, constant: -64),
             empty.widthAnchor.constraint(equalTo: emptyBox.widthAnchor),
         ])
@@ -224,6 +216,33 @@ final class WorkflowWindowContent {
         if let symbol { parts.append(.symbol(symbol, color: Deck.onAccent, size: 11.5)) }
         parts.append(.text(title, font: TextLines.system(12, weight: .semibold), color: Deck.onAccent))
         return parts
+    }
+
+    static func makeBackButton(identifier: String, onClick: @escaping () -> Void) -> PartsButton {
+        let button = PartsButton.quiet(String(localized: "Back"), symbol: "chevron.left", action: onClick)
+        button.fixedHeight = 26
+        button.setAccessibilityIdentifier(identifier)
+        return button
+    }
+
+    static func makeTableCard(scroll: NSScrollView, emptyBox: NSView, radius: CGFloat = 10) -> FillView {
+        let card = FillView(color: Theme.window)
+        card.borderColor = Theme.separator
+        card.cornerRadius = radius
+        let clip = NSView()
+        clip.wantsLayer = true
+        clip.layer?.cornerRadius = radius - 1
+        clip.layer?.masksToBounds = true
+        Deck.pin(scroll, in: clip)
+        Deck.pin(clip, in: card, insets: NSEdgeInsets(top: 1, left: 1, bottom: 1, right: 1))
+        emptyBox.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(emptyBox)
+        NSLayoutConstraint.activate([
+            emptyBox.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            emptyBox.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            emptyBox.widthAnchor.constraint(lessThanOrEqualTo: card.widthAnchor, constant: -64),
+        ])
+        return card
     }
 
     static func wrapRow(_ content: NSView, insets: NSEdgeInsets, divider: Bool) -> NSView {

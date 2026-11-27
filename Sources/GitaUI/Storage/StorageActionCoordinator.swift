@@ -1,9 +1,31 @@
 import AppKit
 import GitaCore
 
-extension StorageWindowController {
+/// Shared confirmation sheets and mutation execution for per-repository Storage & Health surfaces.
+@MainActor
+final class StorageActionCoordinator {
+    private let store: StorageStore
+    private let windowProvider: () -> NSWindow?
+    private let contextProvider: () -> StorageWindowContext
+    private let checkedProvider: () -> Set<String>
+    private let onDidMutate: () -> Void
+
+    init(
+        store: StorageStore,
+        windowProvider: @escaping () -> NSWindow?,
+        contextProvider: @escaping () -> StorageWindowContext,
+        checkedProvider: @escaping () -> Set<String>,
+        onDidMutate: @escaping () -> Void
+    ) {
+        self.store = store
+        self.windowProvider = windowProvider
+        self.contextProvider = contextProvider
+        self.checkedProvider = checkedProvider
+        self.onDidMutate = onDidMutate
+    }
+
     func perform(_ action: StorageHealthAction, root: URL) {
-        guard let window else {
+        guard let window = windowProvider() else {
             executeHealthAction(action, root: root)
             return
         }
@@ -29,7 +51,7 @@ extension StorageWindowController {
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.store.perform(action, in: root)
-            self.reloadIfVisible()
+            self.onDidMutate()
         }
     }
 
@@ -53,7 +75,7 @@ extension StorageWindowController {
             if case .loaded(let loaded) = store.healthState(for: root) { loaded } else { nil }
         return StoragePresenter().hasActiveAgent(
             in: root, snapshot: snapshot, report: store.state(for: root).report,
-            activeAgentPaths: context.activeAgentPaths)
+            activeAgentPaths: contextProvider().activeAgentPaths)
     }
 
     private func confirmReplaceFSMonitor(
@@ -70,7 +92,7 @@ extension StorageWindowController {
     }
 
     func confirmRemoval(_ tree: CheckoutStorageReport, report: RepositoryStorageReport) {
-        guard let window, isRemovableWorktree(tree) else { return }
+        guard let window = windowProvider(), isRemovableWorktree(tree) else { return }
         let detail = removalDetail(for: tree, report: report)
         DestructiveConfirmation(
             message: String(localized: "Remove \(tree.displayName)?"), detail: detail,
@@ -86,23 +108,25 @@ extension StorageWindowController {
 
     private func removalDetail(for tree: CheckoutStorageReport, report: RepositoryStorageReport) -> String {
         let warning = StoragePresenter().outlineNodes(
-            for: report, activeAgentPaths: context.activeAgentPaths, now: Date()
+            for: report, activeAgentPaths: contextProvider().activeAgentPaths, now: Date()
         ).first { $0.checkout?.id == tree.id }?.warning
         return [tree.path.path, warning].compactMap { $0 }.joined(separator: "\n")
     }
 
     private func executeWorktreeRemoval(_ tree: CheckoutStorageReport, report: RepositoryStorageReport) {
-        if context.onRemoveWorktree?(report.mainRoot, tree.worktree) == true { return }
-        Task {
-            await store.removeWorktree(tree.worktree, in: report.mainRoot)
-            reloadIfVisible()
+        if contextProvider().onRemoveWorktree?(report.mainRoot, tree.worktree) == true { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.store.removeWorktree(tree.worktree, in: report.mainRoot)
+            self.onDidMutate()
         }
     }
 
     func confirmTrash(_ report: RepositoryStorageReport, entry: HeavyFolderEntry?) {
-        guard let window, !store.actionState(for: report.mainRoot).isRunning else { return }
+        guard let window = windowProvider(), !store.actionState(for: report.mainRoot).isRunning else { return }
         let plan = StoragePresenter().trashPlan(
-            report: report, entry: entry, checked: checked, activeAgentPaths: context.activeAgentPaths)
+            report: report, entry: entry, checked: checkedProvider(),
+            activeAgentPaths: contextProvider().activeAgentPaths)
         presentTrashPlan(plan, repository: report.mainRoot, on: window)
     }
 
@@ -124,7 +148,7 @@ extension StorageWindowController {
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.store.moveToTrash(groups, repository: repository)
-            self.reloadIfVisible()
+            self.onDidMutate()
         }
     }
 

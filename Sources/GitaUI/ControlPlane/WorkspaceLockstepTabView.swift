@@ -31,9 +31,15 @@ final class WorkspaceLockstepTabView: NSView, NSTextFieldDelegate {
         branch.action = #selector(run)
         branch.cell?.sendsActionOnEndEditing = false
         ControlPlaneViews.identify(branch, "workspace.lockstep.branch", String(localized: "Branch name"))
-        mode.addItems(withTitles: [
-            String(localized: "Create or switch"), String(localized: "Create only"), String(localized: "Switch only"),
-        ])
+        let modeItems: [(String, String)] = [
+            (String(localized: "Create or switch"), "arrow.triangle.branch"),
+            (String(localized: "Create only"), "plus.circle"),
+            (String(localized: "Switch only"), "arrow.right.arrow.left"),
+        ]
+        for (title, symbol) in modeItems {
+            mode.addItem(withTitle: title)
+            mode.lastItem?.image = Deck.template(symbol, size: 12, weight: .medium)
+        }
         mode.selectItem(at: presenter.mode.rawValue)
         mode.font = Theme.body
         mode.target = self
@@ -41,7 +47,8 @@ final class WorkspaceLockstepTabView: NSView, NSTextFieldDelegate {
         ControlPlaneViews.identify(mode, "workspace.lockstep.mode", String(localized: "Branch operation"))
         warnings.font = Theme.body
         ControlPlaneViews.identify(warnings, "workspace.lockstep.warnings", warnings.title)
-        let inputs = Deck.hstack([branch, mode])
+        let inputs = Deck.hstack(
+            [Deck.icon("arrow.triangle.branch", size: 13, color: Theme.secondaryText), branch, mode], spacing: 8)
         let footer = Deck.hstack([warnings, Deck.spacer(), primary])
         let stack = Deck.vstack([inputs, rows, footer], spacing: 12)
         Deck.pin(stack, in: self)
@@ -93,13 +100,15 @@ final class WorkspaceLockstepTabView: NSView, NSTextFieldDelegate {
         case .completed(let outcomes):
             for outcome in outcomes { badges[outcome.repository.id] = Self.badge(outcome.status) }
         case .failed(let message):
-            rows.message(message) { [weak presenter] in presenter?.preflight() }
+            rows.message(message, symbol: "exclamationmark.triangle.fill") { [weak presenter] in
+                presenter?.preflight()
+            }
             return
         case .idle: warnings.state = .off
         }
         let repositories = state.repositories
         if repositories.isEmpty {
-            rows.message(String(localized: "No repositories to select."))
+            rows.message(String(localized: "No repositories to select."), symbol: "arrow.triangle.branch")
         } else {
             rows.show(count: repositories.count) { [weak self] index in
                 self?.row(repositories[index], index: index) ?? NSView()
@@ -144,11 +153,14 @@ final class WorkspaceLockstepTabView: NSView, NSTextFieldDelegate {
         check.state = presenter.selected.contains(repo.id) ? .on : .off
         ControlPlaneViews.identify(check, "workspace.lockstep.select", String(localized: "Select \(repo.name)"))
         let group = Deck.caption(repo.groupName ?? "")
-        let badge = badges[repo.id]
-        let text = Deck.label(badge?.1 ?? "", font: Theme.caption, color: badge?.2 ?? Theme.secondaryText)
-        text.toolTip = badge?.1
         let views: [NSView] = [check, ControlPlaneViews.repoLabel(repo), group, Deck.spacer()]
-        if let badge { return Deck.hstack(views + [Deck.icon(badge.0, size: 12, color: badge.2), text]) }
+        if let badge = badges[repo.id] {
+            let pill = ControlPlaneBadge(
+                badge.1, symbol: badge.0, fill: badge.2.withAlphaComponent(0.12),
+                text: badge.2, border: badge.2.withAlphaComponent(0.32))
+            pill.toolTip = badge.1
+            return Deck.hstack(views + [pill])
+        }
         return Deck.hstack(views)
     }
 }

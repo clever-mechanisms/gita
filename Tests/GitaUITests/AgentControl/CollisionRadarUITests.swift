@@ -140,4 +140,25 @@ struct AgentControlCollisionRadarUITests {
         #expect(CollisionRadarViewController.emptyMessage(worktreeCount: 1) == minimum)
         #expect(CollisionRadarViewController.emptyMessage(worktreeCount: 2) != minimum)
     }
+
+    @Test func inlineHeaderBackButtonTogglesWithCallback() throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        let controller = AgentControlFacade().makeCollisionRadarViewController(for: repo.url)
+        let window = UITestSupport.host(controller)
+        defer {
+            controller.presenter.cancel()
+            window.close()
+        }
+        let back = try #require(
+            SharedFixtures.descendants(controller.view, of: PartsButton.self).first {
+                $0.accessibilityIdentifier() == "agentControl.radar.back"
+            })
+        #expect(back.isHidden)
+        var invoked = false
+        controller.onBack = { invoked = true }
+        #expect(!back.isHidden && back.accessibilityPerformPress() && invoked)
+        controller.onBack = nil
+        #expect(back.isHidden)
+    }
 }

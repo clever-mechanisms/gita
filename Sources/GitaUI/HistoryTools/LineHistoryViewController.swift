@@ -1,17 +1,21 @@
 import AppKit
 import GitaCore
 
-/// Native macOS window displaying commit-by-commit evolution of a selected line range (`git log -L`).
+/// Embeddable inline controller displaying commit-by-commit evolution of a selected line range (`git log -L`).
 @MainActor
-final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
+final class LineHistoryViewController: NSViewController {
     private static let rowID = NSUserInterfaceItemIdentifier("lineHistory.row")
     private static let cellID = NSUserInterfaceItemIdentifier("lineHistory.cell")
 
     let presenter: LineHistoryPresenter
-    var onJumpToCommit: ((String) -> Void)?
+    var onJumpToCommit: ((String) -> Void)? {
+        didSet { if isViewLoaded { updateDetail() } }
+    }
+    var onBack: (() -> Void)? {
+        didSet { headerBar?.onBack = onBack }
+    }
 
     private let repositoryRoot: URL?
-    private let pathLabel = Deck.label("", font: Theme.bodyEmphasis, color: Theme.text)
     private let rangePill = HistoryToolBadgePill(monospacedDigits: true)
     private let summaryLabel = Deck.label(
         "", font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular), color: Theme.secondaryText)
@@ -20,6 +24,7 @@ final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
     private let copySHAButton: PartsButton
     private let commitTitle = Deck.label("", font: Theme.title, color: Theme.text)
     private let commitMeta = Deck.caption("")
+    private var headerBar: HistoryToolHeaderBar?
     private var listPane: HistoryToolTablePane?
     private var detailPane: HistoryToolDetailPane?
 
@@ -30,48 +35,41 @@ final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
     init(presenter: LineHistoryPresenter, repositoryRoot: URL? = nil) {
         self.repositoryRoot = repositoryRoot
         self.presenter = presenter
-        self.refreshButton = PartsButton.quiet(String(localized: "Refresh"), symbol: "arrow.clockwise") {}
+        self.refreshButton = StorageStyle.actionButton(
+            String(localized: "Refresh"), symbol: "arrow.clockwise", style: .quiet
+        ) {}
         self.jumpButton = PartsButton.quiet(String(localized: "Show in History"), symbol: "arrow.up.right.square") {}
-        self.copySHAButton = PartsButton.quiet(String(localized: "Copy SHA"), symbol: "doc.on.doc") {}
-        super.init(window: nil)
-        configureTimelineActions()
+        self.copySHAButton = HistoryToolChrome.copySHAButton {}
+        super.init(nibName: nil, bundle: nil)
+        HistoryToolChrome.observeTheme(self, selector: #selector(handleThemeChanged))
         presenter.onChange = { [weak self] in self?.render() }
+        configureTimelineActions()
     }
 
     @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    /// Shows the window and loads the line history timeline on demand.
-    func show(range: LineRangeSpec? = nil) {
-        let win = prepareWindow()
-        AuxiliaryWindowActivation.show(win)
+    func reload(range: LineRangeSpec? = nil) {
         presenter.reload(range: range)
     }
 
-    @discardableResult
-    func prepareWindow() -> NSWindow {
-        if let window { return window }
-        let win = makeWindow()
-        self.window = win
-        render()
-        return win
-    }
-
-    func windowWillClose(_: Notification) {
+    func cancel() {
         presenter.cancel()
-        AuxiliaryWindowActivation.closing(window)
     }
 
-    private func configureTimelineActions() {
-        refreshButton.onClick = { [weak self] in self?.presenter.reload() }
-        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
-        copySHAButton.onClick = { [weak self] in self?.copySelectedSHA() }
-        refreshButton.setAccessibilityIdentifier("lineHistory.refresh")
-        jumpButton.setAccessibilityIdentifier("lineHistory.jump")
-        copySHAButton.setAccessibilityIdentifier("lineHistory.copySHA")
-    }
+    override func loadView() {
+        let header = HistoryToolHeaderBar(
+            HistoryToolHeaderBar.Spec(
+                symbol: "text.line.first.and.arrowtriangle.forward",
+                title: String(localized: "Line History"),
+                subtitle: presenter.range.path,
+                titleAccessories: [rangePill],
+                trailing: [summaryLabel, refreshButton]
+            )
+        )
+        header.onBack = onBack
+        headerBar = header
 
-    private func makeWindow() -> NSWindow {
         let list = HistoryToolTablePane(
             columnID: "lineHistory.commit",
             rowHeight: LineHistoryRowCell.rowHeight,
@@ -90,66 +88,73 @@ final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
             headerContent: detailHeader, showsFileBar: false, repositoryRoot: repositoryRoot)
         detailPane = detail
 
-        return HistoryToolChrome.makeSplitWindow(
-            HistoryToolChrome.SplitWindowSpec(
-                title: presenter.headerTitle,
-                size: NSSize(width: 960, height: 580),
-                minSize: NSSize(width: 680, height: 400),
-                topBar: makeHeaderBar(),
-                topBarHeight: 40,
+        view = HistoryToolChrome.makeInlineSplitView(
+            HistoryToolChrome.InlineSplitSpec(
+                header: header,
                 list: list,
                 detail: detail,
                 dividerPosition: 360
-            ),
-            delegate: self
+            )
         )
+        render()
     }
 
-    private func makeHeaderBar() -> NSView {
-        let bar = RowView()
-        bar.hoverEnabled = false
-        bar.fill = Theme.inset
-        let icon = Deck.icon("doc.text.magnifyingglass", size: 13, color: Theme.working)
-        let row = Deck.hstack(
-            [icon, pathLabel, rangePill, summaryLabel, Deck.spacer(), refreshButton],
-            spacing: 8
-        )
-        Deck.pin(row, in: bar, insets: NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 12))
-        return bar
+    private func configureTimelineActions() {
+        refreshButton.onClick = { [weak self] in self?.presenter.reload() }
+        jumpButton.onClick = { [weak self] in self?.jumpToSelectedCommit() }
+        copySHAButton.onClick = { [weak self] in self?.copySelectedSHA() }
+        refreshButton.setAccessibilityIdentifier("lineHistory.refresh")
+        jumpButton.setAccessibilityIdentifier("lineHistory.jump")
+        copySHAButton.setAccessibilityIdentifier("lineHistory.copySHA")
+    }
+
+    @objc private func handleThemeChanged() {
+        guard isViewLoaded else { return }
+        view.needsDisplay = true
+        render()
     }
 
     private func render() {
-        window?.title = presenter.headerTitle
-        pathLabel.stringValue = presenter.range.path
+        title = presenter.headerTitle
+        guard isViewLoaded else { return }
+        headerBar?.setSubtitle(presenter.range.path)
         rangePill.apply(title: presenter.range.rangeLabel, color: Theme.working)
         summaryLabel.stringValue = presenter.summaryText
 
         let entries = presenter.entries
-        if let table = listPane?.table {
-            table.reloadData()
-            if let selectedID = presenter.selectedCommitID,
-                let index = entries.firstIndex(where: { $0.commit.id == selectedID })
-            {
-                table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
-            }
+        let selectedIndex = presenter.selectedCommitID.flatMap { selectedID in
+            entries.firstIndex { $0.commit.id == selectedID }
         }
+        HistoryToolChrome.reloadTable(listPane?.table, selectedIndex: selectedIndex)
         updateEmptyState(count: entries.count)
         updateDetail()
     }
 
     private func updateEmptyState(count: Int) {
-        guard let emptyLabel = listPane?.emptyLabel else { return }
+        guard let emptyState = listPane?.emptyState else { return }
         if presenter.state.isLoading {
-            emptyLabel.stringValue = String(localized: "Tracing line evolution…")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "text.line.first.and.arrowtriangle.forward",
+                title: String(localized: "Tracing line evolution…"),
+                tint: Theme.working
+            )
         } else if let error = presenter.state.errorMessage {
-            emptyLabel.stringValue = error
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "exclamationmark.triangle",
+                title: error,
+                tint: Theme.failure
+            )
         } else if count == 0 {
-            emptyLabel.stringValue = String(localized: "No commits touched these lines")
-            emptyLabel.isHidden = false
+            emptyState.apply(
+                hidden: false,
+                symbol: "text.line.first.and.arrowtriangle.forward",
+                title: String(localized: "No commits touched these lines"),
+                detail: String(localized: "Try refreshing or selecting a wider line range.")
+            )
         } else {
-            emptyLabel.isHidden = true
+            emptyState.isHidden = true
         }
     }
 
@@ -163,9 +168,8 @@ final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
             diffView.update("", loading: presenter.state.isLoading, emptyMessage: String(localized: "No hunk selected"))
             return
         }
-        let shortSHA = String(entry.commit.id.prefix(7))
         commitTitle.stringValue = entry.commit.subject
-        commitMeta.stringValue = "\(shortSHA) · \(entry.commit.author) · \(DeckFormat.relative(entry.commit.date))"
+        commitMeta.stringValue = HistoryToolChrome.commitDetailMeta(for: entry.commit)
         jumpButton.isEnabled = onJumpToCommit != nil
         copySHAButton.isEnabled = true
         diffView.update(
@@ -189,14 +193,14 @@ final class LineHistoryWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-extension LineHistoryWindowController: NSTableViewDataSource, NSTableViewDelegate {
-    public func numberOfRows(in _: NSTableView) -> Int { presenter.entries.count }
+extension LineHistoryViewController: NSTableViewDataSource, NSTableViewDelegate {
+    func numberOfRows(in _: NSTableView) -> Int { presenter.entries.count }
 
-    public func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+    func tableView(_ tableView: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
         DeckTableRowView.reused(in: tableView, id: Self.rowID)
     }
 
-    public func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
+    func tableView(_ tableView: NSTableView, viewFor _: NSTableColumn?, row: Int) -> NSView? {
         guard presenter.entries.indices.contains(row) else { return nil }
         let cell =
             tableView.makeView(withIdentifier: Self.cellID, owner: nil) as? LineHistoryRowCell
@@ -206,13 +210,13 @@ extension LineHistoryWindowController: NSTableViewDataSource, NSTableViewDelegat
         return cell
     }
 
-    public func tableViewSelectionDidChange(_: Notification) {
+    func tableViewSelectionDidChange(_: Notification) {
         guard let row = listPane?.table.selectedRow else { return }
         presenter.select(commitID: presenter.entries.indices.contains(row) ? presenter.entries[row].commit.id : nil)
     }
 }
 
-/// Compact commit timeline row for `LineHistoryWindowController`.
+/// Compact commit timeline row for `LineHistoryViewController`.
 @MainActor
 private final class LineHistoryRowCell: NSTableCellView {
     static let rowHeight: CGFloat = 50

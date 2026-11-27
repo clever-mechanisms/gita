@@ -4,6 +4,7 @@ import AppKit
 final class StorageHealthView: NSScrollView {
     init(
         summary: StorageHealthSummaryModel? = nil, cards: [StorageHealthCardModel], actionState: HealthActionState,
+        openGlobalSettings: (() -> Void)? = nil,
         perform: @escaping (StorageHealthAction) -> Void
     ) {
         super.init(frame: .zero)
@@ -12,7 +13,10 @@ final class StorageHealthView: NSScrollView {
         Deck.pin(stack, in: document, insets: NSEdgeInsets(top: 16, left: 18, bottom: 20, right: 18))
 
         if let banner = StorageStyle.banner(actionState) { StorageStyle.addFullWidth(banner, to: stack) }
-        if let summary { StorageStyle.addFullWidth(makeSummaryCard(summary, perform: perform), to: stack) }
+        if let summary {
+            StorageStyle.addFullWidth(
+                makeSummaryCard(summary, openGlobalSettings: openGlobalSettings, perform: perform), to: stack)
+        }
         addSection(
             title: String(localized: "Performance"),
             cards: cards.filter { $0.section == .performance }, in: stack, perform: perform)
@@ -25,7 +29,8 @@ final class StorageHealthView: NSScrollView {
     required init?(coder _: NSCoder) { fatalError("StorageHealthView is built in code") }
 
     private func makeSummaryCard(
-        _ summary: StorageHealthSummaryModel, perform: @escaping (StorageHealthAction) -> Void
+        _ summary: StorageHealthSummaryModel, openGlobalSettings: (() -> Void)?,
+        perform: @escaping (StorageHealthAction) -> Void
     ) -> NSView {
         let allEnabled = summary.enabledCount == summary.totalCount
         let card = StorageStyle.card(cornerRadius: 10)
@@ -34,24 +39,39 @@ final class StorageHealthView: NSScrollView {
             tint: allEnabled ? Theme.success : Theme.accent,
             boxSize: 36, symbolSize: 17, cornerRadius: 8)
         let headline = Deck.label(summary.headline, font: TextLines.system(14, weight: .semibold))
+        let scopePill = StorageStyle.pill(summary.scopeBadge, fill: Theme.control, textColor: Theme.secondaryText)
+        let headlineRow = Deck.hstack([headline, scopePill], spacing: 8)
         let subtitle = Deck.wrapping(summary.subtitle, font: Theme.caption, color: Theme.secondaryText)
-        let textColumn = Deck.vstack([headline, subtitle], spacing: 3)
+        let textColumn = Deck.vstack([headlineRow, subtitle], spacing: 3)
 
-        let trailing: NSView
-        switch summary.status {
-        case .recommend(let action):
-            trailing = StorageStyle.actionButton(
-                action.buttonTitle, symbol: "sparkles", style: .accent, accessibility: action.title
-            ) { perform(action) }
-        case .optimized:
-            trailing = StorageStyle.statusPill(String(localized: "Optimized"), tone: .positive)
-        case .updating:
-            trailing = StorageStyle.statusPill(String(localized: "Updating…"), tone: .neutral)
+        var trailingViews = [NSView]()
+        if let openGlobalSettings {
+            trailingViews.append(
+                StorageStyle.actionButton(
+                    String(localized: "Global Defaults…"), symbol: "gearshape", style: .quiet,
+                    accessibility: String(localized: "Global Defaults…"), onClick: openGlobalSettings))
         }
+        trailingViews.append(makeSummaryStatusControl(summary.status, perform: perform))
+        let trailing = Deck.hstack(trailingViews, spacing: 8)
 
         let row = Deck.hstack([badge, textColumn, Deck.spacer(), trailing], spacing: 12)
         Deck.pin(row, in: card, insets: NSEdgeInsets(top: 14, left: 16, bottom: 14, right: 16))
         return card
+    }
+
+    private func makeSummaryStatusControl(
+        _ status: StorageHealthSummaryModel.Status, perform: @escaping (StorageHealthAction) -> Void
+    ) -> NSView {
+        switch status {
+        case .recommend(let action):
+            StorageStyle.actionButton(
+                action.buttonTitle, symbol: "sparkles", style: .accent, accessibility: action.title
+            ) { perform(action) }
+        case .optimized:
+            StorageStyle.statusPill(String(localized: "Optimized"), tone: .positive)
+        case .updating:
+            StorageStyle.statusPill(String(localized: "Updating…"), tone: .neutral)
+        }
     }
 
     private func addSection(
@@ -82,7 +102,13 @@ final class StorageHealthView: NSScrollView {
             boxSize: 30, symbolSize: 14, cornerRadius: 7)
         let title = Deck.label(model.title, font: Theme.bodyEmphasis)
         let status = StorageStyle.statusPill(model.statusText, tone: model.statusTone)
-        let titleRow = Deck.hstack([title, status], spacing: 8)
+        var titleViews: [NSView] = [title, status]
+        if let scope = model.scopeOrigin {
+            let fill = scope.isInherited ? Theme.accent.withAlphaComponent(0.12) : Theme.control
+            let color = scope.isInherited ? Theme.accent : Theme.secondaryText
+            titleViews.append(StorageStyle.pill(scope.label, fill: fill, textColor: color))
+        }
+        let titleRow = Deck.hstack(titleViews, spacing: 8)
         let detail = Deck.wrapping(model.detail, font: Theme.caption, color: Theme.secondaryText)
 
         var textItems: [NSView] = [titleRow, detail]

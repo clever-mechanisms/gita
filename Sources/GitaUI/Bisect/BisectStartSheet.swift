@@ -56,14 +56,17 @@ final class BisectStartSheet: ReviewSheetController, NSComboBoxDelegate {
             layout: SheetChrome.Layout(width: 500, spacing: 10, minimumHeight: 220),
             identifier: "bisect.start"
         )
-        self.cancelButton = SheetChrome.button(String(localized: "Cancel"), id: "bisect.start.cancel")
-        self.startButton = SheetChrome.button(String(localized: "Start Bisect"), id: "bisect.start.confirm")
+        self.cancelButton = SheetChrome.button(String(localized: "Cancel"), id: "bisect.start.cancel", symbol: "xmark")
+        self.startButton = SheetChrome.button(
+            String(localized: "Start Bisect"), id: "bisect.start.confirm", symbol: "play.fill")
         super.init(sheet: chrome.window)
         buildInterface()
         updateControls()
     }
 
     private func buildInterface() {
+        let badge = StorageStyle.iconBadge(
+            "arrow.triangle.branch", tint: Theme.accent, boxSize: 32, symbolSize: 15, cornerRadius: 8)
         let heading = Style.label(
             String(localized: "Find the commit that introduced a regression"),
             size: 13,
@@ -77,22 +80,37 @@ final class BisectStartSheet: ReviewSheetController, NSComboBoxDelegate {
             lines: 3
         )
         explanation.textColor = Theme.secondaryText
-        chrome.add(heading, height: 20)
-        chrome.add(explanation, height: 34)
+        let headerText = Deck.vstack([heading, explanation], spacing: 3)
+        let headerRow = Deck.hstack([badge, headerText], spacing: 10)
+        chrome.add(headerRow, height: 54)
 
-        let badLabel = Style.label(String(localized: "Bad commit (contains the bug)"), size: 11, weight: .medium)
+        let badRow = Deck.hstack(
+            [
+                Deck.icon("xmark.circle.fill", size: 12, color: Theme.failure),
+                Style.label(String(localized: "Bad commit (contains the bug)"), size: 11, weight: .medium),
+                Deck.spacer(),
+            ],
+            spacing: 6
+        )
         configureCombo(badCombo, initialValue: state.badRef, placeholder: "HEAD", id: "bisect.start.bad")
-        chrome.add(badLabel, height: 16)
+        chrome.add(badRow, height: 18)
         chrome.add(badCombo, height: 26)
 
-        let goodLabel = Style.label(String(localized: "Good commit (before the bug)"), size: 11, weight: .medium)
+        let goodRow = Deck.hstack(
+            [
+                Deck.icon("checkmark.circle.fill", size: 12, color: Theme.success),
+                Style.label(String(localized: "Good commit (before the bug)"), size: 11, weight: .medium),
+                Deck.spacer(),
+            ],
+            spacing: 6
+        )
         configureCombo(
             goodCombo,
             initialValue: state.goodRef,
             placeholder: String(localized: "Commit SHA, tag, or branch"),
             id: "bisect.start.good"
         )
-        chrome.add(goodLabel, height: 16)
+        chrome.add(goodRow, height: 18)
         chrome.add(goodCombo, height: 26)
 
         bind(cancelButton, #selector(cancelReview))

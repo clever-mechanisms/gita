@@ -21,9 +21,11 @@ final class WorkspaceChangesTabView: NSView {
 
     func render() {
         switch presenter.changes {
-        case .empty: rows.message(String(localized: "No repositories in this workspace."))
+        case .empty:
+            rows.message(String(localized: "No repositories in this workspace."), symbol: Deck.workspaceSymbol)
         case .idle, .loading: rows.message(String(localized: "Reading working trees…"), loading: true)
-        case .failed(let message): rows.message(message) { [weak presenter] in presenter?.refresh() }
+        case .failed(let message):
+            rows.message(message, symbol: "exclamationmark.triangle.fill") { [weak presenter] in presenter?.refresh() }
         case .loaded(let values): rows.show(count: values.count) { [weak self] in self?.row(values[$0]) ?? NSView() }
         }
     }
@@ -38,9 +40,11 @@ final class WorkspaceChangesTabView: NSView {
         let repo = value.repository
         let menu = NSMenu()
         menu.autoenablesItems = false
-        menu.addItem(
-            MenuAction(String(localized: "Open Repository")) { [weak presenter] in presenter?.open(repo.root) })
+        let open = MenuAction(String(localized: "Open Repository")) { [weak presenter] in presenter?.open(repo.root) }
+        open.image = Deck.template("folder", size: 12, weight: .medium)
+        menu.addItem(open)
         let stage = MenuAction(String(localized: "Stage All")) { [weak presenter] in presenter?.stage(repo) }
+        stage.image = Deck.template("plus.circle", size: 12, weight: .medium)
         stage.isEnabled = value.canStageAll && !presenter.stagingRepositories.contains(repo.id)
         if value.conflictCount > 0 { stage.toolTip = String(localized: "Resolve conflicts first") }
         menu.addItem(stage)
@@ -57,7 +61,7 @@ final class WorkspaceChangesTabView: NSView {
         let details = Deck.vstack([Self.heading(value), detail])
         let busy = presenter.stagingRepositories.contains(repo.id)
         let stage = ControlPlaneViews.action(
-            busy ? String(localized: "Staging…") : String(localized: "Stage All"), symbol: "plus",
+            busy ? String(localized: "Staging…") : String(localized: "Stage All"), symbol: "plus.circle",
             id: "workspace.changes.stage"
         ) { [weak presenter] in presenter?.stage(repo) }
         stage.isEnabled = value.canStageAll && !busy
@@ -69,7 +73,8 @@ final class WorkspaceChangesTabView: NSView {
         let branch = value.branch ?? String(localized: "Detached HEAD")
         let palette = Deck.pillColors(.head)
         let pill = ControlPlaneBadge(
-            branch, fill: palette.fill, text: palette.text, border: palette.border, font: Theme.mono)
+            branch, symbol: "arrow.triangle.branch", fill: palette.fill, text: palette.text, border: palette.border,
+            font: Theme.mono)
         var views: [NSView] = [ControlPlaneViews.repoLabel(value.repository), pill]
         var tracking: [String] = []
         if value.ahead > 0 { tracking.append(String(localized: "↑ \(value.ahead)")) }

@@ -325,9 +325,18 @@ final class MenuPanelController: NSViewController {
     @objc private func showMore() {
         moreMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: moreButton.bounds.maxY + 4), in: moreButton)
     }
-    /// ••• : Settings… and Quit Gita.
+    /// ••• : Workspace Command Center, Workspace Storage…, Settings… and Quit Gita.
     func moreMenu() -> NSMenu {
         let menu = NSMenu()
+        let commandCenter = NSMenuItem(
+            title: String(localized: "Workspace Command Center"), action: #selector(openWorkspaceCommandCenter),
+            keyEquivalent: "")
+        commandCenter.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil)
+        commandCenter.target = self
+        let workspaceStorage = NSMenuItem(
+            title: String(localized: "Workspace Storage…"), action: #selector(openWorkspaceStorage), keyEquivalent: "")
+        workspaceStorage.image = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
+        workspaceStorage.target = self
         let settings = NSMenuItem(
             title: String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
@@ -335,11 +344,16 @@ final class MenuPanelController: NSViewController {
         let quit = NSMenuItem(title: String(localized: "Quit Gitā"), action: #selector(quitApp), keyEquivalent: "q")
         quit.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         quit.target = self
+        menu.addItem(commandCenter)
+        menu.addItem(workspaceStorage)
+        menu.addItem(.separator())
         menu.addItem(settings)
         menu.addItem(.separator())
         menu.addItem(quit)
         return menu
     }
+    @objc private func openWorkspaceCommandCenter() { actions.workspaceCommandCenter() }
+    @objc private func openWorkspaceStorage() { actions.workspaceStorage() }
     @objc private func openSettings() { actions.settings() }
     @objc private func quitApp() { actions.quit() }
 

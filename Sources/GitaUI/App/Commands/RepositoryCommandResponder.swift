@@ -33,6 +33,12 @@ final class RepositoryCommandResponder: NSResponder, NSMenuItemValidation, Repos
     func inspectStorage(at root: URL) { host?.inspectStorage(at: root) }
     func invalidateStorage(repositoryRoot root: URL) { host?.invalidateStorage(repositoryRoot: root) }
     func cachedStorageSize(for root: URL) -> String? { host?.cachedStorageSize(for: root) }
+    func openWorkspaceStorage() { host?.showWorkspaceStorage() }
+    func storageContext(for root: URL) -> StorageWindowContext {
+        host?.storageWindowContext(repositoryRoot: root) ?? StorageWindowContext(repositoryRoot: root)
+    }
+    var storageStore: StorageStore? { host?.environment.storageStore }
+    var agentControlFacade: AgentControlFacade? { host?.agentControl }
 
     // MARK: Remotes and the working copy
 

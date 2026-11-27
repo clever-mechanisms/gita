@@ -52,21 +52,16 @@ struct AgentControlReviewedHunksUITests {
         #expect(counter.value == 1)
     }
 
-    @Test func toolWindowsAreStandaloneAndReusedPerRepository() throws {
+    @Test func inlineControllersBuildDistinctRootViewsPerTool() throws {
         UITestSupport.bootstrap()
         let repo = try TemporaryRepository()
         let facade = AgentControlFacade()
-        for show in [facade.presentCollisionRadar, facade.presentFlightRecorder, { facade.showArena(for: $0) }] {
-            show(repo.url)
-            let first = try #require(NSApp.windows.first { $0.isVisible && $0.subtitle == repo.url.lastPathComponent })
-            #expect(first.sheetParent == nil)
-            #expect(first.styleMask.contains(.resizable))
-            #expect(!first.frameAutosaveName.isEmpty)
-            first.close()
-            show(repo.url)
-            #expect(first.isVisible)
-            first.close()
-        }
+        let radar = facade.makeCollisionRadarViewController(for: repo.url)
+        let flight = facade.makeFlightRecorderViewController(for: repo.url)
+        let arena = facade.makeArenaViewController(for: repo.url, baseCommit: "HEAD")
+        #expect(radar.view.accessibilityIdentifier() == "agentControl.radar.root")
+        #expect(flight.view.accessibilityIdentifier() == "agentControl.flight.root")
+        #expect(arena.view.accessibilityIdentifier() == "agentControl.arena.root")
     }
 
     @Test func facadeOrdersOptInAndHookAndExposesCapturedTurn() async throws {

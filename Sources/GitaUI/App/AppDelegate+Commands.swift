@@ -40,7 +40,6 @@ extension AppDelegate: RepositoryCommandHost, MainToolbarHost, SettingsShell {
         NSApp.nextResponder = responder
         repositoryController?.commands = responder
         installPaneFocusMenuItemsIfNeeded(in: NSApp.mainMenu)
-        installAgentControlMenuItemsIfNeeded(in: NSApp.mainMenu)
         wireAgentControlHooks()
     }
 

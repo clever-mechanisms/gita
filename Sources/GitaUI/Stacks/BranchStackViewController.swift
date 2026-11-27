@@ -1,19 +1,25 @@
 import AppKit
 import GitaCore
 
+/// Embeddable Stacked Branches view controller for inspecting chained local feature branches
+/// and previewing/running `--update-refs` restacks.
 @MainActor
-final class BranchStackWindowController: NSWindowController, NSWindowDelegate, NSTableViewDataSource,
-    NSTableViewDelegate
-{
+final class BranchStackViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("stack.table.row")
     private let service: GitService
-    private let base: String?
+    private var base: String?
     private let onDidMutate: () -> Void
-    private let content: WorkflowWindowContent
+    let page: WorkflowPageView
     private var presenter = BranchStackPresenter()
     private var rows: [StackTreeRow] = []
     private var readTask: Task<Void, Never>?
-    private var mutationTask: Task<Void, Never>?
+
+    var onBack: (() -> Void)? {
+        get { page.onBack }
+        set { page.onBack = newValue }
+    }
+
+    var isRestacking: Bool { presenter.isRestacking }
 
     init(
         gitService: GitService, baseBranch: String? = nil, repositoryName: String? = nil,
@@ -22,31 +28,37 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         service = gitService
         base = baseBranch
         self.onDidMutate = onDidMutate
-        content = WorkflowWindowContent(
-            title: String(localized: "Stacked Branches"), repositoryName: repositoryName,
-            symbol: "square.stack.3d.up", actionTitle: String(localized: "Restack Chain…"),
+        page = WorkflowPageView(
+            title: String(localized: "Stacked Branches"),
+            symbol: "square.stack.3d.up",
+            actionTitle: String(localized: "Restack Chain…"),
             actionSymbol: "arrow.triangle.2.circlepath")
-        super.init(window: content.window)
-        window?.delegate = self
-        content.showsControls = false
-        content.refresh.onClick = { [weak self] in self?.refresh() }
-        content.action.onClick = { [weak self] in self?.review() }
-        content.table.delegate = self
-        content.table.dataSource = self
+        super.init(nibName: nil, bundle: nil)
+        title =
+            repositoryName.map { String(localized: "Stacked Branches · \($0)") }
+            ?? String(localized: "Stacked Branches")
+        page.showsControls = false
+        page.refresh.onClick = { [weak self] in self?.refresh() }
+        page.action.onClick = { [weak self] in self?.review() }
+        page.table.delegate = self
+        page.table.dataSource = self
     }
-    @available(*, unavailable)
+
+    @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    func present() {
-        AuxiliaryWindowActivation.show(content.window)
+    override func loadView() {
+        view = page
+    }
+
+    func reload(baseBranch: String? = nil) {
+        if let baseBranch { base = baseBranch }
         refresh()
     }
-    func windowShouldClose(_: NSWindow) -> Bool { !presenter.isRestacking && mutationTask == nil }
-    func windowWillClose(_: Notification) {
+
+    func cancel() {
         readTask?.cancel()
         if !presenter.isRestacking { presenter.cancelPreview() }
-        content.stopObservingTheme()
-        AuxiliaryWindowActivation.closing(window)
     }
 
     private func refresh() {
@@ -69,19 +81,19 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
 
     private func render() {
         rows = presenter.rows()
-        content.table.reloadData()
+        page.table.reloadData()
         if let index = rows.firstIndex(where: { $0.stackID == presenter.selectedStackID }) {
-            content.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+            page.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
         } else {
-            content.table.deselectAll(nil)
+            page.table.deselectAll(nil)
         }
-        content.refresh.isEnabled = !presenter.isBusy
+        page.refresh.isEnabled = !presenter.isBusy
         let baseName = presenter.selected?.baseBranch ?? base
-        content.subtitle.stringValue =
+        page.subtitle.stringValue =
             baseName.map { String(localized: "Base branch: \($0)") }
             ?? String(localized: "Chained local feature branches")
         let empty = presenter.status.isEmpty ? String(localized: "No stacked branches found.") : presenter.status
-        content.feedback(
+        page.feedback(
             presenter.status, emptyMessage: rows.isEmpty ? empty : "",
             emptySymbol: presenter.hasError ? "exclamationmark.triangle" : "square.stack.3d.up",
             isError: presenter.hasError)
@@ -89,10 +101,10 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     private func bindSelection() {
-        content.summary.stringValue =
+        page.summary.stringValue =
             presenter.selected.map { String(localized: "\($0.baseBranch) → \($0.topBranch)") }
             ?? String(localized: "Select a stack")
-        content.action.isEnabled = presenter.canRestack
+        page.action.isEnabled = presenter.canRestack
     }
 
     func numberOfRows(in _: NSTableView) -> Int { rows.count }
@@ -102,7 +114,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     func tableViewSelectionDidChange(_: Notification) {
-        let index = content.table.selectedRow
+        let index = page.table.selectedRow
         guard rows.indices.contains(index) else { return }
         presenter.selectedStackID = rows[index].stackID
         bindSelection()
@@ -125,7 +137,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         var titleViews: [NSView] = [title]
         if item.isCurrent {
             titleViews.append(
-                WorkflowWindowContent.pill(
+                WorkflowPageView.pill(
                     String(localized: "Current"), symbol: "checkmark.circle.fill", color: Theme.checkedOut))
         }
         let summary = Deck.caption(item.summary)
@@ -134,16 +146,16 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         let stack = Deck.hstack(leadingViews + [textColumn, Deck.spacer()], spacing: 8)
         if item.needsRestack {
             stack.addArrangedSubview(
-                WorkflowWindowContent.pill(
+                WorkflowPageView.pill(
                     String(localized: "Needs Restack"), symbol: "exclamationmark.triangle.fill",
                     color: Theme.needsInputText))
         }
         stack.addArrangedSubview(
-            WorkflowWindowContent.pill(
+            WorkflowPageView.pill(
                 item.counts, color: item.needsRestack ? Theme.needsInputText : Theme.secondaryText)
         )
         let leftInset = 12 + CGFloat(min(item.depth, 10)) * 18
-        let container = WorkflowWindowContent.wrapRow(
+        let container = WorkflowPageView.wrapRow(
             stack, insets: NSEdgeInsets(top: 6, left: leftInset, bottom: 6, right: 14), divider: row < rows.count - 1)
         container.toolTip = item.summary
         return container
@@ -170,9 +182,14 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     private func confirm(_ preview: BranchStackRestackPreview) {
+        guard let window = view.window else {
+            presenter.cancelPreview()
+            render()
+            return
+        }
         let blocked = !preview.blockedByWorktreePaths.isEmpty
         let alert = makeConfirmAlert(for: preview, blocked: blocked)
-        alert.beginSheetModal(for: content.window) { [weak self] response in
+        alert.beginSheetModal(for: window) { [weak self] response in
             self?.finishConfirm(preview, blocked: blocked, response: response)
         }
     }
@@ -183,7 +200,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
             blocked
             ? String(localized: "Another worktree is using this stack.")
             : String(localized: "Restack this chain?")
-        WorkflowWindowContent.review(alert, detail: BranchStackPresenter.reviewText(preview))
+        WorkflowPageView.review(alert, detail: BranchStackPresenter.reviewText(preview))
         if !blocked {
             let button = alert.addButton(withTitle: String(localized: "Restack Chain"))
             button.hasDestructiveAction = true
@@ -208,8 +225,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         readTask?.cancel()
         presenter.startRestack(preview.stack)
         render()
-        mutationTask = Task {
-            defer { mutationTask = nil }
+        Task {
             do {
                 let result = try await service.restackBranchStack(preview)
                 onDidMutate()
@@ -229,7 +245,7 @@ final class BranchStackWindowController: NSWindowController, NSWindowDelegate, N
         } catch {
             presenter.finish(result, stacks: [])
             render()
-            content.feedback(presenter.status, emptyMessage: error.localizedDescription, isError: true)
+            page.feedback(presenter.status, emptyMessage: error.localizedDescription, isError: true)
         }
     }
 }

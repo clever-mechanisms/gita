@@ -46,6 +46,7 @@ final class RepositoryViewController: NSViewController {
     var renderedAmendStaging = AmendStaging.off
     let providerPage = ProviderPageView()
     let prWorkspace = PullRequestReviewWorkspaceView()
+    let toolHost = RepositoryToolHost()
     let agentsPane = AgentsPaneView()
     let historyMenu = HistoryMenu()
     let historyMenuVercel = HistoryMenuVercel()
@@ -173,7 +174,10 @@ final class RepositoryViewController: NSViewController {
                 MainActor.assumeIsolated {
                     guard let self, let root = self.model.snapshot?.root else { return }
                     let key = root.resolvingSymlinksInPath().standardizedFileURL.path
-                    if changed == nil || changed?.contains(key) == true { self.rebuildSidebar() }
+                    if changed == nil || changed?.contains(key) == true {
+                        self.rebuildSidebar()
+                        self.reloadInlineStorageIfVisible()
+                    }
                 }
             })
         workspaceObservation = WorkspaceMonitor.shared.observe { [weak self] _ in
@@ -212,6 +216,7 @@ final class RepositoryViewController: NSViewController {
         detachCommitEcosystem()
         detachBisect()
         detachActionsTools()
+        detachToolPages()
         for token in notificationObservations { NotificationCenter.default.removeObserver(token) }
         notificationObservations = []
         if let workspaceObservation { WorkspaceMonitor.shared.removeObserver(workspaceObservation) }

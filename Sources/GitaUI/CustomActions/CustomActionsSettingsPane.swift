@@ -96,13 +96,21 @@ final class CustomActionsSettingsPane: SettingsPaneContent {
         }
         if rows.isEmpty { rows.append(SettingsRow(String(localized: "No custom actions yet"), [])) }
         let add = SettingsForm.button(String(localized: "Add"), symbol: "plus") { [weak self] in self?.add() }
-        let duplicate = ActionButton(title: String(localized: "Duplicate")) { [weak self] in self?.duplicate() }
-        let delete = ActionButton(title: String(localized: "Delete")) { [weak self] in self?.deleteSelected() }
+        let duplicate = SettingsForm.button(
+            String(localized: "Duplicate"), symbol: "plus.square.on.square"
+        ) { [weak self] in self?.duplicate() }
+        let delete = SettingsForm.button(String(localized: "Delete"), symbol: "trash") { [weak self] in
+            self?.deleteSelected()
+        }
         duplicate.isEnabled = editor.draft != nil
         delete.isEnabled = editor.draft != nil
         rows.append(SettingsRow("", [add, duplicate, delete]))
-        let load = ActionButton(title: String(localized: "Import…")) { [weak self] in self?.loadImport() }
-        let export = ActionButton(title: String(localized: "Export…")) { [weak self] in self?.export() }
+        let load = SettingsForm.button(
+            String(localized: "Import…"), symbol: "square.and.arrow.down"
+        ) { [weak self] in self?.loadImport() }
+        let export = SettingsForm.button(
+            String(localized: "Export…"), symbol: "square.and.arrow.up"
+        ) { [weak self] in self?.export() }
         rows.append(SettingsRow(String(localized: "Action library"), [load, export]))
         list.setRows(rows)
     }

@@ -16,9 +16,10 @@ final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
     private let spinner = NSProgressIndicator()
     private var delay: Task<Void, Never>?
     private var renderedState: VisualPreviewDiffState?
+    private let stateIconSlot = NSStackView()
     private let stateMessage = Deck.wrapping("", color: Theme.secondaryText)
     private lazy var stateButton = SmartDiffControls.button("", id: "preview.load") { [weak self] in self?.reload() }
-    private lazy var stateView = Deck.vstack([stateMessage, stateButton])
+    private lazy var stateView = Deck.vstack([stateIconSlot, stateMessage, stateButton], spacing: 8)
     private lazy var status = Deck.hstack([spinner, caption, Deck.spacer()])
 
     init(presenter: VisualPreviewDiffPresenter) {
@@ -91,17 +92,26 @@ final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
 
     private func updateStateView(_ state: VisualPreviewDiffState) {
         let title: String
+        let buttonSymbol: String
+        let iconName: String
+        let iconTint: NSColor
         switch state {
         case .idle:
             stateMessage.stringValue = String(localized: "Compare production and preview deployments")
             stateMessage.font = Theme.caption
             stateMessage.textColor = Theme.secondaryText
             title = String(localized: "Load Comparison")
+            buttonSymbol = "play.fill"
+            iconName = "rectangle.split.2x1"
+            iconTint = Theme.accent
         case .failed(let reason):
             stateMessage.stringValue = reason
             stateMessage.font = Theme.body
             stateMessage.textColor = Theme.failure
             title = String(localized: "Retry")
+            buttonSymbol = "arrow.clockwise"
+            iconName = "exclamationmark.triangle.fill"
+            iconTint = Theme.failure
         case .loading, .ready:
             stateView.isHidden = true
             canvas.isHidden = false
@@ -109,7 +119,10 @@ final class VisualPreviewDiffView: NSView, WKNavigationDelegate {
             return
         }
         let moveFocus = (window?.firstResponder as? NSView)?.isDescendant(of: canvas) == true
-        stateButton.parts = SmartDiffControls.parts(title, symbol: nil)
+        stateIconSlot.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        stateIconSlot.addArrangedSubview(
+            StorageStyle.iconBadge(iconName, tint: iconTint, boxSize: 36, symbolSize: 16, cornerRadius: 9))
+        stateButton.parts = SmartDiffControls.parts(title, symbol: buttonSymbol)
         stateButton.setAccessibilityLabel(title)
         stateButton.toolTip = title
         stateView.isHidden = false

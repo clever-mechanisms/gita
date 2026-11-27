@@ -36,12 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarItemValidatio
     var commandResponders: [ObjectIdentifier: RepositoryCommandResponder] = [:]
     /// The open command palette, if any; see `AppDelegate+Palette`.
     var palette: PaletteController?
-    /// Open per-repository utility windows (Submodules/LFS, Cleanup, Stacks, Reflog, Code Search, Line History).
-    let auxiliaryWindows = AuxiliaryWindowRegistry()
-    /// Open Commit Buckets windows keyed by standardized repository root path.
-    var commitBucketsWindows: [String: CommitBucketsWindowController] = [:]
-    /// On-demand Storage Inspector & Repository Health utility window.
-    lazy var storageWindowController = StorageWindowController(store: environment.storageStore)
+    /// Global Workspace Storage window (All Repositories).
+    lazy var storageWindowController: StorageWindowController = {
+        let controller = StorageWindowController(store: environment.storageStore)
+        controller.onOpenGlobalSettings = { SettingsWindowController.shared.show(.git, anchor: .performance) }
+        return controller
+    }()
     var activeAgentControl: AgentControlFacade?
     lazy var reviewedHunks = ReviewedHunksRegistry()
     /// Paste-Anything Teleport, Menu Bar Triage HUD, and Quick Look share one on-demand facade.

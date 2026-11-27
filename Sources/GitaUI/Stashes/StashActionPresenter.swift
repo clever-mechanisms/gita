@@ -117,6 +117,7 @@ enum StashActionPresenter {
         let button = alert.addButton(withTitle: String(localized: "Create Branch"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        field.font = Theme.body
         field.placeholderString = String(localized: "Branch name")
         let validator = StashBranchField(button: button)
         field.delegate = validator

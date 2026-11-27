@@ -1,14 +1,14 @@
 import AppKit
 import GitaCore
 
+/// Embeddable Cleanup Assistant view controller for reviewing and removing merged branches,
+/// gone upstreams, stale branches, and idle worktrees.
 @MainActor
-final class CleanupAssistantWindowController: NSWindowController, NSWindowDelegate, NSTableViewDataSource,
-    NSTableViewDelegate
-{
+final class CleanupAssistantViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
     private static let rowID = NSUserInterfaceItemIdentifier("cleanup.table.row")
     private let service: GitService
     private let onDidMutate: () -> Void
-    private let content: WorkflowWindowContent
+    let page: WorkflowPageView
     private var presenter = CleanupAssistantPresenter()
     private var rows: [CleanupRowItem] = []
     private var scan: Task<Void, Never>?
@@ -21,34 +21,44 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
         self?.toggleAll()
     }
 
+    var onBack: (() -> Void)? {
+        get { page.onBack }
+        set { page.onBack = newValue }
+    }
+
+    var isCleaning: Bool { presenter.isCleaning }
+
     init(gitService: GitService, repositoryName: String? = nil, onDidMutate: @escaping () -> Void = {}) {
         service = gitService
         self.onDidMutate = onDidMutate
-        content = WorkflowWindowContent(
-            title: String(localized: "Branch & Worktree Cleanup"), repositoryName: repositoryName,
-            symbol: "wand.and.stars", actionTitle: String(localized: "Clean Selected…"), actionSymbol: "trash")
-        super.init(window: content.window)
-        window?.delegate = self
-        content.subtitle.stringValue = String(localized: "Review merged branches, gone upstreams, and idle worktrees.")
+        page = WorkflowPageView(
+            title: String(localized: "Branch & Worktree Cleanup"),
+            symbol: "wand.and.stars",
+            actionTitle: String(localized: "Clean Selected…"),
+            actionSymbol: "trash")
+        super.init(nibName: nil, bundle: nil)
+        title =
+            repositoryName.map { String(localized: "Branch & Worktree Cleanup · \($0)") }
+            ?? String(localized: "Branch & Worktree Cleanup")
+        page.subtitle.stringValue = String(localized: "Review merged branches, gone upstreams, and idle worktrees.")
         configureHeaderControls()
         configureFilterStrip()
         configureTableAndActions()
     }
 
-    @available(*, unavailable)
+    @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    func present() {
-        AuxiliaryWindowActivation.show(content.window)
+    override func loadView() {
+        view = page
+    }
+
+    func reload() {
         refresh(clearFailures: true)
     }
 
-    func windowShouldClose(_: NSWindow) -> Bool { !presenter.isCleaning }
-
-    func windowWillClose(_: Notification) {
+    func cancel() {
         scan?.cancel()
-        content.stopObservingTheme()
-        AuxiliaryWindowActivation.closing(window)
     }
 
     private func configureHeaderControls() {
@@ -61,7 +71,7 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
         threshold.action = #selector(manualRefresh)
         let thresholdLabel = Deck.caption(String(localized: "Stale after"))
         let thresholdGroup = Deck.hstack([thresholdLabel, threshold], spacing: 6)
-        content.headerTrailing.insertArrangedSubview(thresholdGroup, at: 0)
+        page.headerTrailing.insertArrangedSubview(thresholdGroup, at: 0)
     }
 
     private func configureFilterStrip() {
@@ -82,23 +92,23 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
             button.cornerRadius = 6
             button.setAccessibilityIdentifier("cleanup.filter.\(filter.rawValue)")
             filterButtons[filter] = button
-            content.controls.addArrangedSubview(button)
+            page.controls.addArrangedSubview(button)
         }
         selectAllButton.fixedHeight = 26
         selectAllButton.setAccessibilityIdentifier("cleanup.selectAll")
-        content.controls.addArrangedSubview(Deck.spacer())
-        content.controls.addArrangedSubview(selectAllButton)
+        page.controls.addArrangedSubview(Deck.spacer())
+        page.controls.addArrangedSubview(selectAllButton)
     }
 
     private func configureTableAndActions() {
-        content.refresh.onClick = { [weak self] in self?.manualRefresh() }
-        content.action.onClick = { [weak self] in self?.confirm() }
-        content.table.delegate = self
-        content.table.dataSource = self
-        content.table.selectionHighlightStyle = .regular
-        content.table.target = self
-        content.table.doubleAction = #selector(doubleClickRow)
-        content.table.onSpaceKey = { [weak self] in self?.toggleSelectedRow() }
+        page.refresh.onClick = { [weak self] in self?.manualRefresh() }
+        page.action.onClick = { [weak self] in self?.confirm() }
+        page.table.delegate = self
+        page.table.dataSource = self
+        page.table.selectionHighlightStyle = .regular
+        page.table.target = self
+        page.table.doubleAction = #selector(doubleClickRow)
+        page.table.onSpaceKey = { [weak self] in self?.toggleSelectedRow() }
     }
 
     @objc private func manualRefresh() { refresh(clearFailures: true) }
@@ -128,10 +138,10 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
         updateActionControls()
         let empty = emptyStateMessage()
         let emptySymbol = presenter.scanState.errorMessage != nil ? "exclamationmark.triangle" : "checkmark.circle"
-        content.feedback(
+        page.feedback(
             presenter.status, emptyMessage: empty, emptySymbol: emptySymbol,
             isError: presenter.hasStatusError || presenter.scanState.errorMessage != nil)
-        content.table.reloadData()
+        page.table.reloadData()
     }
 
     private func updateFilterButtons() {
@@ -163,17 +173,17 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
         ]
         selectAllButton.setAccessibilityLabel(toggleTitle)
         selectAllButton.isEnabled = !rows.isEmpty && !busy
-        content.setActionTitle(presenter.actionButtonTitle, symbol: "trash")
-        content.action.isEnabled = presenter.selectionCount > 0 && !busy
-        content.refresh.isEnabled = !busy
+        page.setActionTitle(presenter.actionButtonTitle, symbol: "trash")
+        page.action.isEnabled = presenter.selectionCount > 0 && !busy
+        page.refresh.isEnabled = !busy
         threshold.isEnabled = !busy
-        content.summary.stringValue = presenter.selectionText
+        page.summary.stringValue = presenter.selectionText
         updateDefaultBranchSubtitle()
     }
 
     private func updateDefaultBranchSubtitle() {
         guard let base = presenter.scanState.report?.defaultBranch else { return }
-        content.subtitle.stringValue = String(localized: "Comparing against \(base) · Space toggles selection")
+        page.subtitle.stringValue = String(localized: "Comparing against \(base) · Space toggles selection")
     }
 
     private func emptyStateMessage() -> String {
@@ -206,10 +216,10 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
         let stack = Deck.hstack([check, icon, textColumn, Deck.spacer()], spacing: 10)
         for badge in item.badges {
             stack.addArrangedSubview(
-                WorkflowWindowContent.pill(badge.title, symbol: badge.symbolName, color: badgeColor(badge)))
+                WorkflowPageView.pill(badge.title, symbol: badge.symbolName, color: badgeColor(badge)))
         }
         stack.addArrangedSubview(makeAgeLabel(item.ageText))
-        let container = WorkflowWindowContent.wrapRow(
+        let container = WorkflowPageView.wrapRow(
             stack, insets: NSEdgeInsets(top: 6, left: 12, bottom: 6, right: 14), divider: row < rows.count - 1)
         container.toolTip = [item.title, item.warning].compactMap { $0 }.joined(separator: "\n")
         return container
@@ -254,19 +264,19 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
     }
 
     private func toggleSelectedRow() {
-        let index = content.table.selectedRow
+        let index = page.table.selectedRow
         guard rows.indices.contains(index) else { return }
         presenter.toggleSelection(id: rows[index].id)
         render()
-        content.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        page.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
     }
 
     @objc private func doubleClickRow() {
-        let index = content.table.clickedRow
+        let index = page.table.clickedRow
         guard rows.indices.contains(index) else { return }
         presenter.toggleSelection(id: rows[index].id)
         render()
-        content.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
+        page.table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
     }
 
     @objc private func toggleRow(_ sender: NSButton) {
@@ -280,16 +290,16 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
     }
 
     private func confirm() {
-        guard !presenter.isBusy, presenter.selectionCount > 0 else { return }
+        guard !presenter.isBusy, presenter.selectionCount > 0, let window = view.window else { return }
         let alert = DestructiveConfirmation(
             message: String(localized: "Clean selected branches and worktrees?"),
             detail: String(localized: "Review every item before removing it."),
             action: String(localized: "Clean Selected")
         ).alert()
-        WorkflowWindowContent.review(alert, detail: presenter.confirmationSummary())
+        WorkflowPageView.review(alert, detail: presenter.confirmationSummary())
         alert.showsSuppressionButton = presenter.includesUnmerged
         alert.suppressionButton?.title = String(localized: "Allow deletion of unmerged branches")
-        alert.beginSheetModal(for: content.window) { [weak self] response in
+        alert.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .alertFirstButtonReturn else { return }
             let allow = presenter.includesUnmerged && alert.suppressionButton?.state == .on
             run(presenter.buildBatchSelection(allowUnmergedBranchDelete: allow))
@@ -304,19 +314,21 @@ final class CleanupAssistantWindowController: NSWindowController, NSWindowDelega
                 let result = try await service.executeCleanup(selection)
                 presenter.completeCleanup(result)
                 onDidMutate()
-                if !result.failures.isEmpty, content.window.isVisible { showPartialFailures(result) }
+                if !result.failures.isEmpty, let window = view.window, window.isVisible {
+                    showPartialFailures(result, on: window)
+                }
             } catch { presenter.failCleanup(error.localizedDescription) }
             refresh(clearFailures: false)
         }
     }
 
-    private func showPartialFailures(_ result: CleanupBatchResult) {
+    private func showPartialFailures(_ result: CleanupBatchResult, on window: NSWindow) {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Some items could not be cleaned.")
         alert.informativeText = presenter.status
-        WorkflowWindowContent.review(alert, detail: CleanupAssistantPresenter.failureDetails(for: result))
+        WorkflowPageView.review(alert, detail: CleanupAssistantPresenter.failureDetails(for: result))
         alert.addButton(withTitle: String(localized: "OK"))
-        alert.beginSheetModal(for: content.window) { _ in }
+        alert.beginSheetModal(for: window) { _ in }
     }
 }

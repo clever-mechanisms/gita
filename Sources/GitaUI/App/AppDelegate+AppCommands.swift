@@ -166,98 +166,25 @@ extension AppDelegate {
     @objc func showSubmodulesAndLFS() { openSubmodulesAndLFS(initialTab: nil) }
 
     func openSubmodulesAndLFS(initialTab: SubmodulesLFSPresenter.Tab?) {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        statusItem?.closePanel()
-        let controller = auxiliaryWindows.controller(for: root, kind: .submodulesLFS, service: service) {
-            SubmodulesLFSWindowController(
-                repositoryRoot: root, service: service,
-                onOpenInTab: { [weak self] url in self?.openRepositoryTab(url) },
-                onRevealInFinder: { [weak self] url in self?.environment.system.revealInFinder(url) }
-            )
-        }
-        controller.show(initialTab: initialTab)
-        auxiliaryWindows.observeClose(for: root, kind: .submodulesLFS)
+        openInlineGitTool(.submodulesLFS(initialTab: initialTab))
     }
 
     @objc func showCleanupAssistant() {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        statusItem?.closePanel()
-        let controller = auxiliaryWindows.controller(for: root, kind: .cleanup, service: service) {
-            CleanupAssistantWindowController(gitService: service, repositoryName: root.lastPathComponent) {
-                [weak self] in
-                self?.refreshRepository(at: root)
-            }
-        }
-        controller.present()
-        auxiliaryWindows.observeClose(for: root, kind: .cleanup)
+        openInlineGitTool(.cleanup)
     }
 
     @objc func showStackedBranches() { openStackedBranches(baseBranch: nil) }
 
     func openStackedBranches(baseBranch: String?) {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        statusItem?.closePanel()
-        let kind = AuxiliaryWindowRegistry.Kind.stackedBranches(baseBranch ?? "")
-        let controller = auxiliaryWindows.controller(for: root, kind: kind, service: service) {
-            BranchStackWindowController(
-                gitService: service, baseBranch: baseBranch, repositoryName: root.lastPathComponent
-            ) { [weak self] in
-                self?.refreshRepository(at: root)
-            }
-        }
-        controller.present()
-        auxiliaryWindows.observeClose(for: root, kind: kind)
+        openInlineGitTool(.stackedBranches(baseBranch: baseBranch))
     }
 
     @objc func showReflogBrowser() {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        statusItem?.closePanel()
-        let controller: ReflogWindowController = auxiliaryWindows.controller(for: root, kind: .reflog, service: service)
-        {
-            let window = ReflogWindowController(
-                service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
-            window.onJumpToCommit = { [weak self] sha in
-                self?.jumpToCommit(sha, in: root)
-            }
-            window.onRepositoryMutated = { [weak self] in
-                self?.refreshRepository(at: root)
-            }
-            return window
-        }
-        controller.show(ref: "HEAD")
-        auxiliaryWindows.observeClose(for: root, kind: .reflog)
+        openInlineGitTool(.reflog(ref: "HEAD"))
     }
 
     @objc func showCodeSearch() {
-        guard let root = model.snapshot?.root, let service = model.service else {
-            environment.system.beep()
-            return
-        }
-        statusItem?.closePanel()
-        let controller: CodeSearchWindowController = auxiliaryWindows.controller(
-            for: root, kind: .codeSearch, service: service
-        ) {
-            let window = CodeSearchWindowController(
-                service: service, repositoryRoot: root, repositoryName: root.lastPathComponent)
-            window.onJumpToCommit = { [weak self] sha in
-                self?.jumpToCommit(sha, in: root)
-            }
-            return window
-        }
-        controller.show()
-        auxiliaryWindows.observeClose(for: root, kind: .codeSearch)
+        openInlineGitTool(.codeSearch())
     }
 
     @objc func startBisect() {
@@ -270,22 +197,17 @@ extension AppDelegate {
     }
 
     func openLineHistory(range: LineRangeSpec) {
-        guard let root = model.snapshot?.root, let service = model.service else {
+        openInlineGitTool(.lineHistory(range: range))
+    }
+
+    private func openInlineGitTool(_ request: ToolPageRequest) {
+        guard model.snapshot?.root != nil, model.service != nil else {
             environment.system.beep()
             return
         }
         statusItem?.closePanel()
-        let controller: LineHistoryWindowController = auxiliaryWindows.controller(
-            for: root, kind: .lineHistory, service: service
-        ) {
-            let window = LineHistoryWindowController(service: service, range: range, repositoryRoot: root)
-            window.onJumpToCommit = { [weak self] sha in
-                self?.jumpToCommit(sha, in: root)
-            }
-            return window
-        }
-        controller.show(range: range)
-        auxiliaryWindows.observeClose(for: root, kind: .lineHistory)
+        showWindow()
+        repositoryController?.openToolPage(request)
     }
 
     /// Finds an open tab matching `root` across all workspace windows.
@@ -299,23 +221,6 @@ extension AppDelegate {
             }
         }
         return nil
-    }
-
-    private func refreshRepository(at root: URL) {
-        if let controller = openTabController(for: root) {
-            controller.model.refresh()
-        } else if let currentRoot = model.snapshot?.root, AttentionRequest.sameLocation(currentRoot, root) {
-            model.refresh()
-        }
-    }
-
-    private func jumpToCommit(_ sha: String, in root: URL) {
-        guard showRepositoryTab(root) else { return }
-        if let controller = openTabController(for: root) {
-            controller.showCommit(id: sha)
-        } else {
-            repositoryController?.showCommit(id: sha)
-        }
     }
 
     /// View › a page (⌥⌘1…); Worktrees & Agents opens or closes the right-hand pane.

@@ -123,7 +123,7 @@ enum ShortcutCommand: String, CaseIterable {
         case .push: String(localized: "Push…")
         case .forcePush: String(localized: "Force Push…")
         case .stash: String(localized: "Stash Changes…")
-        case .storage: String(localized: "Storage & Health…")
+        case .storage: String(localized: "Storage & Health")
         case .toggleTerminal: String(localized: "Show Terminal")
         case .newTerminal: String(localized: "New Terminal")
         default: String(localized: "Refresh")

@@ -13,7 +13,7 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     private let message = NSTextField()
     private let fileList = ChangedFilesView(side: .commit)
     private let fileCountLabel = Deck.label(
-        "", font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), color: Theme.tertiaryText)
+        "", font: .monospacedDigitSystemFont(ofSize: 10.5, weight: .medium), color: Theme.secondaryText)
     private lazy var treeToggle = PartsButton(
         [.symbol("list.bullet.indent", color: Theme.secondaryText, size: 11)], background: .hover,
         accessibility: String(localized: "Toggle tree view")
@@ -36,8 +36,10 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     private lazy var keep = NSButton(
         checkboxWithTitle: String(localized: "Keep staged changes in index (--keep-index)"), target: self,
         action: #selector(changeKeep))
-    private lazy var submit = SheetChrome.button(String(localized: "Create Stash"), id: "stash.create.submit")
-    private lazy var cancel = SheetChrome.button(String(localized: "Cancel"), id: "stash.create.cancel")
+    private lazy var submit = SheetChrome.button(
+        String(localized: "Create Stash"), id: "stash.create.submit", symbol: "archivebox")
+    private lazy var cancel = SheetChrome.button(
+        String(localized: "Cancel"), id: "stash.create.cancel", symbol: "xmark")
 
     private init(presenter: CreateStashPresenter, execute: @escaping Execute) {
         self.presenter = presenter
@@ -100,6 +102,8 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
         message.placeholderString = String(localized: "Optional stash message")
         message.font = Theme.body
         message.delegate = self
+        message.setAccessibilityLabel(String(localized: "Stash message"))
+        message.setAccessibilityIdentifier("stash.create.message")
         let stack = Deck.vstack([label, message], spacing: 4)
         message.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         return stack
@@ -108,16 +112,21 @@ final class CreateStashSheet: NSObject, NSTextFieldDelegate {
     private func makeFileTreeCard() -> NSView {
         let card = FillView(color: Theme.window)
         card.borderColor = Theme.separator
-        card.cornerRadius = 8
+        card.cornerRadius = 10
         let clip = NSView()
         clip.wantsLayer = true
-        clip.layer?.cornerRadius = 7
+        clip.layer?.cornerRadius = 9
         clip.layer?.masksToBounds = true
+        let headerIcon = Deck.icon("doc.on.doc", size: 11, weight: .medium, color: Theme.secondaryText)
+        headerIcon.setAccessibilityElement(false)
         let title = Deck.sectionTitle(String(localized: "Files to Stash"))
+        let countPill = FillView(color: Theme.control)
+        countPill.cornerRadius = 6
+        Deck.pin(fileCountLabel, in: countPill, insets: NSEdgeInsets(top: 2, left: 6, bottom: 2, right: 6))
         treeToggle.fixedHeight = 20
         treeToggle.horizontalPadding = 5
         treeToggle.cornerRadius = 4
-        let headerRow = Deck.hstack([title, fileCountLabel, Deck.spacer(), treeToggle], spacing: 6)
+        let headerRow = Deck.hstack([headerIcon, title, countPill, Deck.spacer(), treeToggle], spacing: 6)
         let headerBar = FillView(color: Theme.toolbar)
         Deck.pin(headerRow, in: headerBar, insets: NSEdgeInsets(top: 0, left: 10, bottom: 0, right: 8))
         headerBar.heightAnchor.constraint(equalToConstant: 28).isActive = true

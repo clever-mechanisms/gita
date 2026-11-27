@@ -13,6 +13,7 @@ enum SidebarSelection: Hashable {
         case .pullRequests: self = .pullRequests
         case .workflows: self = .workflows
         case .deployments: self = .deployments
+        case .storage: self = .storage
         case .agents, .worktrees: self = .agents
         default: return nil
         }
@@ -25,6 +26,7 @@ enum SidebarSelection: Hashable {
         case .pullRequests: .pullRequests
         case .workflows: .workflows
         case .deployments: .deployments
+        case .storage: .storage
         default: nil
         }
     }

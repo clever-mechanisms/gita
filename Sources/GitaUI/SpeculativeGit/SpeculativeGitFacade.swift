@@ -58,15 +58,19 @@ import GitaCore
         var footer = [SheetChrome.spacer()]
         let primary: NSButton
         if onProceed != nil {
-            let cancel = SheetChrome.button(String(localized: "Cancel"), id: "speculative.sheet.cancel")
+            let cancel = SheetChrome.button(
+                String(localized: "Cancel"), id: "speculative.sheet.cancel", symbol: "xmark")
             cancel.keyEquivalent = "\u{1b}"
             cancel.target = controller
             cancel.action = #selector(NSResponder.cancelOperation(_:))
             primary = SheetChrome.button(
-                proceedTitle ?? String(localized: "Continue"), id: "speculative.sheet.proceed")
+                proceedTitle ?? String(localized: "Continue"),
+                id: "speculative.sheet.proceed",
+                symbol: "arrow.right.circle"
+            )
             footer.append(cancel)
         } else {
-            primary = SheetChrome.button(String(localized: "Done"), id: "speculative.sheet.done")
+            primary = SheetChrome.button(String(localized: "Done"), id: "speculative.sheet.done", symbol: "checkmark")
         }
         primary.target = controller
         primary.action = #selector(PreviewSheetController.accept)
@@ -88,16 +92,6 @@ import GitaCore
     }
 
     static func makeBadgeView() -> ConflictRiskBadgeView { ConflictRiskBadgeView() }
-
-    /// Keep the returned controller to preserve the editable plan and selection across window closures.
-    static func makeCommitBucketsWindow(
-        gitService: GitService, agent: AgentTool? = nil,
-        onCommitted: ((CommitBucketExecutionResult) -> Void)? = nil
-    ) -> CommitBucketsWindowController {
-        let controller = CommitBucketsWindowController(gitService: gitService, agent: agent)
-        controller.presenter.onCommitted = onCommitted
-        return controller
-    }
 }
 
 private final class PreviewSheetController: NSViewController {

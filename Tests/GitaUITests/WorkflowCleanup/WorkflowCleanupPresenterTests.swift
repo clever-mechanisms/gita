@@ -8,27 +8,31 @@ import Testing
 @Suite struct WorkflowCleanupPresenterTests {
     @MainActor @Test func utilityLayoutLeavesRoomForTheTableAndFooter() throws {
         UITestSupport.bootstrap()
-        let content = WorkflowWindowContent(
-            title: "Stacked Branches", repositoryName: "sandbox", symbol: "square.stack.3d.up",
+        let page = WorkflowPageView(
+            title: "Stacked Branches", symbol: "square.stack.3d.up",
             actionTitle: "Restack", actionSymbol: "arrow.triangle.2.circlepath")
-        let root = try #require(content.window.contentView)
-        content.setActionTitle("Restack Chain…", symbol: "arrow.triangle.2.circlepath")
-        content.feedback("Complete", emptyMessage: "No stacks")
-        content.feedback("Error", emptyMessage: "Failed", isError: true)
-        content.showsControls = false
-        let pillWithIcon = WorkflowWindowContent.pill("Merged", symbol: "checkmark.circle.fill", color: Theme.success)
-        let plainPill = WorkflowWindowContent.pill("↑2 ↓1")
+        #expect(page.backButton.isHidden)
+        var backedOut = false
+        page.onBack = { backedOut = true }
+        #expect(!page.backButton.isHidden)
+        page.backButton.onClick?()
+        #expect(backedOut)
+        page.setActionTitle("Restack Chain…", symbol: "arrow.triangle.2.circlepath")
+        page.feedback("Complete", emptyMessage: "No stacks")
+        page.feedback("Error", emptyMessage: "Failed", isError: true)
+        page.showsControls = false
+        let pillWithIcon = WorkflowPageView.pill("Merged", symbol: "checkmark.circle.fill", color: Theme.success)
+        let plainPill = WorkflowPageView.pill("↑2 ↓1")
         #expect(pillWithIcon.fittingSize.width > 0 && plainPill.fittingSize.width > 0)
-        root.layoutSubtreeIfNeeded()
-        let scroll = try #require(content.table.enclosingScrollView)
+        page.frame = NSRect(x: 0, y: 0, width: 860, height: 520)
+        page.layoutSubtreeIfNeeded()
+        let scroll = try #require(page.table.enclosingScrollView)
         #expect(scroll.bounds.width > 600)
         #expect(scroll.bounds.height > 200)
         #expect(scroll.isHidden)
-        #expect(content.empty.bounds.width > 500)
-        #expect(content.action.frame.height > 0)
-        #expect(!content.window.isVisible)
-        #expect(content.window.title.contains("sandbox"))
-        content.stopObservingTheme()
+        #expect(page.empty.bounds.width > 500)
+        #expect(page.action.frame.height > 0)
+        page.stopObservingTheme()
     }
 
     @MainActor @Test func createStashSheetBuildsFileTreePreview() throws {
@@ -57,6 +61,10 @@ import Testing
         let filesViews = collectViews(in: root, ofType: ChangedFilesView.self)
         #expect(filesViews.count == 1)
         #expect(filesViews.first?.hasFiles == true)
+        let buttons = collectViews(in: root, ofType: NSButton.self)
+        let submit = buttons.first { $0.accessibilityIdentifier() == "stash.create.submit" }
+        let cancel = buttons.first { $0.accessibilityIdentifier() == "stash.create.cancel" }
+        #expect(submit?.image != nil && cancel?.image != nil)
         #expect(completed == false)
     }
 
@@ -78,9 +86,13 @@ import Testing
         try FileManager.default.removeItem(at: worktreeURL)
 
         let service = GitService(root: repo.url)
-        let cleanup = CleanupAssistantWindowController(gitService: service, repositoryName: "demo")
-        cleanup.present()
-        defer { cleanup.window?.orderOut(nil) }
+        let cleanup = CleanupAssistantViewController(gitService: service, repositoryName: "demo")
+        _ = cleanup.view
+        var cleanupBacked = false
+        cleanup.onBack = { cleanupBacked = true }
+        cleanup.page.backButton.onClick?()
+        #expect(cleanupBacked && !cleanup.isCleaning)
+        cleanup.reload()
         for _ in 0..<40 where cleanup.numberOfRows(in: NSTableView()) == 0 {
             try await Task.sleep(for: .milliseconds(25))
         }
@@ -89,10 +101,15 @@ import Testing
         for index in 0..<cleanupCount {
             #expect(cleanup.tableView(NSTableView(), viewFor: nil, row: index) != nil)
         }
+        cleanup.cancel()
 
-        let stacks = BranchStackWindowController(gitService: service, repositoryName: "demo")
-        stacks.present()
-        defer { stacks.window?.orderOut(nil) }
+        let stacks = BranchStackViewController(gitService: service, repositoryName: "demo")
+        _ = stacks.view
+        var stacksBacked = false
+        stacks.onBack = { stacksBacked = true }
+        stacks.page.backButton.onClick?()
+        #expect(stacksBacked && !stacks.isRestacking)
+        stacks.reload()
         for _ in 0..<40 where stacks.numberOfRows(in: NSTableView()) == 0 {
             try await Task.sleep(for: .milliseconds(25))
         }
@@ -101,6 +118,7 @@ import Testing
         for index in 0..<stackCount {
             #expect(stacks.tableView(NSTableView(), viewFor: nil, row: index) != nil)
         }
+        stacks.cancel()
     }
 
     @MainActor private func collectViews<T: NSView>(in view: NSView, ofType _: T.Type) -> [T] {
@@ -153,9 +171,13 @@ import Testing
         #expect(empty.scope == .allIncludingUntracked && !empty.canSubmit)
     }
 
-    @Test func stashActionsAndConfirmation() {
+    @MainActor @Test func stashActionsAndConfirmation() {
         #expect(StashActionPresenter.items.map(\.action) == [.pop, .apply, .createBranch, .drop])
+        #expect(StashActionPresenter.items.allSatisfy { !$0.symbol.isEmpty })
         let stash = GitStash(ref: "stash@{1}", subject: "saved changes")
+        let menu = StashActionPresenter.menu(for: stash) { _, _ in }
+        let actionItems = menu.items.filter { !$0.isSeparatorItem }
+        #expect(actionItems.count == 4 && actionItems.allSatisfy { $0.image != nil })
         let copy = StashActionPresenter.dropConfirmation(stash)
         #expect(copy.title.contains("stash@{1}") && copy.informativeText.contains("saved changes"))
         #expect(copy.confirmTitle == String(localized: "Drop Stash"))
@@ -299,11 +321,11 @@ import Testing
         #expect(presenter.state == .completed(result) && presenter.selected == nil)
     }
 
-    @MainActor @Test func closingStackWindowDoesNotCancelInFlightRestack() async throws {
+    @MainActor @Test func cancellingStackControllerDoesNotCancelInFlightRestack() async throws {
         UITestSupport.bootstrap()
         let runner = DelayedRestackRunner()
         let service = GitService(root: URL(fileURLWithPath: "/tmp"), runner: runner)
-        let controller = BranchStackWindowController(gitService: service)
+        let controller = BranchStackViewController(gitService: service)
         let layer = StackLayer(
             reference: GitReference(name: "child", fullName: "refs/heads/child", commit: "c", kind: .branch),
             position: .init(depth: 1, aheadOfBase: 1, behindBase: 1), commitSubjects: ["Fix"])
@@ -312,9 +334,9 @@ import Testing
             stack: stack, ontoRef: "main", ontoCommitID: "m", currentBranch: "main",
             impact: .init(commitsToReplay: [], branchesToUpdate: ["child"]))
         controller.restack(preview)
-        #expect(!controller.windowShouldClose(try #require(controller.window)))
+        #expect(controller.isRestacking)
         await runner.waitUntilStarted()
-        controller.windowWillClose(Notification(name: NSWindow.willCloseNotification, object: controller.window))
+        controller.cancel()
         let cancelled = await runner.finishAndReportCancellation()
         #expect(!cancelled)
     }

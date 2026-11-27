@@ -1,30 +1,41 @@
 import AppKit
 import GitaCore
 
-/// Native macOS window managing a repository's Git Submodules and Git LFS status, files, locks, and cache size.
+/// Embeddable view controller managing a repository's Git Submodules and Git LFS status, files, locks, and cache.
 @MainActor
-final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate {
+final class SubmodulesLFSViewController: NSViewController {
     private enum Metrics {
-        static let defaultSize = NSSize(width: 780, height: 520)
-        static let minSize = NSSize(width: 620, height: 380)
-        static let headerHeight: CGFloat = 40
+        static let horizontalInset: CGFloat = 18
+        static let spinnerSize: CGFloat = 14
     }
 
     let presenter: SubmodulesLFSPresenter
-    var activation = ActivationPolicyCoordinator.shared
 
+    private(set) lazy var backButton: PartsButton = WorkflowPageView.makeBackButton(identifier: "submodulesLFS.back") {
+        [weak self] in
+        self?.onBack?()
+    }
+    var onBack: (() -> Void)? {
+        didSet { backButton.isHidden = onBack == nil }
+    }
+
+    private let headerBar = FillView(color: Theme.toolbar)
     private var tabButtons: [SubmodulesLFSPresenter.Tab: PartsButton] = [:]
     private let refreshButton: PartsButton
+    private let busySpinner = NSProgressIndicator()
     private let busyLabel = Deck.caption("")
     private lazy var submodulesView = SubmodulesTabView(presenter: presenter)
     private lazy var lfsView = LFSTabView(presenter: presenter)
+    private var themeObserver: NSObjectProtocol?
 
     init(presenter: SubmodulesLFSPresenter) {
         self.presenter = presenter
         refreshButton = PartsButton.quiet(String(localized: "Refresh"), symbol: "arrow.clockwise") {
             presenter.refreshActiveTab()
         }
-        super.init(window: nil)
+        refreshButton.fixedHeight = 26
+        refreshButton.setAccessibilityIdentifier("submodulesLFS.refresh")
+        super.init(nibName: nil, bundle: nil)
         presenter.onChange = { [weak self] in self?.syncUI() }
     }
 
@@ -46,69 +57,37 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
     @available(*, unavailable, message: "Built in code")
     required init?(coder _: NSCoder) { fatalError("Built in code") }
 
-    /// Shows the window, brings it forward, and loads the active tab if still idle.
-    func show(initialTab: SubmodulesLFSPresenter.Tab? = nil) {
-        let window = prepareWindow(initialTab: initialTab)
-        AuxiliaryWindowActivation.show(window, coordinator: activation)
-        loadIfNeeded()
+    isolated deinit {
+        if let themeObserver { NotificationCenter.default.removeObserver(themeObserver) }
+        themeObserver = nil
     }
 
-    /// Builds the window without ordering it on screen (used by headless tests).
-    @discardableResult
-    func prepareWindow(initialTab: SubmodulesLFSPresenter.Tab? = nil) -> NSWindow {
-        let window = self.window ?? makeWindow()
-        if let initialTab {
-            presenter.selectTab(initialTab)
-        }
-        syncUI()
-        return window
-    }
-
-    func windowWillClose(_: Notification) {
-        presenter.cancelReads()
-        AuxiliaryWindowActivation.closing(window, coordinator: activation)
-    }
-
-    private func loadIfNeeded() {
-        if presenter.selectedTab == .submodules {
-            loadSubmodulesIfIdle()
-        } else {
-            loadLFSIfIdle()
-        }
-    }
-
-    private func loadSubmodulesIfIdle() {
-        if case .idle = presenter.submoduleState { presenter.loadSubmodules() }
-    }
-
-    private func loadLFSIfIdle() {
-        if case .idle = presenter.lfsState { presenter.loadLFS() }
-    }
-
-    private func makeWindow() -> NSWindow {
-        let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: Metrics.defaultSize),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: true
-        )
-        window.minSize = Metrics.minSize
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.title = String(localized: "Submodules & Git LFS · \(presenter.repositoryName)")
-
+    override func loadView() {
         let root = ThemedBackgroundView()
-        window.contentView = root
-        layoutWindow(in: root)
-        window.center()
-        #if !DEBUG
-            window.setFrameAutosaveName("Gita.SubmodulesLFSWindow")
-        #endif
-        self.window = window
-        return window
+        layoutContent(in: root)
+        view = root
+        observeTheme()
+        syncUI()
     }
 
-    private func layoutWindow(in root: NSView) {
+    func selectTab(_ tab: SubmodulesLFSPresenter.Tab) {
+        presenter.selectTab(tab)
+        if isViewLoaded { syncUI() }
+    }
+
+    func loadIfNeeded() {
+        if presenter.selectedTab == .submodules {
+            if case .idle = presenter.submoduleState { presenter.loadSubmodules() }
+        } else if case .idle = presenter.lfsState {
+            presenter.loadLFS()
+        }
+    }
+
+    func cancel() {
+        presenter.cancelReads()
+    }
+
+    private func layoutContent(in root: NSView) {
         let header = buildHeaderBar()
         let divider = Deck.separator()
         let contentHost = NSView()
@@ -117,14 +96,34 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
 
         let stack = Deck.vstack([header, divider, contentHost], spacing: 0)
         Deck.pin(stack, in: root)
-        header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        header.heightAnchor.constraint(equalToConstant: Metrics.headerHeight).isActive = true
-        divider.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        contentHost.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        for item in [header, divider, contentHost] {
+            item.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
         contentHost.setContentHuggingPriority(.defaultLow, for: .vertical)
+        contentHost.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
     private func buildHeaderBar() -> NSView {
+        backButton.isHidden = onBack == nil
+        let badge = StorageStyle.iconBadge(
+            "shippingbox", tint: Theme.accent, boxSize: 32, symbolSize: 15, cornerRadius: 8)
+        let titleLabel = Deck.label(
+            String(localized: "Submodules & Git LFS"), font: TextLines.system(14, weight: .semibold), color: Theme.text)
+        let subtitle = Deck.caption(presenter.repositoryName)
+        let titles = Deck.vstack([titleLabel, subtitle], spacing: 2)
+
+        let tabs = makeTabSwitcher()
+        configureBusyIndicator()
+        let trailing = Deck.hstack([busySpinner, busyLabel, refreshButton], spacing: 8)
+
+        let row = Deck.hstack([backButton, badge, titles, Deck.spacer(), tabs, trailing], spacing: 10)
+        Deck.pin(
+            row, in: headerBar,
+            insets: NSEdgeInsets(top: 12, left: Metrics.horizontalInset, bottom: 12, right: Metrics.horizontalInset))
+        return headerBar
+    }
+
+    private func makeTabSwitcher() -> NSStackView {
         var tabViews: [NSView] = []
         for tab in SubmodulesLFSPresenter.Tab.allCases {
             let button = PartsButton(
@@ -144,15 +143,38 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
             tabButtons[tab] = button
             tabViews.append(button)
         }
-        refreshButton.setAccessibilityIdentifier("submodulesLFS.refresh")
-        let row = Deck.hstack(tabViews + [Deck.spacer(), busyLabel, refreshButton], spacing: 6)
-        row.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 14)
-        let bar = FillView(color: Theme.toolbar)
-        Deck.pin(row, in: bar)
-        return bar
+        return Deck.hstack(tabViews, spacing: 4)
+    }
+
+    private func configureBusyIndicator() {
+        busySpinner.style = .spinning
+        busySpinner.controlSize = .small
+        busySpinner.usesThreadedAnimation = false
+        busySpinner.isDisplayedWhenStopped = false
+        busySpinner.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            busySpinner.widthAnchor.constraint(equalToConstant: Metrics.spinnerSize),
+            busySpinner.heightAnchor.constraint(equalToConstant: Metrics.spinnerSize),
+        ])
+    }
+
+    private func observeTheme() {
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .gitaThemeChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyTheme() }
+        }
+    }
+
+    private func applyTheme() {
+        headerBar.color = Theme.toolbar
+        updateTabButtons()
+        submodulesView.applyTheme()
+        lfsView.applyTheme()
     }
 
     private func syncUI() {
+        guard isViewLoaded else { return }
         updateTabButtons()
         updateBusyStatus()
         let showingSubmodules = presenter.selectedTab == .submodules
@@ -173,7 +195,7 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
             ]
             let badge = tab == .submodules ? presenter.submoduleTabBadge : presenter.lfsTabBadge
             if let badge {
-                parts.append(.badge(badge, fill: Theme.control, color: Theme.secondaryText))
+                parts.append(.badge(badge, fill: isSelected ? Theme.window : Theme.control, color: color))
             }
             button.parts = parts
             button.background = isSelected ? .selected : .hover
@@ -192,6 +214,8 @@ final class SubmodulesLFSWindowController: NSWindowController, NSWindowDelegate 
             }
         busyLabel.stringValue = activeMessage ?? ""
         busyLabel.isHidden = activeMessage == nil
+        busySpinner.isHidden = activeMessage == nil
+        if activeMessage != nil { busySpinner.startAnimation(nil) } else { busySpinner.stopAnimation(nil) }
         refreshButton.isEnabled = !presenter.isActiveTabBusy
     }
 }

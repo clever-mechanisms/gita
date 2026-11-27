@@ -1,23 +1,36 @@
 import AppKit
 import GitaCore
 
-/// Storage Inspector, Bloat Cleaner, and Repository Health & Maintenance window wiring.
+/// Per-repository inline Storage & Health routing and global Workspace Storage window wiring.
 extension AppDelegate {
     @objc func showStorageInspector() {
-        openStorageWindow(repositoryRoot: nil, scope: .repository)
+        openInlineStorage(scope: .repository)
     }
 
     @objc func showRepositoryHealth() {
-        openStorageWindow(repositoryRoot: nil, scope: .health)
+        openInlineStorage(scope: .health)
+    }
+
+    @objc func showWorkspaceStorage() {
+        statusItem?.closePanel()
+        var context = storageWindowContext(repositoryRoot: nil)
+        context.onOpenRepository = { [weak self] url in
+            self?.inspectStorage(at: url)
+        }
+        storageWindowController.show(context: context)
     }
 
     func inspectStorage(at root: URL) {
-        openStorageWindow(repositoryRoot: root, scope: .repository)
+        statusItem?.closePanel()
+        guard showRepositoryTab(root) else { return }
+        let controller = openTabController(for: root) ?? repositoryController
+        controller?.openToolPage(.storage(scope: .repository))
     }
 
     func invalidateStorage(repositoryRoot root: URL) {
         environment.storageStore.invalidate(repositoryRoot: root)
         storageWindowController.reloadIfVisible()
+        openTabController(for: root)?.reloadInlineStorageIfVisible()
     }
 
     func cachedStorageSize(for root: URL) -> String? {
@@ -26,13 +39,7 @@ extension AppDelegate {
         }
     }
 
-    private func openStorageWindow(repositoryRoot: URL?, scope: StorageWindowController.Scope) {
-        statusItem?.closePanel()
-        let context = storageWindowContext(repositoryRoot: repositoryRoot)
-        storageWindowController.show(context: context, scope: scope)
-    }
-
-    private func storageWindowContext(repositoryRoot: URL?) -> StorageWindowContext {
+    func storageWindowContext(repositoryRoot: URL?) -> StorageWindowContext {
         let resolvedRoot = repositoryRoot ?? tabsController?.selectedRepository ?? model.snapshot?.root
         let known =
             openRepositoryRoots
@@ -49,6 +56,20 @@ extension AppDelegate {
                 self?.openRepositoryTab(url)
             }
         )
+    }
+
+    private func openInlineStorage(scope: StorageInlineViewController.Scope) {
+        statusItem?.closePanel()
+        guard (tabsController?.selectedRepository ?? model.snapshot?.root) != nil else {
+            if scope == .repository {
+                showWorkspaceStorage()
+            } else {
+                environment.system.beep()
+            }
+            return
+        }
+        showWindow()
+        repositoryController?.openToolPage(.storage(scope: scope))
     }
 
     private func activeAgentWorktreePaths() -> Set<String> {

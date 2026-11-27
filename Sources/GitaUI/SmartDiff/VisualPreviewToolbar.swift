@@ -9,6 +9,14 @@ extension VisualPreviewDiffMode {
         case .onionSkin: String(localized: "Onion")
         }
     }
+
+    @MainActor var symbol: String {
+        switch self {
+        case .sideBySide: "rectangle.split.2x1"
+        case .curtain: "slider.horizontal.below.rectangle"
+        case .onionSkin: "square.on.square"
+        }
+    }
 }
 
 extension VisualPreviewViewport {
@@ -19,6 +27,16 @@ extension VisualPreviewViewport {
         case .tablet: String(localized: "Tablet 768")
         case .mobile: String(localized: "Mobile 390")
         case .responsive: String(localized: "Fit")
+        }
+    }
+
+    @MainActor var symbol: String {
+        switch self {
+        case .desktop: "desktopcomputer"
+        case .laptop: "laptopcomputer"
+        case .tablet: "ipad"
+        case .mobile: "iphone"
+        case .responsive: "arrow.up.left.and.arrow.down.right"
         }
     }
 }
@@ -32,7 +50,9 @@ final class VisualPreviewToolbar: NSView {
     private var buttons: [VisualPreviewDiffMode: PartsButton] = [:]
     private let opacity = NSSlider()
     private let percent = Deck.caption("")
-    private lazy var flip = SmartDiffControls.button(String(localized: "Flip"), id: "preview.flip") { [weak self] in
+    private lazy var flip = SmartDiffControls.button(
+        String(localized: "Flip"), id: "preview.flip", symbol: "arrow.left.arrow.right"
+    ) { [weak self] in
         guard let presenter = self?.presenter else { return }
         presenter.setOnionOpacity(presenter.onionOpacity >= 0.5 ? 0 : 1)
     }
@@ -43,7 +63,9 @@ final class VisualPreviewToolbar: NSView {
         super.init(frame: .zero)
         let modes = Deck.hstack([], spacing: 4)
         for mode in VisualPreviewDiffMode.allCases {
-            let button = SmartDiffControls.button(mode.title, id: "preview.mode." + mode.rawValue) { [weak presenter] in
+            let button = SmartDiffControls.button(
+                mode.title, id: "preview.mode." + mode.rawValue, symbol: mode.symbol
+            ) { [weak presenter] in
                 presenter?.setMode(mode)
             }
             buttons[mode] = button
@@ -62,10 +84,12 @@ final class VisualPreviewToolbar: NSView {
             Deck.open(presenter?.resolvedURLs?.preview)
         }
         let controls = Deck.hstack([modes, viewport, blend, Deck.spacer(), reload, external])
-        let path = Deck.hstack([Deck.caption(String(localized: "Route")), route])
+        let path = Deck.hstack(
+            [Deck.icon("link", size: 11, color: Theme.secondaryText), Deck.caption(String(localized: "Route")), route],
+            spacing: 6)
         let stack = Deck.vstack([controls, path])
         for row in [controls, path] { row.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        Deck.pin(stack, in: self, insets: NSEdgeInsets(top: 4, left: 8, bottom: 8, right: 8))
+        Deck.pin(stack, in: self, insets: NSEdgeInsets(top: 6, left: 10, bottom: 8, right: 10))
         smartDiffAccessibility(String(localized: "Comparison controls"), "preview.toolbar")
         refresh()
     }
@@ -83,7 +107,10 @@ final class VisualPreviewToolbar: NSView {
         route.action = #selector(submit)
         route.lineBreakMode = .byTruncatingTail
         route.smartDiffAccessibility(String(localized: "Route for both deployments"), "preview.route")
-        for preset in VisualPreviewViewport.allCases { viewport.addItem(withTitle: preset.title) }
+        for preset in VisualPreviewViewport.allCases {
+            viewport.addItem(withTitle: preset.title)
+            viewport.lastItem?.image = Deck.template(preset.symbol, size: 12, weight: .medium)
+        }
         viewport.font = Theme.caption
         viewport.controlSize = .small
         viewport.focusRingType = .default

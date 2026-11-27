@@ -103,16 +103,24 @@ struct HistoryPowerUITests {
         presenter.setSearchQuery("reset")
         #expect(presenter.visibleEntries.map(\.commitID) == [Self.sampleSHA1])
 
-        let controller = ReflogWindowController(service: service, repositoryRoot: repo.url, repositoryName: "TestRepo")
-        let window = controller.prepareWindow()
-        #expect(window.title.contains("Reflog"))
-        if let content = window.contentView {
-            content.layoutSubtreeIfNeeded()
-            UITestSupport.render(content)
+        let controller = ReflogViewController(service: service, repositoryRoot: repo.url, repositoryName: "TestRepo")
+        let window = UITestSupport.host(controller, size: NSSize(width: 960, height: 600))
+        defer {
+            controller.cancel()
+            window.close()
         }
+        controller.reload()
+        try await Self.waitUntil {
+            guard !controller.presenter.loadState.isLoading else { return false }
+            if case .loaded = controller.presenter.diffState { return true }
+            if case .failed = controller.presenter.diffState { return true }
+            return false
+        }
+        controller.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(controller.view)
     }
 
-    @Test("LineHistoryPresenter and CodeSearchPresenter manage lifecycle, per-file diffs, and windows")
+    @Test("LineHistoryPresenter and CodeSearchPresenter manage lifecycle, per-file diffs, and inline views")
     func lineHistoryAndCodeSearchUI() async throws {
         UITestSupport.bootstrap()
         let commit = Self.makeCommit(id: Self.sampleSHA1, subject: "Refactor parser")
@@ -132,13 +140,15 @@ struct HistoryPowerUITests {
         #expect(linePresenter.entries.count == 1)
         #expect(linePresenter.selectedEntry?.commit.id == Self.sampleSHA1)
 
-        let lineWindow = LineHistoryWindowController(presenter: linePresenter)
-        let lineWin = lineWindow.prepareWindow()
-        #expect(lineWin.title.contains("L10–L20"))
-        if let content = lineWin.contentView {
-            content.layoutSubtreeIfNeeded()
-            UITestSupport.render(content)
+        let lineController = LineHistoryViewController(presenter: linePresenter)
+        let lineWin = UITestSupport.host(lineController, size: NSSize(width: 960, height: 600))
+        defer {
+            lineController.cancel()
+            lineWin.close()
         }
+        #expect(linePresenter.headerTitle.contains("L10–L20"))
+        lineController.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(lineController.view)
 
         let searchPresenter = CodeSearchPresenter(
             searcher: { _ in
@@ -172,13 +182,77 @@ struct HistoryPowerUITests {
             Issue.record("Expected loaded code search diff")
         }
 
-        let searchWindow = CodeSearchWindowController(presenter: searchPresenter, repositoryName: "TestRepo")
-        let searchWin = searchWindow.prepareWindow()
-        #expect(searchWin.title.contains("Code Search"))
-        if let content = searchWin.contentView {
-            content.layoutSubtreeIfNeeded()
-            UITestSupport.render(content)
+        let searchController = CodeSearchViewController(presenter: searchPresenter, repositoryName: "TestRepo")
+        let searchWin = UITestSupport.host(searchController, size: NSSize(width: 960, height: 600))
+        defer {
+            searchController.cancel()
+            searchWin.close()
         }
+        searchController.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(searchController.view)
+    }
+
+    @Test("Inline History Power VCs support Back action, SF Symbol controls, theme changes, and lifecycle")
+    func inlineHistoryToolControllers() async throws {
+        UITestSupport.bootstrap()
+        let repo = try TemporaryRepository()
+        _ = try repo.commit("a.txt", "hello\n", message: "First")
+        let service = GitService(root: repo.url)
+
+        let reflogVC = ReflogViewController(service: service, repositoryRoot: repo.url, repositoryName: "TestRepo")
+        reflogVC.loadViewIfNeeded()
+        let reflogBack = try #require(
+            SheetsSupport.view("historyTool.back", in: reflogVC.view, as: PartsButton.self))
+        #expect(reflogBack.isHidden)
+        var backClicks = 0
+        reflogVC.onBack = { backClicks += 1 }
+        #expect(!reflogBack.isHidden)
+        #expect(reflogBack.accessibilityPerformPress() && backClicks == 1)
+        let filterControl = try #require(
+            SheetsSupport.view("reflog.filter", in: reflogVC.view, as: NSSegmentedControl.self))
+        #expect(filterControl.segmentCount == ReflogFilter.ordered.count)
+        for idx in 0..<filterControl.segmentCount {
+            #expect(filterControl.image(forSegment: idx) != nil)
+        }
+        reflogVC.reload(ref: "HEAD")
+        NotificationCenter.default.post(name: .gitaThemeChanged, object: nil)
+        reflogVC.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(reflogVC.view)
+        reflogVC.cancel()
+
+        let searchVC = CodeSearchViewController(
+            service: service, repositoryRoot: repo.url, repositoryName: "TestRepo")
+        searchVC.loadViewIfNeeded()
+        let searchBack = try #require(
+            SheetsSupport.view("historyTool.back", in: searchVC.view, as: PartsButton.self))
+        #expect(searchBack.isHidden)
+        searchVC.onBack = { backClicks += 1 }
+        #expect(!searchBack.isHidden)
+        #expect(searchBack.accessibilityPerformPress() && backClicks == 2)
+        let modeControl = try #require(
+            SheetsSupport.view("codeSearch.mode", in: searchVC.view, as: NSSegmentedControl.self))
+        #expect(modeControl.image(forSegment: 0) != nil && modeControl.image(forSegment: 1) != nil)
+        searchVC.show(initialPattern: "hello", pathFilter: "a.txt")
+        searchVC.focusQuery()
+        NotificationCenter.default.post(name: .gitaThemeChanged, object: nil)
+        searchVC.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(searchVC.view)
+        searchVC.cancel()
+
+        let range = LineRangeSpec(path: "a.txt", startLine: 1, endLine: 1)
+        let lineVC = LineHistoryViewController(service: service, range: range, repositoryRoot: repo.url)
+        lineVC.loadViewIfNeeded()
+        let lineBack = try #require(
+            SheetsSupport.view("historyTool.back", in: lineVC.view, as: PartsButton.self))
+        #expect(lineBack.isHidden)
+        lineVC.onBack = { backClicks += 1 }
+        #expect(!lineBack.isHidden)
+        #expect(lineBack.accessibilityPerformPress() && backClicks == 3)
+        lineVC.reload(range: range)
+        NotificationCenter.default.post(name: .gitaThemeChanged, object: nil)
+        lineVC.view.layoutSubtreeIfNeeded()
+        UITestSupport.render(lineVC.view)
+        lineVC.cancel()
     }
 
     @Test("BisectBannerModel, BisectBannerView, and BisectStartSheet cover active, finished, and custom terms")
